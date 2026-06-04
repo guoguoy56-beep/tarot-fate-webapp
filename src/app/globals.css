@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #0b0705;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: #f1dfb9;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(213, 155, 76, 0.16), transparent 26rem),
+    radial-gradient(circle at 50% 100%, rgba(58, 17, 21, 0.62), transparent 36rem),
+    #0b0705;
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.table-surface {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(213, 155, 76, 0.18), transparent 24rem),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(59, 29, 16, 0.94), rgba(12, 7, 5, 0.98) 72%);
+  background-size: auto, 96px 96px, 96px 96px, auto;
+}
+
+.table-surface::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, transparent 0, rgba(255, 225, 166, 0.04) 48%, transparent 53%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 0,
+      rgba(255, 255, 255, 0.018) 2px,
+      transparent 2px,
+      transparent 18px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.34;
+}
+
+.parchment {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.22), transparent 9rem),
+    radial-gradient(circle at 80% 90%, rgba(70, 33, 14, 0.28), transparent 11rem),
+    linear-gradient(135deg, rgba(230, 207, 157, 0.94), rgba(169, 130, 72, 0.84));
+  color: #2a160d;
+  box-shadow:
+    inset 0 0 30px rgba(71, 37, 16, 0.28),
+    0 22px 80px rgba(0, 0, 0, 0.5);
+}
+
+.parchment::after {
+  position: absolute;
+  inset: 8px;
+  pointer-events: none;
+  content: "";
+  border: 1px solid rgba(72, 39, 17, 0.34);
+}
+
+.tarot-card {
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+.tarot-face {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.tarot-front {
+  transform: rotateY(180deg);
+}
+
+.writing-mode-vertical {
+  writing-mode: vertical-rl;
+}
