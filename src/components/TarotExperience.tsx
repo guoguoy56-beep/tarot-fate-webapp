@@ -425,15 +425,22 @@ export function TarotExperience() {
               animate={
                 stage === "fan" || stage === "draw"
                   ? { x: 0, y: 320, rotate: 0, opacity: 0 }
+                  : stage === "question"
+                    ? {
+                        x: 0,
+                        y: 0,
+                        rotate: (card.z - deck.length / 2) * 0.08,
+                        opacity: 0.34,
+                      }
                   : {
                       x: card.x,
                       y: card.y,
                       rotate: card.rotate,
-                      opacity: stage === "question" ? 0.34 : 1,
+                      opacity: 1,
                     }
               }
               transition={{ type: "spring", stiffness: 92, damping: 18 }}
-              className="absolute left-1/2 top-[43%] h-40 w-28 -translate-x-1/2 -translate-y-1/2"
+              className={`absolute left-1/2 ${stage === "question" ? "top-[45%]" : "top-[43%]"} h-40 w-28 -translate-x-1/2 -translate-y-1/2`}
               style={{ zIndex: card.z }}
             >
               <CardBack compact />
@@ -450,15 +457,15 @@ export function TarotExperience() {
             animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
             exit={{ opacity: 0, filter: "blur(16px)", y: -22 }}
             transition={{ duration: 1.1 }}
-            className="absolute inset-0 flex flex-col items-center justify-center px-6"
+            className="absolute inset-0 px-6"
           >
-            <div className="mb-9 text-center">
+            <div className="absolute left-1/2 top-[22%] w-full -translate-x-1/2 text-center">
               <p className="mb-4 text-xs tracking-[0.5em] text-[#d8b56d]/75">THE FATE CARDS</p>
               <h1 className="font-title text-6xl text-[#f4dfb7] shadow-candle md:text-7xl">命运之牌</h1>
               <p className="mt-5 text-sm tracking-[0.16em] text-[#d8c08c]/80">在烛光熄灭之前，说出你的疑问。</p>
             </div>
 
-            <div className="parchment relative w-full max-w-2xl px-8 py-5">
+            <div className="parchment absolute left-1/2 top-[57%] w-full max-w-2xl -translate-x-1/2 px-8 py-5">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -475,7 +482,7 @@ export function TarotExperience() {
             </div>
 
             {records.length > 0 && (
-              <div className="mt-6 flex items-center gap-2 text-xs text-[#d8b56d]/70">
+              <div className="absolute left-1/2 top-[78%] flex -translate-x-1/2 items-center gap-2 text-xs text-[#d8b56d]/70">
                 <History size={15} />
                 已保存 {records.length} 条命运手记
               </div>
