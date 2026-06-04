@@ -83,6 +83,38 @@ function CardBack({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function HomeDeckPreview() {
+  const layers = [
+    { x: -9, y: 5, rotate: -5, opacity: 0.78 },
+    { x: -5, y: 2, rotate: -2.4, opacity: 0.86 },
+    { x: 0, y: 0, rotate: 0, opacity: 1 },
+    { x: 5, y: 2, rotate: 2.4, opacity: 0.86 },
+    { x: 9, y: 5, rotate: 5, opacity: 0.78 },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18, scale: 0.92, filter: "blur(12px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
+      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      className="pointer-events-none absolute left-1/2 top-[46%] z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+    >
+      {layers.map((layer, index) => (
+        <motion.div
+          key={index}
+          animate={layer}
+          transition={{ type: "spring", stiffness: 150, damping: 18 }}
+          className="absolute inset-0"
+          style={{ zIndex: index }}
+        >
+          <CardBack compact />
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}
+
 function CardFront({ card, orientation }: { card: TarotCardData; orientation: "upright" | "reversed" }) {
   const keywords = orientation === "upright" ? card.uprightKeywords : card.reversedKeywords;
 
@@ -415,7 +447,7 @@ export function TarotExperience() {
         <span className="font-title text-xs tracking-[0.34em]">OLD WITCH TABLE</span>
       </div>
 
-      {(stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
+      {(stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
         <section className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-[41%] h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d59b4c]/10 blur-3xl" />
           {shuffleCards.map((card) => (
@@ -425,13 +457,6 @@ export function TarotExperience() {
               animate={
                 stage === "fan" || stage === "draw"
                   ? { x: 0, y: 320, rotate: 0, opacity: 0 }
-                  : stage === "question"
-                    ? {
-                        x: 0,
-                        y: 0,
-                        rotate: (card.z - deck.length / 2) * 0.08,
-                        opacity: 0.34,
-                      }
                   : {
                       x: card.x,
                       y: card.y,
@@ -440,7 +465,7 @@ export function TarotExperience() {
                     }
               }
               transition={{ type: "spring", stiffness: 92, damping: 18 }}
-              className={`absolute left-1/2 ${stage === "question" ? "top-[45%]" : "top-[43%]"} h-40 w-28 -translate-x-1/2 -translate-y-1/2`}
+              className="absolute left-1/2 top-[43%] h-40 w-28 -translate-x-1/2 -translate-y-1/2"
               style={{ zIndex: card.z }}
             >
               <CardBack compact />
@@ -465,7 +490,9 @@ export function TarotExperience() {
               <p className="mt-5 text-sm tracking-[0.16em] text-[#d8c08c]/80">在烛光熄灭之前，说出你的疑问。</p>
             </div>
 
-            <div className="parchment absolute left-1/2 top-[57%] w-full max-w-2xl -translate-x-1/2 px-8 py-5">
+            <HomeDeckPreview />
+
+            <div className="parchment absolute left-1/2 top-[64%] w-full max-w-2xl -translate-x-1/2 px-8 py-5">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -482,7 +509,7 @@ export function TarotExperience() {
             </div>
 
             {records.length > 0 && (
-              <div className="absolute left-1/2 top-[78%] flex -translate-x-1/2 items-center gap-2 text-xs text-[#d8b56d]/70">
+              <div className="absolute left-1/2 top-[91%] flex -translate-x-1/2 items-center gap-2 text-xs text-[#d8b56d]/70">
                 <History size={15} />
                 已保存 {records.length} 条命运手记
               </div>
