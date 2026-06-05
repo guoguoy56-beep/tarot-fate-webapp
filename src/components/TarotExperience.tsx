@@ -98,7 +98,7 @@ function HomeDeckPreview() {
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none absolute left-1/2 top-[46%] z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
     >
       {layers.map((layer, index) => (
         <motion.div
