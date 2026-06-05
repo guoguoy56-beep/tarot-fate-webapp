@@ -207,6 +207,7 @@ export function TarotExperience() {
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [journalOpening, setJournalOpening] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const lastShufflePoint = useRef<PointerPoint | null>(null);
   const dropRefs = useRef<Record<SpreadPosition, HTMLDivElement | null>>({
@@ -302,7 +303,15 @@ export function TarotExperience() {
     setReading(null);
     setReadingError("");
     setRevealIndex(0);
+    setJournalOpening(false);
     setStage("question");
+  }
+
+  function enterFateJournal() {
+    setJournalOpening(true);
+    window.setTimeout(() => {
+      setStage("final");
+    }, 10);
   }
 
   function handleShuffleMove(event: React.PointerEvent<HTMLDivElement>) {
@@ -678,7 +687,15 @@ export function TarotExperience() {
 
       {stage === "reading" && (
         <section className="absolute inset-x-0 bottom-8 mx-auto max-w-3xl px-6">
-          <div className="border border-[#d8b56d]/25 bg-black/45 px-7 py-6 shadow-candle backdrop-blur-sm">
+          <motion.div
+            animate={
+              journalOpening
+                ? { opacity: 0, y: 18, scale: 0.98, filter: "blur(16px)" }
+                : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
+            }
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="border border-[#d8b56d]/25 bg-black/45 px-7 py-6 shadow-candle backdrop-blur-sm"
+          >
             {!reading && !readingError && (
               <p className="text-center text-sm tracking-[0.18em] text-[#d8b56d]/80">女巫正在听牌，请等待火光给出回应</p>
             )}
@@ -701,7 +718,7 @@ export function TarotExperience() {
                       if (revealIndex < 2) {
                         setRevealIndex((value) => value + 1);
                       } else {
-                        setStage("final");
+                        enterFateJournal();
                       }
                     }}
                   >
@@ -710,15 +727,15 @@ export function TarotExperience() {
                 </div>
               </>
             )}
-          </div>
+          </motion.div>
         </section>
       )}
 
       {stage === "final" && reading && (
         <motion.section
-          initial={{ opacity: 0, y: 34, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 150, damping: 22, mass: 0.9 }}
+          initial={{ y: "112%", opacity: 1, scale: 0.985 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-x-0 bottom-6 top-14 z-[760] mx-auto max-w-6xl px-6"
         >
           <div className="parchment relative flex h-full flex-col overflow-hidden px-9 py-7">
@@ -739,22 +756,15 @@ export function TarotExperience() {
 
             <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2">
               <div className="grid grid-cols-3 gap-6 border-y border-[#6f4a2b]/25 py-5">
-                {spreadOrder.map((position, index) => {
+                {spreadOrder.map((position) => {
                   const placed = placedCards.find((item) => item.position === position);
                   const card = placed ? tarotCardMap.get(placed.cardId) : null;
 
                   return (
                     <motion.div
                       key={position}
-                      initial={{ opacity: 0, y: 96, scale: 0.94 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 260,
-                        damping: 18,
-                        mass: 0.85,
-                        delay: 0.12 + index * 0.08,
-                      }}
+                      layout
+                      transition={{ type: "spring", stiffness: 430, damping: 28, mass: 0.9, delay: 0.01 }}
                       className="flex flex-col items-center"
                     >
                       <div className="relative flex h-64 w-40 items-center justify-center">
