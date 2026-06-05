@@ -716,8 +716,8 @@ export function TarotExperience() {
 
       {stage === "final" && reading && (
         <motion.section
-          initial={{ opacity: 0, y: 34, scale: 0.94, filter: "blur(14px)" }}
-          animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 34, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 150, damping: 22, mass: 0.9 }}
           className="absolute inset-x-0 bottom-6 top-14 z-[760] mx-auto max-w-6xl px-6"
         >
@@ -737,37 +737,49 @@ export function TarotExperience() {
               </button>
             </div>
 
-            <div className="grid flex-none grid-cols-3 gap-6 border-y border-[#6f4a2b]/25 py-5">
-              {spreadOrder.map((position) => {
-                const placed = placedCards.find((item) => item.position === position);
-                const card = placed ? tarotCardMap.get(placed.cardId) : null;
+            <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2">
+              <div className="grid grid-cols-3 gap-6 border-y border-[#6f4a2b]/25 py-5">
+                {spreadOrder.map((position, index) => {
+                  const placed = placedCards.find((item) => item.position === position);
+                  const card = placed ? tarotCardMap.get(placed.cardId) : null;
 
-                return (
-                  <div key={position} className="flex flex-col items-center">
-                    <div className="relative flex h-64 w-40 items-center justify-center">
-                      {card && placed && (
-                        <MiniCard
-                          card={card}
-                          orientation={placed.orientation}
-                          revealed
-                          layoutId={`fate-card-${placed.cardId}`}
-                          variant="journal"
-                        />
-                      )}
-                    </div>
-                    <div className="mt-3 text-center text-[#23130c]">
-                      <p className="font-title text-xl">{positionCopy[position].title}</p>
-                      <p className="mt-1 text-sm">
-                        {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <motion.div
+                      key={position}
+                      initial={{ opacity: 0, y: 96, scale: 0.94 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 18,
+                        mass: 0.85,
+                        delay: 0.12 + index * 0.08,
+                      }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="relative flex h-64 w-40 items-center justify-center">
+                        {card && placed && (
+                          <MiniCard
+                            card={card}
+                            orientation={placed.orientation}
+                            revealed
+                            layoutId={`fate-card-${placed.cardId}`}
+                            variant="journal"
+                          />
+                        )}
+                      </div>
+                      <div className="mt-3 text-center text-[#23130c]">
+                        <p className="font-title text-xl">{positionCopy[position].title}</p>
+                        <p className="mt-1 text-sm">
+                          {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
-            <div className="mt-5 flex-1 overflow-y-auto pr-2">
-              <p className="border-b border-[#6f4a2b]/25 pb-4 text-sm leading-7 text-[#28150c]">你的问题：{question}</p>
+              <p className="mt-5 border-b border-[#6f4a2b]/25 pb-4 text-sm leading-7 text-[#28150c]">你的问题：{question}</p>
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 {spreadOrder.map((position) => (
                   <article key={position} className="border border-[#6f4a2b]/25 p-4">
