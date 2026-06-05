@@ -790,7 +790,7 @@ export function TarotExperience() {
               </button>
             </div>
 
-            <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2" style={{ scrollbarGutter: "stable" }}>
+            <div className="mt-5 min-h-0 flex-1 overflow-visible" style={{ paddingRight: "calc(0.5rem + 17px)" }}>
               <div className="grid grid-cols-3 gap-6 border-y border-transparent py-5">
                 {spreadOrder.map((position) => {
                   const placed = placedCards.find((item) => item.position === position);
