@@ -778,7 +778,7 @@ export function TarotExperience() {
 
       {stage === "final" && reading && !journalCardsSettled && (
         <section className="pointer-events-none absolute inset-x-0 bottom-6 top-14 z-[920] mx-auto max-w-6xl px-6">
-          <div className="relative flex h-full flex-col overflow-hidden px-9 py-7">
+          <div className="relative flex h-full flex-col overflow-visible px-9 py-7">
             <div className="invisible mb-5 flex items-start justify-between gap-5">
               <div>
                 <p className="text-xs tracking-[0.22em]">FATE JOURNAL</p>
@@ -790,7 +790,7 @@ export function TarotExperience() {
               </button>
             </div>
 
-            <div className="mt-5 min-h-0 flex-1 overflow-hidden pr-2">
+            <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2" style={{ scrollbarGutter: "stable" }}>
               <div className="grid grid-cols-3 gap-6 border-y border-transparent py-5">
                 {spreadOrder.map((position) => {
                   const placed = placedCards.find((item) => item.position === position);
@@ -856,7 +856,7 @@ export function TarotExperience() {
               </button>
             </div>
 
-            <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2">
+            <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2" style={{ scrollbarGutter: "stable" }}>
               <div className="grid grid-cols-3 gap-6 border-y border-[#6f4a2b]/25 py-5">
                 {spreadOrder.map((position) => {
                   const placed = placedCards.find((item) => item.position === position);
