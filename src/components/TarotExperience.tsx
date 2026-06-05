@@ -208,8 +208,10 @@ export function TarotExperience() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [journalOpening, setJournalOpening] = useState(false);
+  const [journalCardsSettled, setJournalCardsSettled] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const lastShufflePoint = useRef<PointerPoint | null>(null);
+  const journalTimers = useRef<number[]>([]);
   const dropRefs = useRef<Record<SpreadPosition, HTMLDivElement | null>>({
     past: null,
     present: null,
@@ -225,6 +227,12 @@ export function TarotExperience() {
     const timer = window.setTimeout(() => setStage("question"), 700);
     setRecords(readReadingRecords());
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      journalTimers.current.forEach((timer) => window.clearTimeout(timer));
+    };
   }, []);
 
   useEffect(() => {
@@ -296,6 +304,8 @@ export function TarotExperience() {
   }
 
   function resetExperience() {
+    journalTimers.current.forEach((timer) => window.clearTimeout(timer));
+    journalTimers.current = [];
     const nextDeck = drawRandomDeck();
     setDeck(nextDeck);
     setShuffleCards(createShuffleState(nextDeck));
@@ -304,14 +314,22 @@ export function TarotExperience() {
     setReadingError("");
     setRevealIndex(0);
     setJournalOpening(false);
+    setJournalCardsSettled(false);
     setStage("question");
   }
 
   function enterFateJournal() {
+    journalTimers.current.forEach((timer) => window.clearTimeout(timer));
+    journalTimers.current = [];
     setJournalOpening(true);
-    window.setTimeout(() => {
+    setJournalCardsSettled(false);
+    const finalTimer = window.setTimeout(() => {
       setStage("final");
-    }, 2000);
+    }, 1500);
+    const settleTimer = window.setTimeout(() => {
+      setJournalCardsSettled(true);
+    }, 3050);
+    journalTimers.current = [finalTimer, settleTimer];
   }
 
   function handleShuffleMove(event: React.PointerEvent<HTMLDivElement>) {
@@ -731,11 +749,52 @@ export function TarotExperience() {
         </section>
       )}
 
+      {stage === "final" && reading && !journalCardsSettled && (
+        <section className="pointer-events-none absolute inset-x-0 top-[30%] z-[920] mx-auto grid w-full max-w-6xl -translate-y-1/2 grid-cols-3 gap-6 px-[60px]">
+          {spreadOrder.map((position) => {
+            const placed = placedCards.find((item) => item.position === position);
+            const card = placed ? tarotCardMap.get(placed.cardId) : null;
+
+            return (
+              <motion.div
+                key={position}
+                layout
+                animate={{ scale: [1, 1.22, 1], y: [0, -42, 0] }}
+                transition={{
+                  layout: { type: "spring", stiffness: 180, damping: 24, mass: 1.05 },
+                  scale: { duration: 1.35, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
+                  y: { duration: 1.35, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
+                }}
+                className="flex flex-col items-center"
+              >
+                <div className="relative flex h-64 w-40 items-center justify-center">
+                  {card && placed && (
+                    <MiniCard
+                      card={card}
+                      orientation={placed.orientation}
+                      revealed
+                      layoutId={`fate-card-${placed.cardId}`}
+                      variant="journal"
+                    />
+                  )}
+                </div>
+                <div className="mt-3 text-center text-[#23130c]">
+                  <p className="font-title text-xl">{positionCopy[position].title}</p>
+                  <p className="mt-1 text-sm">
+                    {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
+        </section>
+      )}
+
       {stage === "final" && reading && (
         <motion.section
           initial={{ y: "112%", opacity: 1, scale: 0.985 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
-          transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: 0.5, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-x-0 bottom-6 top-14 z-[760] mx-auto max-w-6xl px-6"
         >
           <div className="parchment relative flex h-full flex-col overflow-hidden px-9 py-7">
@@ -761,19 +820,9 @@ export function TarotExperience() {
                   const card = placed ? tarotCardMap.get(placed.cardId) : null;
 
                   return (
-                    <motion.div
-                      key={position}
-                      layout
-                      animate={{ scale: [1, 1.18, 1], y: [0, -34, 0] }}
-                      transition={{
-                        layout: { type: "spring", stiffness: 430, damping: 28, mass: 0.9 },
-                        scale: { duration: 0.82, times: [0, 0.46, 1], ease: [0.16, 1, 0.3, 1] },
-                        y: { duration: 0.82, times: [0, 0.46, 1], ease: [0.16, 1, 0.3, 1] },
-                      }}
-                      className="flex flex-col items-center"
-                    >
+                    <div key={position} className="flex flex-col items-center">
                       <div className="relative flex h-64 w-40 items-center justify-center">
-                        {card && placed && (
+                        {journalCardsSettled && card && placed ? (
                           <MiniCard
                             card={card}
                             orientation={placed.orientation}
@@ -781,6 +830,8 @@ export function TarotExperience() {
                             layoutId={`fate-card-${placed.cardId}`}
                             variant="journal"
                           />
+                        ) : (
+                          <div className="h-64 w-40 border border-[#6f4a2b]/30 bg-[#6f4a2b]/5" />
                         )}
                       </div>
                       <div className="mt-3 text-center text-[#23130c]">
@@ -789,7 +840,7 @@ export function TarotExperience() {
                           {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
                         </p>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
