@@ -311,7 +311,7 @@ export function TarotExperience() {
     setJournalOpening(true);
     window.setTimeout(() => {
       setStage("final");
-    }, 10);
+    }, 2000);
   }
 
   function handleShuffleMove(event: React.PointerEvent<HTMLDivElement>) {
@@ -693,7 +693,7 @@ export function TarotExperience() {
                 ? { opacity: 0, y: 18, scale: 0.98, filter: "blur(16px)" }
                 : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
             }
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
             className="border border-[#d8b56d]/25 bg-black/45 px-7 py-6 shadow-candle backdrop-blur-sm"
           >
             {!reading && !readingError && (
@@ -764,7 +764,12 @@ export function TarotExperience() {
                     <motion.div
                       key={position}
                       layout
-                      transition={{ type: "spring", stiffness: 430, damping: 28, mass: 0.9, delay: 0.01 }}
+                      animate={{ scale: [1, 1.18, 1], y: [0, -34, 0] }}
+                      transition={{
+                        layout: { type: "spring", stiffness: 430, damping: 28, mass: 0.9 },
+                        scale: { duration: 0.82, times: [0, 0.46, 1], ease: [0.16, 1, 0.3, 1] },
+                        y: { duration: 0.82, times: [0, 0.46, 1], ease: [0.16, 1, 0.3, 1] },
+                      }}
                       className="flex flex-col items-center"
                     >
                       <div className="relative flex h-64 w-40 items-center justify-center">
