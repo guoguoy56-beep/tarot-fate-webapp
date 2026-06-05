@@ -174,6 +174,33 @@ function MiniCard({
   );
 }
 
+function FaceUpMiniCard({
+  card,
+  orientation,
+  layoutId,
+  variant = "table",
+}: {
+  card: TarotCardData;
+  orientation: "upright" | "reversed";
+  layoutId?: string;
+  variant?: "table" | "journal";
+}) {
+  const sizeClass = variant === "journal" ? "h-64 w-40" : "h-72 w-44";
+
+  return (
+    <motion.div
+      layoutId={layoutId}
+      transition={{ type: "spring", stiffness: 180, damping: 24, mass: 1.05 }}
+      className={`tarot-card relative ${sizeClass}`}
+      style={{ zIndex: variant === "journal" ? 920 : "auto" }}
+    >
+      <div className="relative h-full w-full">
+        <CardFront card={card} orientation={orientation} />
+      </div>
+    </motion.div>
+  );
+}
+
 function FateButton({
   children,
   onClick,
@@ -328,7 +355,7 @@ export function TarotExperience() {
     }, 1500);
     const settleTimer = window.setTimeout(() => {
       setJournalCardsSettled(true);
-    }, 3050);
+    }, 2920);
     journalTimers.current = [finalTimer, settleTimer];
   }
 
@@ -750,43 +777,59 @@ export function TarotExperience() {
       )}
 
       {stage === "final" && reading && !journalCardsSettled && (
-        <section className="pointer-events-none absolute inset-x-0 top-[30%] z-[920] mx-auto grid w-full max-w-6xl -translate-y-1/2 grid-cols-3 gap-6 px-[60px]">
-          {spreadOrder.map((position) => {
-            const placed = placedCards.find((item) => item.position === position);
-            const card = placed ? tarotCardMap.get(placed.cardId) : null;
+        <section className="pointer-events-none absolute inset-x-0 bottom-6 top-14 z-[920] mx-auto max-w-6xl px-6">
+          <div className="relative flex h-full flex-col overflow-hidden px-9 py-7">
+            <div className="invisible mb-5 flex items-start justify-between gap-5">
+              <div>
+                <p className="text-xs tracking-[0.22em]">FATE JOURNAL</p>
+                <h2 className="mt-2 font-title text-3xl">命运手记</h2>
+              </div>
+              <button type="button" className="inline-flex items-center gap-2 border px-4 py-2 text-sm">
+                <Save size={16} />
+                保存
+              </button>
+            </div>
 
-            return (
-              <motion.div
-                key={position}
-                layout
-                animate={{ scale: [1, 1.22, 1], y: [0, -42, 0] }}
-                transition={{
-                  layout: { type: "spring", stiffness: 180, damping: 24, mass: 1.05 },
-                  scale: { duration: 1.35, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
-                  y: { duration: 1.35, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
-                }}
-                className="flex flex-col items-center"
-              >
-                <div className="relative flex h-64 w-40 items-center justify-center">
-                  {card && placed && (
-                    <MiniCard
-                      card={card}
-                      orientation={placed.orientation}
-                      revealed
-                      layoutId={`fate-card-${placed.cardId}`}
-                      variant="journal"
-                    />
-                  )}
-                </div>
-                <div className="mt-3 text-center text-[#23130c]">
-                  <p className="font-title text-xl">{positionCopy[position].title}</p>
-                  <p className="mt-1 text-sm">
-                    {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
+            <div className="mt-5 min-h-0 flex-1 overflow-hidden pr-2">
+              <div className="grid grid-cols-3 gap-6 border-y border-transparent py-5">
+                {spreadOrder.map((position) => {
+                  const placed = placedCards.find((item) => item.position === position);
+                  const card = placed ? tarotCardMap.get(placed.cardId) : null;
+
+                  return (
+                    <motion.div
+                      key={position}
+                      layout
+                      animate={{ scale: [1, 1.22, 1], y: [0, -42, 0] }}
+                      transition={{
+                        layout: { type: "spring", stiffness: 150, damping: 24, mass: 1.1 },
+                        scale: { duration: 1.4, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
+                        y: { duration: 1.4, times: [0, 0.42, 1], ease: [0.16, 1, 0.3, 1] },
+                      }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="relative flex h-64 w-40 items-center justify-center">
+                        {card && placed && (
+                          <FaceUpMiniCard
+                            card={card}
+                            orientation={placed.orientation}
+                            layoutId={`fate-card-${placed.cardId}`}
+                            variant="journal"
+                          />
+                        )}
+                      </div>
+                      <div className="mt-3 text-center text-[#23130c]">
+                        <p className="font-title text-xl">{positionCopy[position].title}</p>
+                        <p className="mt-1 text-sm">
+                          {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
@@ -823,10 +866,9 @@ export function TarotExperience() {
                     <div key={position} className="flex flex-col items-center">
                       <div className="relative flex h-64 w-40 items-center justify-center">
                         {journalCardsSettled && card && placed ? (
-                          <MiniCard
+                          <FaceUpMiniCard
                             card={card}
                             orientation={placed.orientation}
-                            revealed
                             layoutId={`fate-card-${placed.cardId}`}
                             variant="journal"
                           />
