@@ -98,7 +98,7 @@ function HomeDeckPreview() {
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-[51%] z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
     >
       {layers.map((layer, index) => (
         <motion.div
@@ -491,12 +491,12 @@ export function TarotExperience() {
           opacity: stage === "intro" ? 0 : 1,
         }}
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-        className="table-surface absolute inset-0"
+        className={`${stage === "question" || stage === "intro" ? "home-table-surface" : "table-surface"} absolute inset-0`}
       />
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,transparent_0,rgba(0,0,0,0.2)_34%,rgba(0,0,0,0.88)_82%)]" />
 
-      <div className="pointer-events-none absolute left-12 top-10 flex items-center gap-3 text-[#d7b66e]/80">
+      <div className="pointer-events-none absolute left-12 top-10 z-[40] flex items-center gap-3 text-[#d7b66e]/85">
         <Flame size={18} />
         <span className="font-title text-xs tracking-[0.34em]">OLD WITCH TABLE</span>
       </div>
@@ -538,32 +538,42 @@ export function TarotExperience() {
             transition={{ duration: 1.1 }}
             className="absolute inset-0 px-6"
           >
-            <div className="absolute left-1/2 top-[22%] w-full -translate-x-1/2 text-center">
-              <p className="mb-4 text-xs tracking-[0.5em] text-[#d8b56d]/75">THE FATE CARDS</p>
-              <h1 className="font-title text-6xl text-[#f4dfb7] shadow-candle md:text-7xl">命运之牌</h1>
-              <p className="mt-5 text-sm tracking-[0.16em] text-[#d8c08c]/80">在烛光熄灭之前，说出你的疑问。</p>
+            <div className="absolute left-1/2 top-[17%] w-full -translate-x-1/2 text-center">
+              <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-center gap-4 text-[#d8b56d]/72">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d8b56d]/55" />
+                <Sparkles size={16} />
+                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#d8b56d]/55" />
+              </div>
+              <p className="mb-3 text-xs tracking-[0.58em] text-[#d8b56d]/78">THE FATE CARDS</p>
+              <h1 className="ritual-title font-title text-6xl text-[#f4d99e] md:text-7xl">命运之牌</h1>
+              <p className="mt-4 text-sm tracking-[0.18em] text-[#d8c08c]/82">在烛光熄灭之前，说出你的疑问。</p>
             </div>
 
             <HomeDeckPreview />
 
-            <div className="parchment absolute left-1/2 top-[64%] w-full max-w-2xl -translate-x-1/2 px-8 py-5">
+            <div className="home-parchment absolute left-1/2 top-[70%] w-full max-w-3xl -translate-x-1/2 px-9 py-5">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 placeholder="提问越清晰，命运的指引越具体..."
-                className="h-16 w-full resize-none border-none bg-transparent text-base leading-7 text-[#28150c] outline-none placeholder:text-[#6f4a2b]/70"
+                className="relative z-10 h-14 w-full resize-none border-none bg-transparent text-base leading-7 text-[#28150c] outline-none placeholder:text-[#6f4a2b]/70"
               />
-              <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#6f4a2b]/25 pt-4 sm:flex-row">
+              <div className="relative z-10 mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#6f4a2b]/25 pt-4 sm:flex-row">
                 <span className="text-xs tracking-[0.16em] text-[#5c351c]">问题会被交给旧牌与火光。</span>
-                <FateButton onClick={beginRitual} disabled={!question.trim()}>
+                <button
+                  type="button"
+                  onClick={beginRitual}
+                  disabled={!question.trim()}
+                  className="ritual-button-glow inline-flex items-center justify-center gap-2 border border-[#d0a85a]/80 bg-[#22120c]/88 px-7 py-3 text-sm tracking-[0.18em] text-[#f7dfad] transition hover:bg-[#3b2013] disabled:cursor-not-allowed disabled:opacity-45"
+                >
                   <Sparkles size={16} />
                   开始仪式
-                </FateButton>
+                </button>
               </div>
             </div>
 
             {records.length > 0 && (
-              <div className="absolute left-1/2 top-[91%] flex -translate-x-1/2 items-center gap-2 text-xs text-[#d8b56d]/70">
+              <div className="absolute left-1/2 top-[91.5%] flex -translate-x-1/2 items-center gap-2 text-xs text-[#d8b56d]/70">
                 <History size={15} />
                 已保存 {records.length} 条命运手记
               </div>
@@ -670,7 +680,7 @@ export function TarotExperience() {
       <button
         type="button"
         onClick={() => setShowHistory(true)}
-        className="absolute bottom-8 right-8 z-[700] inline-flex items-center gap-2 border border-[#d8b56d]/45 bg-black/42 px-4 py-3 text-xs tracking-[0.18em] text-[#f0d79f] shadow-[0_0_28px_rgba(213,155,76,0.18)] backdrop-blur-sm transition hover:bg-[#5f3518]/60"
+        className="ritual-button-glow absolute bottom-8 right-8 z-[700] inline-flex items-center gap-2 border border-[#d8b56d]/55 bg-black/58 px-5 py-3 text-xs tracking-[0.18em] text-[#f0d79f] backdrop-blur-sm transition hover:bg-[#3b2013]/85"
       >
         <History size={16} />
         历史记录

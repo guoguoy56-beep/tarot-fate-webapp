@@ -60,6 +60,29 @@ textarea {
   opacity: 0.34;
 }
 
+.home-table-surface {
+  background:
+    linear-gradient(180deg, rgba(4, 3, 2, 0.12), rgba(4, 3, 2, 0.36)),
+    url("/assets/old-witch-table-home-bg.png") center / cover no-repeat,
+    #0b0705;
+}
+
+.home-table-surface::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at 50% 42%, rgba(237, 173, 82, 0.16), transparent 24rem),
+    radial-gradient(circle at 50% 50%, transparent 0, rgba(3, 2, 1, 0.2) 48%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+.ritual-title {
+  text-shadow:
+    0 0 18px rgba(213, 155, 76, 0.34),
+    0 8px 38px rgba(0, 0, 0, 0.72);
+}
+
 .parchment {
   background:
     radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.22), transparent 9rem),
@@ -69,6 +92,51 @@ textarea {
   box-shadow:
     inset 0 0 30px rgba(71, 37, 16, 0.28),
     0 22px 80px rgba(0, 0, 0, 0.5);
+}
+
+.home-parchment {
+  border: 1px solid rgba(127, 82, 37, 0.52);
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 238, 184, 0.28), transparent 8rem),
+    radial-gradient(circle at 88% 88%, rgba(77, 38, 16, 0.24), transparent 12rem),
+    linear-gradient(135deg, rgba(224, 189, 125, 0.96), rgba(183, 137, 74, 0.9));
+  box-shadow:
+    inset 0 0 34px rgba(79, 42, 18, 0.3),
+    0 18px 60px rgba(0, 0, 0, 0.44),
+    0 0 34px rgba(213, 155, 76, 0.12);
+}
+
+.home-parchment::before {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 0 12px, rgba(79, 42, 18, 0.16) 13px, transparent 14px),
+    linear-gradient(0deg, transparent 0 10px, rgba(255, 232, 167, 0.12) 11px, transparent 12px);
+  opacity: 0.42;
+}
+
+.home-parchment::after {
+  position: absolute;
+  inset: 10px;
+  pointer-events: none;
+  content: "";
+  border: 1px solid rgba(74, 39, 17, 0.3);
+}
+
+.ritual-button-glow {
+  box-shadow:
+    inset 0 0 18px rgba(248, 197, 105, 0.1),
+    0 0 18px rgba(213, 155, 76, 0.22);
+}
+
+.ritual-button-glow:hover {
+  box-shadow:
+    inset 0 0 22px rgba(248, 197, 105, 0.16),
+    0 0 30px rgba(213, 155, 76, 0.34);
 }
 
 .parchment::after {
