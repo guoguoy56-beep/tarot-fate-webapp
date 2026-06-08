@@ -1,0 +1,256 @@
+# HANDOFF.md
+
+本文档是塔罗牌 WebApp 项目的交接入口。每次开启新对话、切换 AI 助手、阶段复盘或继续开发前，优先阅读本文档，再按需要阅读 `ProjectDocument/` 下的详细文档。
+
+## 1. 项目定位
+
+项目名称：基于 React 的塔罗牌占卜 Web 应用设计与实现。
+
+项目目标：实现一个基于 Next.js、React、TypeScript、Tailwind CSS 和 Framer Motion 的沉浸式塔罗占卜 WebApp。用户输入问题后，完成洗牌、抽牌、翻牌、AI 解读和本地历史记录保存，整体体验服务于毕业设计展示、答辩和论文撰写。
+
+核心定位：一个结合古典视觉美学、物理交互动效与大语言模型解读能力的沉浸式塔罗占卜 WebApp。
+
+核心用户：对塔罗、占卜、情绪探索和沉浸式互动体验感兴趣的普通用户。用户不需要专业塔罗知识，只需要输入问题并按界面引导完成一次占卜仪式。
+
+## 2. 设计理念
+
+整体美术方向为“旧女巫木桌风”：
+
+- 深色古籍女巫桌面。
+- 旧木桌、烛光、羊皮纸、黄铜边框、哥特仪式感字体。
+- 神秘、古典、克制，不使用现代霓虹、科技星空、大面积玻璃拟态或高饱和商业渐变。
+- 背景是柔和绘制感旧木桌，边缘压暗，中央有琥珀色烛光晕染。
+- 首页标题、牌堆、输入浮层沿中轴排布，牌堆和羊皮纸输入区不能重叠。
+- 真实塔罗牌面最终目标为完整 78 张 Rider-Waite-Smith Public Domain 资源，并加统一旧牌外框、暗金描边和复古滤镜。
+- 卡背方向为 Sharp Gothic Ritual 卡背：近黑棕底色、烛金几何圆环、火焰、月相或仪式符号。
+
+## 3. 技术栈与运行方式
+
+技术栈：
+
+- Next.js App Router。
+- React 18。
+- TypeScript。
+- Tailwind CSS。
+- Framer Motion。
+- Lucide React。
+- DeepSeek API，经 Next.js API Route 服务端调用。
+- localStorage 保存本地占卜历史。
+
+常用命令：
+
+```powershell
+npm run dev
+npm run build
+npm run start
+```
+
+本地开发地址：
+
+```txt
+http://localhost:3000
+```
+
+VS Code 启动方式：
+
+```powershell
+cd D:\毕业设计\塔罗牌WebApp
+npm run dev
+```
+
+停止服务：在终端按 `Ctrl + C`。
+
+## 4. 重要文档
+
+必须优先阅读：
+
+- `HANDOFF.md`：项目交接入口，记录当前状态、规则、进度和下一步。
+- `ProjectDocument/项目说明文档.md`：项目总说明、目标、流程、模块、技术架构。
+- `ProjectDocument/美术风格规范文档.md`：视觉风格、颜色、材质、卡背、输入浮层、按钮规范。
+- `ProjectDocument/DEMO开发文档.md`：第一版可展示 DEMO 的功能、类型、组件和开发阶段拆分。
+- `ProjectDocument/首页动态效果设计文档.md`：首页环境光、标题入场、真实牌堆衔接、阅读揭示特效等动效决策。
+
+## 5. 项目维护规则
+
+后续所有代码、文档、视觉、动效、功能方案或实现细节的修改，都必须遵守以下规则：
+
+1. 修改代码时，同步更新相关项目文档。
+2. 修改文档时，如影响项目进度、方案或下一步计划，同步更新本 `HANDOFF.md`。
+3. 每完成一个阶段、任务或明确内容，都要更新 `HANDOFF.md` 的“已完成内容”和“下一步计划”。
+4. 所有代码或项目文档修改完成后，都要保存 Git 版本。
+5. Git commit 信息应简要说明本次变更，便于版本回溯和阶段验收。
+6. 新对话中的 AI 助手应先阅读 `HANDOFF.md`，再读取需要的项目文档和代码。
+
+## 6. 当前代码结构
+
+当前主要文件：
+
+```txt
+src/app/page.tsx
+src/app/layout.tsx
+src/app/globals.css
+src/app/api/reading/route.ts
+src/components/TarotExperience.tsx
+src/data/tarotCards.ts
+src/lib/deepseek.ts
+src/lib/storage.ts
+src/lib/tarot.ts
+src/types/reading.ts
+src/types/tarot.ts
+public/assets/old-witch-table-home-bg.png
+```
+
+当前实现仍主要集中在 `src/components/TarotExperience.tsx`，包括首页、洗牌、抽牌、阅读和终局手记的大部分界面与交互。
+
+## 7. 当前已完成内容
+
+已完成的项目基础：
+
+- Next.js + React + TypeScript + Tailwind CSS 项目骨架。
+- Framer Motion 已接入。
+- `lucide-react` 已接入。
+- App Router 页面入口已配置。
+- 全局样式、暗色基础背景和首页背景图样式已配置。
+- 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
+
+已完成的功能和交互：
+
+- 首页标题、引导语、羊皮纸输入区和“开始仪式”按钮。
+- 本地随机塔罗牌 deck 生成。
+- 78 张牌的卡背渲染。
+- 鼠标轨迹扰动洗牌逻辑。
+- 洗牌结束后进入底部弧形牌带。
+- 用户拖拽三张牌到“过去 / 现在 / 未来”位置。
+- 三张牌逐张 3D 翻牌。
+- 前端打字机式文本显示。
+- `/api/reading` 后端 API 路由。
+- DeepSeek API 服务端调用封装。
+- localStorage 历史记录读取和保存。
+- 历史记录弹窗。
+- 终局命运手记界面。
+
+已完成的文档：
+
+- 项目说明文档。
+- 美术风格规范文档。
+- DEMO 开发文档。
+- 首页动态效果设计文档。
+- 本交接文档 `HANDOFF.md`。
+
+## 8. 当前重要设计决策
+
+首页动效方向：
+
+- 采用前端叠加动态光效，不重新生成背景图。
+- 两侧蜡烛要有明显可见的真实蜡烛式快速细碎 flicker。
+- 烛光不仅影响蜡烛附近，也能明显扫到桌面中心，让整体暖光轻微变化。
+- 尘埃粒子几乎只在烛光附近可见，不做全屏粒子背景。
+- 环境光贯穿后续阶段，但随阶段降低强度。
+
+标题入场：
+
+- 主标题拆成单字乱序重叠显现。
+- 四字标题默认出现顺序为第 3 字 -> 第 2 字 -> 第 1 字 -> 第 4 字。
+- “命运之牌”的入场顺序为：之 -> 运 -> 命 -> 牌。
+- 最终排版仍为“命运之牌”。
+
+牌堆方案：
+
+- 采用方案 B：统一 `TarotDeck` 组件。
+- 首页牌堆、洗牌牌堆、底部牌带后续应由同一批真实牌数据和统一组件管理。
+- 首页牌堆是整齐压紧的一摞真实 78 张牌，不是 5 张装饰预览。
+- 当前代码里 `HomeDeckPreview` 仍只是 5 张装饰预览牌，后续需要替换。
+
+镜头与背景：
+
+- 取消明显 2D 背景 3D 镜头变化。
+- 不再强调大幅 `camera-lift`。
+- 后续改为 `ritual-transition`：标题先淡、羊皮纸模糊下沉、中央牌堆留在原地进入 `shuffle-ready`。
+- 3D 重点放在卡牌本体，不对 2D 背景做明显 `rotateX`。
+
+阅读阶段：
+
+- 三张牌放置区在 `reading` 阶段需要上移，避免卡牌与底部解读面板重合。
+- 当前牌需要更明显的暖光聚焦、边缘高光和神秘金粉粒子。
+- 阅读阶段揭示特效应独立为 `CardRevealEffects`，不要绑在全局环境光组件里。
+
+## 9. 当前已知问题与待修正点
+
+当前代码与最新设计文档仍有差异：
+
+- `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
+- 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
+- 首页牌堆 `HomeDeckPreview` 仍是 5 张装饰卡，不是统一真实 78 张牌堆。
+- `shuffle-ready` / `shuffle-active` 尚未拆分。
+- `AmbientLightEffects` 尚未实现。
+- `RitualTitle` 单字乱序入场尚未实现。
+- `CardRevealEffects` 当前牌聚光、边缘高光、神秘金粉粒子尚未实现。
+- `reading` 阶段三牌区上移和底部解读面板防遮挡布局尚未实现。
+- 目前大部分组件仍集中在一个 `TarotExperience.tsx` 文件中，后续可以逐步拆分。
+
+## 10. 下一步计划
+
+建议按以下顺序推进，避免一次性重构过大：
+
+1. 实现 `AmbientLightEffects`。
+   - 首页两侧蜡烛 flicker。
+   - 中央桌面暖光呼吸。
+   - 烛光附近少量尘埃。
+   - 按阶段控制强度。
+
+2. 实现 `RitualTitle`。
+   - 主标题单字乱序重叠显现。
+   - 保留完整 `aria-label`。
+   - 英文小标题保持整体淡入。
+
+3. 替换首页牌堆。
+   - 先把 5 张装饰 `HomeDeckPreview` 替换为真实 deck 的整齐压紧牌堆。
+   - 保留现有鼠标扰动算法。
+
+4. 引入 `ritual-transition`。
+   - 替代当前明显 `camera-lift` 语义。
+   - 标题淡出，羊皮纸模糊下沉，牌堆进入 `shuffle-ready`。
+
+5. 拆分统一 `TarotDeck`。
+   - 支持 `home-stack / shuffle-ready / shuffle-active / fan / draw`。
+   - 迁移现有鼠标扰动逻辑。
+   - 保持现有抽牌流程可用。
+
+6. 修正阅读阶段布局。
+   - 三牌区上移。
+   - 底部解读面板防遮挡。
+   - 移动端降低卡牌尺寸。
+
+7. 实现 `CardRevealEffects`。
+   - 当前牌暖光聚焦。
+   - 当前牌边缘高光。
+   - 神秘金粉粒子揭示效果。
+
+每完成以上任一任务，都要更新 `HANDOFF.md`、相关项目文档，并提交 Git 版本。
+
+## 11. 验证清单
+
+每次实现后至少检查：
+
+- `npm run build` 是否通过。
+- 首页是否能正常进入。
+- 用户能否输入问题并点击开始仪式。
+- 洗牌是否仍能被鼠标轨迹扰动。
+- 能否结束洗牌并进入底部牌带。
+- 能否拖拽三张牌到过去、现在、未来。
+- 三张牌是否能按顺序翻开。
+- 阅读面板是否不再被卡牌遮挡。
+- 历史记录是否能保存和读取。
+- 页面是否符合旧女巫木桌风，不出现现代霓虹或过度粒子。
+
+## 12. 环境变量
+
+DeepSeek API 相关环境变量建议：
+
+```txt
+DEEPSEEK_API_KEY=your_api_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+```
+
+API Key 不得暴露在前端。
+
