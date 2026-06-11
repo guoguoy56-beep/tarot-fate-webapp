@@ -64,7 +64,7 @@ npm run dev
 
 必须优先阅读：
 
-- `HANDOFF.md`：项目交接入口，记录当前状态、规则、进度和下一步。
+- `ProjectDocument/HANDOFF.md`：项目交接入口，记录当前状态、规则、进度和下一步。
 - `ProjectDocument/项目说明文档.md`：项目总说明、目标、流程、模块、技术架构。
 - `ProjectDocument/美术风格规范文档.md`：视觉风格、颜色、材质、卡背、输入浮层、按钮规范。
 - `ProjectDocument/DEMO开发文档.md`：第一版可展示 DEMO 的功能、类型、组件和开发阶段拆分。
@@ -75,11 +75,11 @@ npm run dev
 后续所有代码、文档、视觉、动效、功能方案或实现细节的修改，都必须遵守以下规则：
 
 1. 修改代码时，同步更新相关项目文档。
-2. 修改文档时，如影响项目进度、方案或下一步计划，同步更新本 `HANDOFF.md`。
-3. 每完成一个阶段、任务或明确内容，都要更新 `HANDOFF.md` 的“已完成内容”和“下一步计划”。
+2. 修改文档时，如影响项目进度、方案或下一步计划，同步更新本 `ProjectDocument/HANDOFF.md`。
+3. 每完成一个阶段、任务或明确内容，都要更新 `ProjectDocument/HANDOFF.md` 的“已完成内容”和“下一步计划”。
 4. 所有代码或项目文档修改完成后，都要保存 Git 版本。
 5. Git commit 信息应简要说明本次变更，便于版本回溯和阶段验收。
-6. 新对话中的 AI 助手应先阅读 `HANDOFF.md`，再读取需要的项目文档和代码。
+6. 新对话中的 AI 助手应先阅读 `ProjectDocument/HANDOFF.md`，再读取需要的项目文档和代码。
 
 ## 6. 当前代码结构
 
@@ -135,7 +135,7 @@ public/assets/old-witch-table-home-bg.png
 - 美术风格规范文档。
 - DEMO 开发文档。
 - 首页动态效果设计文档。
-- 本交接文档 `HANDOFF.md`。
+- 本交接文档 `ProjectDocument/HANDOFF.md`。
 
 ## 8. 当前重要设计决策
 
@@ -226,7 +226,7 @@ public/assets/old-witch-table-home-bg.png
    - 当前牌边缘高光。
    - 神秘金粉粒子揭示效果。
 
-每完成以上任一任务，都要更新 `HANDOFF.md`、相关项目文档，并提交 Git 版本。
+每完成以上任一任务，都要更新 `ProjectDocument/HANDOFF.md`、相关项目文档，并提交 Git 版本。
 
 ## 11. 验证清单
 
@@ -253,4 +253,3 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
 API Key 不得暴露在前端。
-

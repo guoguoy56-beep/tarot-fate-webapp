@@ -12,3 +12,5 @@ pnpm-debug.log*
 dev-server.*.log
 prod-server.*.log
 tsconfig.tsbuildinfo
+.playwright-cli/
+output/
