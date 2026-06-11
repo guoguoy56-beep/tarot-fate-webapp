@@ -83,33 +83,34 @@ function CardBack({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function HomeDeckStack({ deck }: { deck: TarotCardData[] }) {
+function HomeDeckPreview() {
+  const layers = [
+    { x: -9, y: 5, rotate: -5, opacity: 0.78 },
+    { x: -5, y: 2, rotate: -2.4, opacity: 0.86 },
+    { x: 0, y: 0, rotate: 0, opacity: 1 },
+    { x: 5, y: 2, rotate: 2.4, opacity: 0.86 },
+    { x: 9, y: 5, rotate: 5, opacity: 0.78 },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18, scale: 0.92, filter: "blur(12px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none absolute left-1/2 top-[50%] z-10 h-36 w-24 -translate-x-1/2 -translate-y-1/2 md:top-[51%] md:h-44 md:w-28"
-      aria-hidden="true"
+      className="pointer-events-none absolute left-1/2 top-[51%] z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="home-deck-shadow absolute inset-x-[-34%] bottom-[-20%] h-[42%] rounded-full" />
-      {deck.map((card, index) => {
-        const depth = (deck.length - 1 - index) / Math.max(deck.length - 1, 1);
-
-        return (
-          <div
-            key={card.id}
-            className="absolute inset-0"
-            style={{
-              zIndex: index,
-              transform: `translate3d(0, ${depth * 10}px, 0)`,
-            }}
-          >
-            <CardBack compact />
-          </div>
-        );
-      })}
+      {layers.map((layer, index) => (
+        <motion.div
+          key={index}
+          animate={layer}
+          transition={{ type: "spring", stiffness: 150, damping: 18 }}
+          className="absolute inset-0"
+          style={{ zIndex: index }}
+        >
+          <CardBack compact />
+        </motion.div>
+      ))}
     </motion.div>
   );
 }
@@ -541,7 +542,7 @@ export function TarotExperience() {
             transition={{ duration: 1.1 }}
             className="absolute inset-0 px-6"
           >
-            <div className="absolute left-1/2 top-[13%] z-20 w-full -translate-x-1/2 text-center md:top-[17%]">
+            <div className="absolute left-1/2 top-[17%] w-full -translate-x-1/2 text-center">
               <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-center gap-4 text-[#d8b56d]/72">
                 <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d8b56d]/55" />
                 <Sparkles size={16} />
@@ -552,9 +553,9 @@ export function TarotExperience() {
               <p className="mt-4 text-sm tracking-[0.18em] text-[#d8c08c]/82">在烛光熄灭之前，说出你的疑问。</p>
             </div>
 
-            <HomeDeckStack deck={deck} />
+            <HomeDeckPreview />
 
-            <div className="home-parchment absolute left-1/2 top-[68%] z-30 w-[calc(100%_-_3rem)] max-w-3xl -translate-x-1/2 px-6 py-5 md:top-[70%] md:px-9">
+            <div className="home-parchment absolute left-1/2 top-[70%] w-full max-w-3xl -translate-x-1/2 px-9 py-5">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}

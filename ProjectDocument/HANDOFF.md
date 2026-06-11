@@ -118,9 +118,6 @@ public/assets/old-witch-table-home-bg.png
 已完成的功能和交互：
 
 - 首页标题、引导语、羊皮纸输入区和“开始仪式”按钮。
-- 首页开局牌堆已替换为基于当前真实 deck 数据渲染的 78 张整齐压紧牌堆。
-- 首页牌堆已下沉到桌面场景层，标题、牌堆、羊皮纸输入区使用独立层级和响应式间距，避免重合与遮挡。
-- 首页牌堆所有层统一为零旋转，仅通过轻微纵向错位表现厚度。
 - 本地随机塔罗牌 deck 生成。
 - 78 张牌的卡背渲染。
 - 鼠标轨迹扰动洗牌逻辑。
@@ -164,8 +161,7 @@ public/assets/old-witch-table-home-bg.png
 - 采用方案 B：统一 `TarotDeck` 组件。
 - 首页牌堆、洗牌牌堆、底部牌带后续应由同一批真实牌数据和统一组件管理。
 - 首页牌堆是整齐压紧的一摞真实 78 张牌，不是 5 张装饰预览。
-- 首页已使用 `HomeDeckStack` 渲染当前真实 78 张 deck，并保持整齐、零旋转和 UI 防遮挡布局。
-- 首页牌堆与洗牌牌堆当前仍是两个渲染阶段，后续继续收敛为统一 `TarotDeck` 的连续视觉状态。
+- 当前代码里 `HomeDeckPreview` 仍只是 5 张装饰预览牌，后续需要替换。
 
 镜头与背景：
 
@@ -186,6 +182,7 @@ public/assets/old-witch-table-home-bg.png
 
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
+- 首页牌堆 `HomeDeckPreview` 仍是 5 张装饰卡，不是统一真实 78 张牌堆。
 - `shuffle-ready` / `shuffle-active` 尚未拆分。
 - `AmbientLightEffects` 尚未实现。
 - `RitualTitle` 单字乱序入场尚未实现。
@@ -208,21 +205,25 @@ public/assets/old-witch-table-home-bg.png
    - 保留完整 `aria-label`。
    - 英文小标题保持整体淡入。
 
-3. 引入 `ritual-transition`。
+3. 替换首页牌堆。
+   - 先把 5 张装饰 `HomeDeckPreview` 替换为真实 deck 的整齐压紧牌堆。
+   - 保留现有鼠标扰动算法。
+
+4. 引入 `ritual-transition`。
    - 替代当前明显 `camera-lift` 语义。
    - 标题淡出，羊皮纸模糊下沉，牌堆进入 `shuffle-ready`。
 
-4. 拆分统一 `TarotDeck`。
+5. 拆分统一 `TarotDeck`。
    - 支持 `home-stack / shuffle-ready / shuffle-active / fan / draw`。
    - 迁移现有鼠标扰动逻辑。
    - 保持现有抽牌流程可用。
 
-5. 修正阅读阶段布局。
+6. 修正阅读阶段布局。
    - 三牌区上移。
    - 底部解读面板防遮挡。
    - 移动端降低卡牌尺寸。
 
-6. 实现 `CardRevealEffects`。
+7. 实现 `CardRevealEffects`。
    - 当前牌暖光聚焦。
    - 当前牌边缘高光。
    - 神秘金粉粒子揭示效果。
