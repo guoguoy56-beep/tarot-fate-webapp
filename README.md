@@ -1,45 +1,55 @@
-# Tarot Fate WebApp
+# 命运之牌 Tarot Fate WebApp
 
-An immersive AI-powered tarot reading experience built as a graduation design project.
+一个作为毕业设计开发的沉浸式 AI 塔罗牌占卜 Web 应用。
 
-The application guides users through a complete ritual flow: asking a question, shuffling a 78-card deck, drawing cards for the past, present, and future, revealing interpretations, and saving readings locally.
+项目通过古典女巫木桌视觉、卡牌物理交互动效和大语言模型解读能力，为用户提供完整的占卜仪式体验。用户可以输入问题、扰动洗牌、抽取代表过去、现在与未来的三张牌，并获得对应的 AI 解读与命运总结。
 
-## Features
+## 主要功能
 
-- Immersive old-witch-table visual style
-- Mouse-driven card shuffling interaction
-- Curved 78-card draw deck
-- Drag-and-drop three-card spread
-- 3D card reveal animations
-- AI tarot interpretations through the DeepSeek API
-- Local reading history using `localStorage`
+- 沉浸式旧女巫木桌视觉风格
+- 基于鼠标移动轨迹的洗牌交互
+- 78 张塔罗牌底部弧形牌带
+- 过去、现在、未来三牌拖拽牌阵
+- 逐张 3D 翻牌与打字机文本动画
+- 通过 DeepSeek API 生成个性化塔罗解读
+- 使用 `localStorage` 保存本地占卜历史
+- 未配置 API Key 时使用内置模拟解读
 
-## Tech Stack
+## 技术栈
 
-- Next.js 14 and React 18
+- Next.js 14
+- React 18
 - TypeScript
 - Tailwind CSS
 - Framer Motion
 - DeepSeek API
 
-## Local Development
+## 本地运行
+
+确保本机已安装 Node.js，然后执行：
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+启动后访问 [http://localhost:3000](http://localhost:3000)。
 
-To enable live AI interpretations, create `.env.local`:
+## 环境变量
+
+如需启用 DeepSeek 在线 AI 解读，请在项目根目录创建 `.env.local`：
 
 ```env
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
-Without an API key, the application uses built-in mock readings.
+API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴露在前端代码中。
 
-## Project Documentation
+## 项目文档
 
-Detailed Chinese documentation and the current development handoff are available in [`ProjectDocument`](./ProjectDocument/).
+详细的中文项目说明、视觉规范、DEMO 开发方案、动态效果设计和当前开发交接信息位于 [`ProjectDocument`](./ProjectDocument/) 目录。
+
+## 当前状态
+
+项目已完成第一版可运行 DEMO 的核心流程，目前仍在继续完善首页环境光、统一牌堆组件、移动端布局、真实塔罗牌面资源和阅读阶段揭示特效。
