@@ -125,7 +125,7 @@ function MiniCard({
   return (
     <motion.div
       layoutId={layoutId}
-      transition={{ type: "spring", stiffness: 430, damping: 30, mass: 0.9 }}
+      transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
       className={`tarot-card relative ${sizeClass}`}
       style={{ zIndex: variant === "journal" ? 820 : "auto" }}
     >
@@ -451,7 +451,7 @@ export function TarotExperience() {
   const currentReadingKey = readingKeys[revealIndex];
   const currentPlaced = placedCards.find((placed) => placed.position === currentReadingKey);
   const currentCard = currentPlaced ? tarotCardMap.get(currentPlaced.cardId) : null;
-  const spreadTopClass = stage === "draw" ? "top-[28%]" : "top-[24%]";
+  const spreadTopClass = "top-[24%]";
 
   return (
     <main onPointerMove={handleShuffleMove} className="relative h-screen w-screen overflow-hidden bg-ink text-[#f4dfb7]">
@@ -583,7 +583,7 @@ export function TarotExperience() {
               const revealed = stage === "reading" && readingKeys.findIndex((item) => item === position) <= revealIndex;
 
               return (
-                <div key={position} className="flex flex-col items-center gap-4">
+                <div key={position} className="flex items-center justify-center">
                   <div
                     ref={(node) => {
                       dropRefs.current[position] = node;
@@ -610,7 +610,6 @@ export function TarotExperience() {
                       </div>
                     )}
                   </div>
-                  <p className="font-title text-2xl text-[#eed6a5]">{positionCopy[position].title}</p>
                 </div>
               );
             })}
@@ -631,6 +630,7 @@ export function TarotExperience() {
                 return (
                   <motion.div
                     key={card.id}
+                    layoutId={`fate-card-${card.id}`}
                     drag
                     dragSnapToOrigin
                     onDragStart={() => setActiveDragId(card.id)}
