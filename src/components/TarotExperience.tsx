@@ -497,11 +497,7 @@ export function TarotExperience() {
         className="home-table-surface absolute inset-0"
       />
 
-      <div
-        className={`pointer-events-none absolute inset-0 ${
-          stage === "question" || stage === "intro" ? "home-atmosphere" : "ritual-atmosphere"
-        }`}
-      />
+      <div className="home-atmosphere pointer-events-none absolute inset-0" />
 
       <div className="pointer-events-none absolute left-12 top-10 z-[40] flex items-center gap-3 text-[#d7b66e]/85">
         <Flame size={18} />
