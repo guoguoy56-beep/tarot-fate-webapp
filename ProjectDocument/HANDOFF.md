@@ -121,6 +121,7 @@ public/assets/old-witch-table-home-bg.png
 - 首页标题、引导语、羊皮纸输入区和“开始仪式”按钮。
 - 首页牌堆已使用独立中轴锚点固定在视口中心，避免 Framer Motion 动画覆盖 CSS 居中位移。
 - 首页羊皮纸输入区已改为底部安全距离定位并保持水平居中，与中央牌堆保留稳定间隔；矮窗口下自动压缩纵向内边距。
+- 首页与洗牌阶段已改为同一批 78 张牌和同一个中轴锚点持续渲染；首页 UI 退场期间牌堆保持原位，进入洗牌后才从原位响应鼠标扰动。
 - 本地随机塔罗牌 deck 生成。
 - 78 张牌的卡背渲染。
 - 鼠标轨迹扰动洗牌逻辑。
@@ -185,7 +186,7 @@ public/assets/old-witch-table-home-bg.png
 
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
-- 首页牌堆 `HomeDeckPreview` 仍是 5 张装饰卡，不是统一真实 78 张牌堆。
+- 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。
 - `shuffle-ready` / `shuffle-active` 尚未拆分。
 - `AmbientLightEffects` 尚未实现。
 - `RitualTitle` 单字乱序入场尚未实现。

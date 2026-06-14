@@ -19,6 +19,16 @@ type ShuffleCard = {
   z: number;
 };
 
+function getStackPosition(index: number, total: number) {
+  const depth = index / Math.max(total - 1, 1);
+
+  return {
+    x: (depth - 0.5) * 10,
+    y: depth * 8,
+    rotate: (depth - 0.5) * 2,
+  };
+}
+
 type PointerPoint = {
   x: number;
   y: number;
@@ -35,13 +45,7 @@ const positionCopy: Record<SpreadPosition, { title: string; hint: string }> = {
 const readingKeys: SpreadPosition[] = ["past", "present", "future"];
 
 function createShuffleState(deck: TarotCardData[]): ShuffleCard[] {
-  return deck.map((card, index) => ({
-    id: card.id,
-    x: (Math.random() - 0.5) * 14,
-    y: (Math.random() - 0.5) * 10,
-    rotate: (Math.random() - 0.5) * 4,
-    z: index,
-  }));
+  return deck.map((card, index) => ({ id: card.id, ...getStackPosition(index, deck.length), z: index }));
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -80,41 +84,6 @@ function CardBack({ compact = false }: { compact?: boolean }) {
         </div>
       )}
     </div>
-  );
-}
-
-function HomeDeckPreview({ visible }: { visible: boolean }) {
-  const layers = [
-    { x: -9, y: 5, rotate: -5, opacity: 0.78 },
-    { x: -5, y: 2, rotate: -2.4, opacity: 0.86 },
-    { x: 0, y: 0, rotate: 0, opacity: 1 },
-    { x: 5, y: 2, rotate: 2.4, opacity: 0.86 },
-    { x: 9, y: 5, rotate: 5, opacity: 0.78 },
-  ];
-
-  return (
-    <motion.div
-      initial={false}
-      animate={{ opacity: visible ? 1 : 0 }}
-      transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
-    >
-      <div className="relative h-full w-full">
-        {layers.map((layer, index) => (
-          <div
-            key={index}
-            className="absolute inset-0"
-            style={{
-              zIndex: index,
-              opacity: layer.opacity,
-              transform: `translate(${layer.x}px, ${layer.y}px) rotate(${layer.rotate}deg)`,
-            }}
-          >
-            <CardBack compact />
-          </div>
-        ))}
-      </div>
-    </motion.div>
   );
 }
 
@@ -504,34 +473,40 @@ export function TarotExperience() {
         <span className="font-title text-xs tracking-[0.34em]">OLD WITCH TABLE</span>
       </div>
 
-      {(stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
+      {(stage === "intro" || stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
         <section className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-[41%] h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d59b4c]/10 blur-3xl" />
-          {shuffleCards.map((card) => (
-            <motion.div
-              key={card.id}
-              initial={{ x: 0, y: 0, rotate: 0, opacity: 0 }}
-              animate={
-                stage === "fan" || stage === "draw"
-                  ? { x: 0, y: 320, rotate: 0, opacity: 0 }
-                  : {
-                      x: card.x,
-                      y: card.y,
-                      rotate: card.rotate,
-                      opacity: 1,
-                    }
-              }
-              transition={{ type: "spring", stiffness: 92, damping: 18 }}
-              className="absolute left-1/2 top-[43%] h-40 w-28 -translate-x-1/2 -translate-y-1/2"
-              style={{ zIndex: card.z }}
-            >
-              <CardBack compact />
-            </motion.div>
-          ))}
+          <div className="absolute left-1/2 top-1/2 h-44 w-32 -translate-x-1/2 -translate-y-1/2">
+            {shuffleCards.map((card, index) => {
+              const stack = getStackPosition(index, shuffleCards.length);
+              const isStacked = stage === "intro" || stage === "question" || stage === "camera-lift";
+
+              return (
+                <motion.div
+                  key={card.id}
+                  initial={false}
+                  animate={
+                    stage === "fan" || stage === "draw"
+                      ? { x: 0, y: 320, rotate: 0, opacity: 0 }
+                      : isStacked
+                        ? { ...stack, opacity: stage === "intro" ? 0 : 1 }
+                        : { x: card.x, y: card.y, rotate: card.rotate, opacity: 1 }
+                  }
+                  transition={
+                    isStacked
+                      ? { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
+                      : { type: "spring", stiffness: 92, damping: 18 }
+                  }
+                  className="absolute inset-0"
+                  style={{ zIndex: card.z }}
+                >
+                  <CardBack compact />
+                </motion.div>
+              );
+            })}
+          </div>
         </section>
       )}
-
-      <HomeDeckPreview visible={stage === "question"} />
 
       <AnimatePresence>
         {stage === "question" && (
