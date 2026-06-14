@@ -83,7 +83,7 @@ function CardBack({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function HomeDeckPreview() {
+function HomeDeckPreview({ visible }: { visible: boolean }) {
   const layers = [
     { x: -9, y: 5, rotate: -5, opacity: 0.78 },
     { x: -5, y: 2, rotate: -2.4, opacity: 0.86 },
@@ -93,27 +93,28 @@ function HomeDeckPreview() {
   ];
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2">
-      <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.92, filter: "blur(12px)" }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
-        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        className="relative h-full w-full"
-      >
+    <motion.div
+      initial={false}
+      animate={{ opacity: visible ? 1 : 0 }}
+      transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+      className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
+    >
+      <div className="relative h-full w-full">
         {layers.map((layer, index) => (
-          <motion.div
+          <div
             key={index}
-            animate={layer}
-            transition={{ type: "spring", stiffness: 150, damping: 18 }}
             className="absolute inset-0"
-            style={{ zIndex: index }}
+            style={{
+              zIndex: index,
+              opacity: layer.opacity,
+              transform: `translate(${layer.x}px, ${layer.y}px) rotate(${layer.rotate}deg)`,
+            }}
           >
             <CardBack compact />
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -534,6 +535,8 @@ export function TarotExperience() {
         </section>
       )}
 
+      <HomeDeckPreview visible={stage === "question"} />
+
       <AnimatePresence>
         {stage === "question" && (
           <motion.section
@@ -554,9 +557,6 @@ export function TarotExperience() {
               <h1 className="ritual-title font-title text-6xl text-[#f4d99e] md:text-7xl">命运之牌</h1>
               <p className="mt-4 text-sm tracking-[0.18em] text-[#d8c08c]/82">在烛光熄灭之前，说出你的疑问。</p>
             </div>
-
-            <HomeDeckPreview />
-
             <div className="home-parchment absolute bottom-[clamp(1.5rem,6vh,4rem)] left-1/2 w-[calc(100%_-_3rem)] max-w-3xl -translate-x-1/2 px-9 py-5">
               <textarea
                 value={question}
