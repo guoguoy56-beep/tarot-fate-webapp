@@ -138,6 +138,27 @@ textarea {
   border: 1px solid rgba(74, 39, 17, 0.3);
 }
 
+@media (max-height: 650px) {
+  .home-parchment {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .home-parchment textarea {
+    height: 2.5rem;
+  }
+
+  .home-parchment-footer {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+  .home-parchment-footer button {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
 .ritual-button-glow {
   box-shadow:
     inset 0 0 18px rgba(248, 197, 105, 0.1),

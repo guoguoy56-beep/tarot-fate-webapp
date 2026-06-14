@@ -93,25 +93,27 @@ function HomeDeckPreview() {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18, scale: 0.92, filter: "blur(12px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none absolute left-1/2 top-[51%] z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2"
-    >
-      {layers.map((layer, index) => (
-        <motion.div
-          key={index}
-          animate={layer}
-          transition={{ type: "spring", stiffness: 150, damping: 18 }}
-          className="absolute inset-0"
-          style={{ zIndex: index }}
-        >
-          <CardBack compact />
-        </motion.div>
-      ))}
-    </motion.div>
+    <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-44 w-32 -translate-x-1/2 -translate-y-1/2">
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.92, filter: "blur(12px)" }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+        exit={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(10px)" }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+        className="relative h-full w-full"
+      >
+        {layers.map((layer, index) => (
+          <motion.div
+            key={index}
+            animate={layer}
+            transition={{ type: "spring", stiffness: 150, damping: 18 }}
+            className="absolute inset-0"
+            style={{ zIndex: index }}
+          >
+            <CardBack compact />
+          </motion.div>
+        ))}
+      </motion.div>
+    </div>
   );
 }
 
@@ -542,7 +544,7 @@ export function TarotExperience() {
             transition={{ duration: 1.1 }}
             className="absolute inset-0 px-6"
           >
-            <div className="absolute left-1/2 top-[17%] w-full -translate-x-1/2 text-center">
+            <div className="absolute left-1/2 top-[clamp(2.5rem,8vh,6rem)] w-full -translate-x-1/2 text-center">
               <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-center gap-4 text-[#d8b56d]/72">
                 <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d8b56d]/55" />
                 <Sparkles size={16} />
@@ -555,14 +557,14 @@ export function TarotExperience() {
 
             <HomeDeckPreview />
 
-            <div className="home-parchment absolute left-1/2 top-[70%] w-full max-w-3xl -translate-x-1/2 px-9 py-5">
+            <div className="home-parchment absolute bottom-[clamp(1.5rem,6vh,4rem)] left-1/2 w-[calc(100%_-_3rem)] max-w-3xl -translate-x-1/2 px-9 py-5">
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 placeholder="提问越清晰，命运的指引越具体..."
                 className="relative z-10 h-14 w-full resize-none border-none bg-transparent text-base leading-7 text-[#28150c] outline-none placeholder:text-[#6f4a2b]/70"
               />
-              <div className="relative z-10 mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#6f4a2b]/25 pt-4 sm:flex-row">
+              <div className="home-parchment-footer relative z-10 mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#6f4a2b]/25 pt-4 sm:flex-row">
                 <span className="text-xs tracking-[0.16em] text-[#5c351c]">问题会被交给旧牌与火光。</span>
                 <button
                   type="button"
