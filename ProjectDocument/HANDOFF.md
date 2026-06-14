@@ -114,6 +114,7 @@ public/assets/old-witch-table-home-bg.png
 - App Router 页面入口已配置。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
 - 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
+- 首页、洗牌、抽牌、阅读与终局阶段统一使用首页旧女巫木桌背景图，各阶段仅通过氛围遮罩调整明暗。
 
 已完成的功能和交互：
 

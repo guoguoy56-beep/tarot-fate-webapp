@@ -494,7 +494,7 @@ export function TarotExperience() {
           opacity: stage === "intro" ? 0 : 1,
         }}
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-        className={`${stage === "question" || stage === "intro" ? "home-table-surface" : "table-surface"} absolute inset-0`}
+        className="home-table-surface absolute inset-0"
       />
 
       <div
