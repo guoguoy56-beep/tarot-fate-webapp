@@ -451,7 +451,7 @@ export function TarotExperience() {
   const currentReadingKey = readingKeys[revealIndex];
   const currentPlaced = placedCards.find((placed) => placed.position === currentReadingKey);
   const currentCard = currentPlaced ? tarotCardMap.get(currentPlaced.cardId) : null;
-  const spreadTopClass = stage === "draw" ? "top-[36%]" : "top-[24%]";
+  const spreadTopClass = stage === "draw" ? "top-[28%]" : "top-[24%]";
 
   return (
     <main onPointerMove={handleShuffleMove} className="relative h-screen w-screen overflow-hidden bg-ink text-[#f4dfb7]">
@@ -617,7 +617,9 @@ export function TarotExperience() {
           </div>
 
           {stage === "draw" && (
-            <div className="absolute inset-x-0 bottom-0 h-64 overflow-hidden">
+            <div
+              className={`absolute inset-x-0 bottom-0 z-[710] h-64 ${activeDragId ? "overflow-visible" : "overflow-hidden"}`}
+            >
               <div className="absolute left-1/2 top-20 h-64 w-[1100px] -translate-x-1/2 rounded-[50%] border-t border-[#d8b56d]/30" />
               {availableDeck.map((card, index) => {
                 const center = (availableDeck.length - 1) / 2;
@@ -640,7 +642,7 @@ export function TarotExperience() {
                     whileHover={{ y: y - 28, scale: 1.04 }}
                     transition={{ type: "spring", stiffness: 180, damping: 22 }}
                     className="absolute left-1/2 top-14 h-44 w-28 cursor-grab active:cursor-grabbing"
-                    style={{ zIndex: activeDragId === card.id ? 400 : index }}
+                    style={{ zIndex: activeDragId === card.id ? 750 : index }}
                   >
                     <CardBack compact />
                   </motion.div>
