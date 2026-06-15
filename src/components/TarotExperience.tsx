@@ -3,7 +3,7 @@
 import { tarotCardMap } from "@/data/tarotCards";
 import { drawRandomDeck, orientationLabel, positionLabel, randomOrientation } from "@/lib/tarot";
 import { readReadingRecords, saveReadingRecord } from "@/lib/storage";
-import type { ReadingRecord, ReadingResponse } from "@/types/reading";
+import type { ReadingApiError, ReadingRecord, ReadingResponse } from "@/types/reading";
 import type { PlacedCard, SpreadPosition, TarotCardData } from "@/types/tarot";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { BookOpen, Flame, History, RotateCcw, Save, Sparkles } from "lucide-react";
@@ -50,6 +50,37 @@ function createShuffleState(deck: TarotCardData[]): ShuffleCard[] {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function isReadingResponse(value: unknown): value is ReadingResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const response = value as Record<string, unknown>;
+  return ["past", "present", "future", "summary"].every(
+    (key) => typeof response[key] === "string" && Boolean((response[key] as string).trim()),
+  );
+}
+
+function getReadingApiError(value: unknown): ReadingApiError["error"] | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const error = (value as { error?: unknown }).error;
+
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const detail = error as Record<string, unknown>;
+
+  if (typeof detail.code !== "string" || typeof detail.message !== "string" || typeof detail.retryable !== "boolean") {
+    return null;
+  }
+
+  return detail as ReadingApiError["error"];
 }
 
 function TextReveal({ text }: { text: string }) {
@@ -204,7 +235,8 @@ export function TarotExperience() {
   const [shuffleCards, setShuffleCards] = useState<ShuffleCard[]>(() => createShuffleState(deck));
   const [placedCards, setPlacedCards] = useState<PlacedCard[]>([]);
   const [reading, setReading] = useState<ReadingResponse | null>(null);
-  const [readingError, setReadingError] = useState("");
+  const [readingError, setReadingError] = useState<ReadingApiError["error"] | null>(null);
+  const [isReadingLoading, setIsReadingLoading] = useState(false);
   const [revealIndex, setRevealIndex] = useState(0);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -214,6 +246,8 @@ export function TarotExperience() {
   const tableRef = useRef<HTMLDivElement | null>(null);
   const lastShufflePoint = useRef<PointerPoint | null>(null);
   const journalTimers = useRef<number[]>([]);
+  const readingAbortController = useRef<AbortController | null>(null);
+  const readingRequestInFlight = useRef(false);
   const dropRefs = useRef<Record<SpreadPosition, HTMLDivElement | null>>({
     past: null,
     present: null,
@@ -234,6 +268,9 @@ export function TarotExperience() {
   useEffect(() => {
     return () => {
       journalTimers.current.forEach((timer) => window.clearTimeout(timer));
+      readingAbortController.current?.abort();
+      readingAbortController.current = null;
+      readingRequestInFlight.current = false;
     };
   }, []);
 
@@ -243,58 +280,82 @@ export function TarotExperience() {
     }
   }, [stage]);
 
-  useEffect(() => {
-    if (stage !== "reading" || placedCards.length !== 3 || reading) {
+  async function requestReading(cardsToRead: PlacedCard[]) {
+    if (readingRequestInFlight.current || cardsToRead.length !== 3) {
       return;
     }
 
+    readingRequestInFlight.current = true;
     const controller = new AbortController();
+    readingAbortController.current = controller;
 
-    async function loadReading() {
-      try {
-        setReadingError("");
-        const cards = placedCards.map((placed) => {
-          const card = tarotCardMap.get(placed.cardId);
-          if (!card) {
-            throw new Error("Missing card data.");
-          }
+    try {
+      setReading(null);
+      setReadingError(null);
+      setIsReadingLoading(true);
 
-          return {
-            position: placed.position,
-            nameCn: card.nameCn,
-            nameEn: card.nameEn,
-            orientation: placed.orientation,
-            uprightKeywords: card.uprightKeywords,
-            reversedKeywords: card.reversedKeywords,
-            meaning: card.meaning,
-          };
-        });
-
-        const response = await fetch("/api/reading", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, cards }),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("解读接口暂时没有回应。");
+      const cards = cardsToRead.map((placed) => {
+        const card = tarotCardMap.get(placed.cardId);
+        if (!card) {
+          throw new Error("Missing card data.");
         }
 
-        setReading((await response.json()) as ReadingResponse);
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return;
-        }
+        return {
+          position: placed.position,
+          nameCn: card.nameCn,
+          nameEn: card.nameEn,
+          orientation: placed.orientation,
+          uprightKeywords: card.uprightKeywords,
+          reversedKeywords: card.reversedKeywords,
+          meaning: card.meaning,
+        };
+      });
 
-        setReadingError(error instanceof Error ? error.message : "女巫暂时沉默了。");
+      const response = await fetch("/api/reading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, cards }),
+        signal: controller.signal,
+      });
+      const responseBody: unknown = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setReadingError(
+          getReadingApiError(responseBody) ?? {
+            code: "DEEPSEEK_UPSTREAM_ERROR",
+            message: "解读接口暂时没有回应，请稍后重试。",
+            retryable: true,
+          },
+        );
+        return;
+      }
+
+      if (!isReadingResponse(responseBody)) {
+        setReadingError({
+          code: "DEEPSEEK_INVALID_RESPONSE",
+          message: "解读结果格式不完整，请重新请求。",
+          retryable: true,
+        });
+        return;
+      }
+
+      setReading(responseBody);
+    } catch {
+      if (!controller.signal.aborted) {
+        setReadingError({
+          code: "DEEPSEEK_UPSTREAM_ERROR",
+          message: "无法连接解读服务，请检查网络后重试。",
+          retryable: true,
+        });
+      }
+    } finally {
+      if (readingAbortController.current === controller) {
+        readingAbortController.current = null;
+        readingRequestInFlight.current = false;
+        setIsReadingLoading(false);
       }
     }
-
-    void loadReading();
-
-    return () => controller.abort();
-  }, [placedCards, question, reading, stage]);
+  }
 
   function beginRitual() {
     if (!question.trim()) {
@@ -308,12 +369,16 @@ export function TarotExperience() {
   function resetExperience() {
     journalTimers.current.forEach((timer) => window.clearTimeout(timer));
     journalTimers.current = [];
+    readingAbortController.current?.abort();
+    readingAbortController.current = null;
+    readingRequestInFlight.current = false;
     const nextDeck = drawRandomDeck();
     setDeck(nextDeck);
     setShuffleCards(createShuffleState(nextDeck));
     setPlacedCards([]);
     setReading(null);
-    setReadingError("");
+    setReadingError(null);
+    setIsReadingLoading(false);
     setRevealIndex(0);
     setJournalOpening(false);
     setJournalCardsSettled(false);
@@ -426,7 +491,10 @@ export function TarotExperience() {
     setPlacedCards(nextPlaced);
 
     if (nextPlaced.length === 3) {
-      window.setTimeout(() => setStage("reading"), 500);
+      window.setTimeout(() => {
+        setStage("reading");
+        void requestReading(nextPlaced);
+      }, 500);
     }
   }
 
@@ -733,10 +801,23 @@ export function TarotExperience() {
             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
             className="border border-[#d8b56d]/25 bg-black/45 px-7 py-6 shadow-candle backdrop-blur-sm"
           >
-            {!reading && !readingError && (
+            {isReadingLoading && (
               <p className="text-center text-sm tracking-[0.18em] text-[#d8b56d]/80">女巫正在听牌，请等待火光给出回应</p>
             )}
-            {readingError && <p className="text-center text-sm text-[#f0b7a7]">{readingError}</p>}
+            {readingError && !isReadingLoading && (
+              <div className="text-center">
+                <p className="text-sm text-[#f0b7a7]">{readingError.message}</p>
+                <p className="mt-2 text-xs tracking-[0.08em] text-[#d8b56d]/65">
+                  {readingError.retryable ? "火光尚未熄灭，可以稍后再次请求。" : "请先检查服务配置，再重新请求解读。"}
+                </p>
+                <div className="mt-5 flex justify-center">
+                  <FateButton onClick={() => void requestReading(placedCards)} disabled={isReadingLoading}>
+                    <RotateCcw size={16} />
+                    重新请求解读
+                  </FateButton>
+                </div>
+              </div>
+            )}
             {reading && currentCard && currentPlaced && (
               <>
                 <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#d8b56d]/20 pb-4">

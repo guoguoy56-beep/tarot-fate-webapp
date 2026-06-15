@@ -134,7 +134,9 @@ public/assets/old-witch-table-home-bg.png
 - 逆位牌从翻开、阅读到进入命运手记的共享布局动画全程保持逆位，不再在过渡中翻回正向；飞向手记的临时卡牌层不再显示重复文字。
 - 前端打字机式文本显示。
 - `/api/reading` 后端 API 路由。
-- DeepSeek API 服务端调用封装。
+- DeepSeek API 服务端调用封装，默认使用 `deepseek-v4-flash` 非思考模式和一次性 JSON 响应。
+- DeepSeek 请求已增加 30 秒超时、返回字段校验，以及配置、认证、余额、限流、上游服务和格式错误分类。
+- 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
 - localStorage 历史记录读取和保存。
 - 历史记录弹窗。
 - 终局命运手记界面。
@@ -188,6 +190,7 @@ public/assets/old-witch-table-home-bg.png
 
 当前代码与最新设计文档仍有差异：
 
+- DeepSeek 接口代码已完成加固，但仓库不包含 `.env.local`，仍需配置真实 API Key 后完成在线联调。
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
 - 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。
@@ -201,6 +204,8 @@ public/assets/old-witch-table-home-bg.png
 ## 10. 下一步计划
 
 建议按以下顺序推进，避免一次性重构过大：
+
+在继续美术任务前，先使用真实 DeepSeek API Key 完成一次正常解读、错误 Key、余额不足和手动重试联调，并确认 `.env.local` 未进入 Git。
 
 1. 实现 `AmbientLightEffects`。
    - 首页两侧蜡烛 flicker。
@@ -249,6 +254,8 @@ public/assets/old-witch-table-home-bg.png
 - 能否结束洗牌并进入底部牌带。
 - 能否拖拽三张牌到过去、现在、未来。
 - 三张牌是否能按顺序翻开。
+- DeepSeek 正常响应时是否返回过去、现在、未来和总结四个完整字段。
+- DeepSeek 配置错误、认证失败、限流或超时时是否保留抽牌状态并允许手动重试。
 - 阅读面板是否不再被卡牌遮挡。
 - 历史记录是否能保存和读取。
 - 页面是否符合旧女巫木桌风，不出现现代霓虹或过度粒子。
@@ -260,6 +267,7 @@ DeepSeek API 相关环境变量建议：
 ```txt
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
-API Key 不得暴露在前端。
+API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 输出和 30 秒服务端超时；未配置 Key 时返回明确配置错误，不生成模拟解读。

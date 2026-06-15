@@ -404,9 +404,10 @@ DeepSeek API Key 必须只存在于服务端环境变量中。
 ```txt
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
-前端不得直接调用 DeepSeek API。
+前端不得直接调用 DeepSeek API。当前默认使用 `deepseek-v4-flash` 非思考模式，由服务端一次性获取严格 JSON；接口失败时保留抽牌状态并提供手动重试，不自动回退到模拟解读。
 
 ## 9. AI Prompt 规范
 
@@ -626,8 +627,9 @@ const STORAGE_KEY = 'tarot_reading_records'
 应对方式：
 
 - 在 Prompt 中强制要求 JSON。
-- 后端增加解析失败兜底。
-- 前端准备默认错误文案。
+- 后端校验 `past`、`present`、`future`、`summary` 四个非空字符串字段。
+- 后端区分配置、认证、余额、限流、超时、上游服务和格式错误。
+- 前端显示中文错误并允许手动重试，不自动重复请求。
 
 ### 16.3 牌面资源授权与整理风险
 

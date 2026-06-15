@@ -22,6 +22,25 @@ export interface ReadingResponse {
   summary: string;
 }
 
+export type ReadingApiErrorCode =
+  | "INVALID_REQUEST"
+  | "DEEPSEEK_NOT_CONFIGURED"
+  | "DEEPSEEK_AUTH_FAILED"
+  | "DEEPSEEK_INSUFFICIENT_BALANCE"
+  | "DEEPSEEK_RATE_LIMITED"
+  | "DEEPSEEK_TIMEOUT"
+  | "DEEPSEEK_UPSTREAM_ERROR"
+  | "DEEPSEEK_INVALID_RESPONSE"
+  | "INTERNAL_ERROR";
+
+export interface ReadingApiError {
+  error: {
+    code: ReadingApiErrorCode;
+    message: string;
+    retryable: boolean;
+  };
+}
+
 export interface ReadingRecord {
   id: string;
   question: string;
