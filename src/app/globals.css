@@ -184,6 +184,26 @@ textarea {
   perspective: 1200px;
 }
 
+.tarot-deck-stack-shadow::after {
+  position: absolute;
+  inset: 10px -7px -17px 7px;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  border-radius: 14px;
+  background: rgba(4, 2, 1, 0.42);
+  filter: blur(12px);
+  transform: translate3d(0, 8px, 0);
+}
+
+.tarot-deck-stack-shadow {
+  isolation: isolate;
+}
+
+.tarot-dragging .tarot-active-drop-copy {
+  opacity: 0;
+}
+
 .tarot-face {
   backface-visibility: hidden;
   transform-style: preserve-3d;

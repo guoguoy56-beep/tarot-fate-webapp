@@ -7,7 +7,7 @@ import type { ReadingApiError, ReadingRecord, ReadingResponse } from "@/types/re
 import type { PlacedCard, SpreadPosition, TarotCardData } from "@/types/tarot";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { BookOpen, Flame, History, RotateCcw, Save, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 type AppStage = "intro" | "question" | "camera-lift" | "shuffle" | "fan" | "draw" | "reading" | "final";
 
@@ -32,6 +32,12 @@ function getStackPosition(index: number, total: number) {
 type PointerPoint = {
   x: number;
   y: number;
+};
+
+type ShufflePointerSample = PointerPoint & {
+  movementX: number;
+  movementY: number;
+  movementLength: number;
 };
 
 const spreadOrder: SpreadPosition[] = ["past", "present", "future"];
@@ -103,9 +109,15 @@ function TextReveal({ text }: { text: string }) {
   return <p className="min-h-28 whitespace-pre-wrap text-[15px] leading-8 text-[#f4dfb7]">{visibleText}</p>;
 }
 
-function CardBack() {
+const CardBack = memo(function CardBack({ elevated = true }: { elevated?: boolean }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#8b6738]/75 bg-[#100a08] shadow-[inset_0_0_22px_rgba(213,155,76,0.12),0_8px_22px_rgba(0,0,0,0.42)]">
+    <div
+      className={`relative h-full w-full overflow-hidden rounded-[10px] border border-[#8b6738]/75 bg-[#100a08] ${
+        elevated
+          ? "shadow-[inset_0_0_16px_rgba(213,155,76,0.1),0_7px_18px_rgba(0,0,0,0.38)]"
+          : ""
+      }`}
+    >
       <img
         src="/assets/tarot-card-back.webp"
         alt=""
@@ -113,10 +125,12 @@ function CardBack() {
         draggable={false}
         className="absolute inset-0 h-full w-full select-none object-cover"
       />
-      <div className="pointer-events-none absolute inset-0 rounded-[9px] shadow-[inset_0_0_14px_rgba(0,0,0,0.38)]" />
+      {elevated && (
+        <div className="pointer-events-none absolute inset-0 rounded-[9px] shadow-[inset_0_0_10px_rgba(0,0,0,0.34)]" />
+      )}
     </div>
   );
-}
+});
 
 function CardFront({ card, orientation }: { card: TarotCardData; orientation: "upright" | "reversed" }) {
   const keywords = orientation === "upright" ? card.uprightKeywords : card.reversedKeywords;
@@ -239,12 +253,13 @@ export function TarotExperience() {
   const [isReadingLoading, setIsReadingLoading] = useState(false);
   const [revealIndex, setRevealIndex] = useState(0);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [journalOpening, setJournalOpening] = useState(false);
   const [journalCardsSettled, setJournalCardsSettled] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const lastShufflePoint = useRef<PointerPoint | null>(null);
+  const pendingShuffleSample = useRef<ShufflePointerSample | null>(null);
+  const shuffleFrame = useRef<number | null>(null);
   const journalTimers = useRef<number[]>([]);
   const readingAbortController = useRef<AbortController | null>(null);
   const readingRequestInFlight = useRef(false);
@@ -258,6 +273,7 @@ export function TarotExperience() {
     () => deck.filter((card) => !placedCards.some((placed) => placed.cardId === card.id)),
     [deck, placedCards],
   );
+  const deckIndexById = useMemo(() => new Map(deck.map((card, index) => [card.id, index])), [deck]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setStage("question"), 700);
@@ -271,12 +287,21 @@ export function TarotExperience() {
       readingAbortController.current?.abort();
       readingAbortController.current = null;
       readingRequestInFlight.current = false;
+      if (shuffleFrame.current !== null) {
+        window.cancelAnimationFrame(shuffleFrame.current);
+      }
+      document.body.classList.remove("tarot-dragging");
     };
   }, []);
 
   useEffect(() => {
     if (stage !== "shuffle") {
       lastShufflePoint.current = null;
+      pendingShuffleSample.current = null;
+      if (shuffleFrame.current !== null) {
+        window.cancelAnimationFrame(shuffleFrame.current);
+        shuffleFrame.current = null;
+      }
     }
   }, [stage]);
 
@@ -422,39 +447,53 @@ export function TarotExperience() {
       return;
     }
 
-    const directionX = movementX / movementLength;
-    const directionY = movementY / movementLength;
+    pendingShuffleSample.current = { x: pointerX, y: pointerY, movementX, movementY, movementLength };
 
-    setShuffleCards((current) =>
-      current.map((card, index) => {
-        const dx = card.x - pointerX;
-        const dy = card.y - pointerY;
-        const distance = Math.hypot(dx, dy);
-        const interactionRadius = 118;
+    if (shuffleFrame.current !== null) {
+      return;
+    }
 
-        if (distance > interactionRadius) {
-          return card;
-        }
+    shuffleFrame.current = window.requestAnimationFrame(() => {
+      shuffleFrame.current = null;
+      const sample = pendingShuffleSample.current;
+      pendingShuffleSample.current = null;
 
-        const sweepGate = Math.abs(Math.floor(pointerX / 18) + Math.floor(pointerY / 18) + index) % 4;
-        if (sweepGate > 1) {
-          return card;
-        }
+      if (!sample) {
+        return;
+      }
 
-        const force = (interactionRadius - distance) / interactionRadius;
-        const speedBoost = clamp(movementLength / 24, 0.65, 2.1);
+      const directionX = sample.movementX / sample.movementLength;
+      const directionY = sample.movementY / sample.movementLength;
 
-        // 牌堆被视为一摞有阻力的实体。每次鼠标掠过只推动一部分牌，
-        // 并且推动方向跟随鼠标轨迹，用户需要多次扫过牌堆才能彻底洗乱。
-        return {
-          id: card.id,
-          x: clamp(card.x + directionX * force * 52 * speedBoost + (Math.random() - 0.5) * 8, -500, 500),
-          y: clamp(card.y + directionY * force * 38 * speedBoost + (Math.random() - 0.5) * 7, -245, 245),
-          rotate: clamp(card.rotate + directionX * force * 16 + (Math.random() - 0.5) * 7, -72, 72),
-          z: 100 + index,
-        };
-      }),
-    );
+      setShuffleCards((current) =>
+        current.map((card, index) => {
+          const dx = card.x - sample.x;
+          const dy = card.y - sample.y;
+          const distance = Math.hypot(dx, dy);
+          const interactionRadius = 118;
+
+          if (distance > interactionRadius) {
+            return card;
+          }
+
+          const sweepGate = Math.abs(Math.floor(sample.x / 18) + Math.floor(sample.y / 18) + index) % 4;
+          if (sweepGate > 1) {
+            return card;
+          }
+
+          const force = (interactionRadius - distance) / interactionRadius;
+          const speedBoost = clamp(sample.movementLength / 24, 0.65, 2.1);
+
+          return {
+            id: card.id,
+            x: clamp(card.x + directionX * force * 52 * speedBoost + (Math.random() - 0.5) * 8, -500, 500),
+            y: clamp(card.y + directionY * force * 38 * speedBoost + (Math.random() - 0.5) * 7, -245, 245),
+            rotate: clamp(card.rotate + directionX * force * 16 + (Math.random() - 0.5) * 7, -72, 72),
+            z: 100 + index,
+          };
+        }),
+      );
+    });
   }
 
   function finishShuffle() {
@@ -547,7 +586,11 @@ export function TarotExperience() {
       {(stage === "intro" || stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
         <section className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-[41%] h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d59b4c]/10 blur-3xl" />
-          <div className="absolute left-1/2 top-1/2 h-44 w-28 -translate-x-1/2 -translate-y-1/2">
+          <div
+            className={`absolute left-1/2 top-1/2 h-44 w-28 -translate-x-1/2 -translate-y-1/2 ${
+              stage === "intro" || stage === "question" || stage === "camera-lift" ? "tarot-deck-stack-shadow" : ""
+            }`}
+          >
             {shuffleCards.map((card, index) => {
               const stack = getStackPosition(index, shuffleCards.length);
               const isStacked = stage === "intro" || stage === "question" || stage === "camera-lift";
@@ -566,12 +609,12 @@ export function TarotExperience() {
                   transition={
                     isStacked
                       ? { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
-                      : { type: "spring", stiffness: 92, damping: 18 }
+                      : { duration: 0.18, ease: "linear" }
                   }
-                  className="absolute inset-0"
+                  className="absolute inset-0 will-change-transform"
                   style={{ zIndex: card.z }}
                 >
-                  <CardBack />
+                  <CardBack elevated={false} />
                 </motion.div>
               );
             })}
@@ -650,7 +693,6 @@ export function TarotExperience() {
               const placed = placedCards.find((card) => card.position === position);
               const card = placed ? tarotCardMap.get(placed.cardId) : null;
               const isActiveDrop = stage === "draw" && spreadOrder[placedCards.length] === position;
-              const isDraggingToActiveDrop = isActiveDrop && activeDragId !== null;
               const revealed = stage === "reading" && readingKeys.findIndex((item) => item === position) <= revealIndex;
 
               return (
@@ -675,7 +717,7 @@ export function TarotExperience() {
                         layoutId={`fate-card-${placed.cardId}`}
                       />
                     ) : (
-                      <div className={`text-center transition-opacity ${isDraggingToActiveDrop ? "opacity-0" : "opacity-100"}`}>
+                      <div className={`text-center transition-opacity ${isActiveDrop ? "tarot-active-drop-copy" : ""}`}>
                         <p className="font-title text-2xl text-[#e8d2a4]">{positionCopy[position].title}</p>
                         <p className="mt-3 text-xs tracking-[0.16em] text-[#d8b56d]/60">{positionCopy[position].hint}</p>
                       </div>
@@ -687,13 +729,11 @@ export function TarotExperience() {
           </div>
 
           {stage === "draw" && (
-            <div
-              className={`absolute inset-x-0 bottom-0 z-[710] h-64 ${activeDragId ? "overflow-visible" : "overflow-hidden"}`}
-            >
+            <div className="absolute inset-x-0 bottom-0 z-[710] h-64 overflow-visible">
               <div className="absolute left-1/2 top-20 h-64 w-[1100px] -translate-x-1/2 rounded-[50%] border-t border-[#d8b56d]/30" />
               {availableDeck.map((card, index) => {
-                const center = (availableDeck.length - 1) / 2;
-                const offset = index - center;
+                const center = (deck.length - 1) / 2;
+                const offset = (deckIndexById.get(card.id) ?? index) - center;
                 const angle = offset * 1.15;
                 const x = offset * 13;
                 const y = Math.abs(offset) * 0.42;
@@ -704,18 +744,20 @@ export function TarotExperience() {
                     layoutId={`fate-card-${card.id}`}
                     drag
                     dragSnapToOrigin
-                    onDragStart={() => setActiveDragId(card.id)}
+                    onDragStart={() => document.body.classList.add("tarot-dragging")}
                     onDragEnd={(event, info) => {
-                      setActiveDragId(null);
+                      document.body.classList.remove("tarot-dragging");
                       handleCardDrop(card, event, info);
                     }}
-                    animate={{ x, y, rotate: angle, scale: activeDragId === card.id ? 1.08 : 1 }}
+                    initial={false}
+                    animate={{ x, y, rotate: angle }}
                     whileHover={{ y: y - 28, scale: 1.04 }}
-                    transition={{ type: "spring", stiffness: 180, damping: 22 }}
-                    className="absolute left-1/2 top-14 h-44 w-28 cursor-grab active:cursor-grabbing"
-                    style={{ zIndex: activeDragId === card.id ? 750 : index }}
+                    whileDrag={{ scale: 1.08, zIndex: 750, boxShadow: "0 10px 24px rgba(0, 0, 0, 0.42)" }}
+                    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute left-1/2 top-14 h-44 w-28 cursor-grab will-change-transform active:cursor-grabbing"
+                    style={{ zIndex: index }}
                   >
-                    <CardBack />
+                    <CardBack elevated={false} />
                   </motion.div>
                 );
               })}
