@@ -137,6 +137,7 @@ public/assets/old-witch-table-home-bg.png
 - DeepSeek API 服务端调用封装，默认使用 `deepseek-v4-flash` 非思考模式和一次性 JSON 响应。
 - DeepSeek 请求已增加 30 秒超时、返回字段校验，以及配置、认证、余额、限流、上游服务和格式错误分类。
 - 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
+- DeepSeek 真实在线接口已完成联调；服务端只向模型发送当前正逆位对应的关键词，并明确禁止模型改写牌的实际方向。
 - localStorage 历史记录读取和保存。
 - 历史记录弹窗。
 - 终局命运手记界面。
@@ -190,7 +191,7 @@ public/assets/old-witch-table-home-bg.png
 
 当前代码与最新设计文档仍有差异：
 
-- DeepSeek 接口代码已完成加固，但仓库不包含 `.env.local`，仍需配置真实 API Key 后完成在线联调。
+- 仓库不包含 `.env.local`，在新设备或部署环境运行真实解读前仍需单独配置 DeepSeek API Key。
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
 - 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。
@@ -204,8 +205,6 @@ public/assets/old-witch-table-home-bg.png
 ## 10. 下一步计划
 
 建议按以下顺序推进，避免一次性重构过大：
-
-在继续美术任务前，先使用真实 DeepSeek API Key 完成一次正常解读、错误 Key、余额不足和手动重试联调，并确认 `.env.local` 未进入 Git。
 
 1. 实现 `AmbientLightEffects`。
    - 首页两侧蜡烛 flicker。

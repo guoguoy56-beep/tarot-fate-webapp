@@ -118,6 +118,15 @@ export async function requestDeepSeekReading(payload: ReadingRequest): Promise<R
 
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout>;
+  const cardsForPrompt = payload.cards.map((card) => ({
+    position: card.position,
+    nameCn: card.nameCn,
+    nameEn: card.nameEn,
+    orientation: card.orientation,
+    orientationCn: card.orientation === "upright" ? "正位" : "逆位",
+    keywords: card.orientation === "upright" ? card.uprightKeywords : card.reversedKeywords,
+    meaning: card.meaning,
+  }));
 
   async function performRequest(): Promise<ReadingResponse> {
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -138,17 +147,23 @@ export async function requestDeepSeekReading(payload: ReadingRequest): Promise<R
 
 要求：
 1. 不要说自己是 AI，不要给出绝对承诺或确定性预言。
-2. past、present、future 各写 120 至 180 个汉字，summary 写 60 至 100 个汉字。
-3. 当问题涉及医疗、法律、财务或人身安全时，不得替代专业判断；保持角色语气的同时，清楚提醒用户寻求合格专业人士。若存在即时危险，应建议联系当地紧急服务或可信赖的人。
-4. 只返回严格 JSON，不要使用 Markdown 代码块或附加说明。
-5. JSON 字段必须且只能包含 past、present、future、summary。
+2. 输入中的 orientation 和 orientationCn 是不可改写的事实。upright 只能解读为正位，reversed 只能解读为逆位，严禁交换或自行推断方向。
+3. past、present、future 的第一句必须明确写出对应牌名与 orientationCn，并且只能使用该牌提供的 keywords。
+4. past、present、future 各写 120 至 180 个汉字，summary 写 60 至 100 个汉字。
+5. 当问题涉及医疗、法律、财务或人身安全时，不得替代专业判断；保持角色语气的同时，清楚提醒用户寻求合格专业人士。若存在即时危险，应建议联系当地紧急服务或可信赖的人。
+6. 只返回严格 JSON，不要使用 Markdown 代码块或附加说明。
+7. JSON 字段必须且只能包含 past、present、future、summary。
 
 示例 JSON：
 {"past":"过去牌解读","present":"现在牌解读","future":"未来牌解读","summary":"女巫的最终箴言"}`,
           },
           {
             role: "user",
-            content: `请根据以下 JSON 输入完成三牌解读：\n${JSON.stringify(payload, null, 2)}`,
+            content: `请根据以下 JSON 输入完成三牌解读。question 是用户问题，cards 已按实际方向过滤关键词，不存在其他方向可供选择：\n${JSON.stringify(
+              { question: payload.question, cards: cardsForPrompt },
+              null,
+              2,
+            )}`,
           },
         ],
       }),
