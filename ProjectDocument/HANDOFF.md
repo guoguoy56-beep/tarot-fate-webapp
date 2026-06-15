@@ -138,6 +138,7 @@ public/assets/old-witch-table-home-bg.png
 - DeepSeek 请求已增加 30 秒超时、返回字段校验，以及配置、认证、余额、限流、上游服务和格式错误分类。
 - 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
 - DeepSeek 真实在线接口已完成联调；服务端只向模型发送当前正逆位对应的关键词，并明确禁止模型改写牌的实际方向。
+- 已选定并接入 Eclipse Reliquary / 日蚀圣龛正式卡背，首页牌堆、洗牌、底部牌带、抽牌与翻牌背面统一使用 `public/assets/tarot-card-back.webp`。
 - localStorage 历史记录读取和保存。
 - 历史记录弹窗。
 - 终局命运手记界面。
@@ -192,6 +193,7 @@ public/assets/old-witch-table-home-bg.png
 当前代码与最新设计文档仍有差异：
 
 - 仓库不包含 `.env.local`，在新设备或部署环境运行真实解读前仍需单独配置 DeepSeek API Key。
+- 真实 Rider-Waite-Smith 牌面资源尚未接入，目前翻牌正面仍为代码占位样式。
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
 - 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。

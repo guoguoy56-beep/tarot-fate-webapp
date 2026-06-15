@@ -103,17 +103,17 @@ function TextReveal({ text }: { text: string }) {
   return <p className="min-h-28 whitespace-pre-wrap text-[15px] leading-8 text-[#f4dfb7]">{visibleText}</p>;
 }
 
-function CardBack({ compact = false }: { compact?: boolean }) {
+function CardBack() {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#b08a4a]/65 bg-[#180d0a] shadow-[inset_0_0_24px_rgba(176,138,74,0.22)]">
-      <div className="absolute inset-2 rounded-[7px] border border-[#b08a4a]/45" />
-      <div className="absolute inset-5 rounded-full border border-[#b08a4a]/30" />
-      <div className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d59b4c]/65 shadow-[0_0_28px_rgba(213,155,76,0.22)]" />
-      {!compact && (
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-title text-[10px] tracking-[0.28em] text-[#d8b56d]/80">
-          TAROT
-        </div>
-      )}
+    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#8b6738]/75 bg-[#100a08] shadow-[inset_0_0_22px_rgba(213,155,76,0.12),0_8px_22px_rgba(0,0,0,0.42)]">
+      <img
+        src="/assets/tarot-card-back.webp"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="absolute inset-0 h-full w-full select-none object-cover"
+      />
+      <div className="pointer-events-none absolute inset-0 rounded-[9px] shadow-[inset_0_0_14px_rgba(0,0,0,0.38)]" />
     </div>
   );
 }
@@ -547,7 +547,7 @@ export function TarotExperience() {
       {(stage === "intro" || stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
         <section className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-[41%] h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d59b4c]/10 blur-3xl" />
-          <div className="absolute left-1/2 top-1/2 h-44 w-32 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-1/2 h-44 w-28 -translate-x-1/2 -translate-y-1/2">
             {shuffleCards.map((card, index) => {
               const stack = getStackPosition(index, shuffleCards.length);
               const isStacked = stage === "intro" || stage === "question" || stage === "camera-lift";
@@ -571,7 +571,7 @@ export function TarotExperience() {
                   className="absolute inset-0"
                   style={{ zIndex: card.z }}
                 >
-                  <CardBack compact />
+                  <CardBack />
                 </motion.div>
               );
             })}
@@ -715,7 +715,7 @@ export function TarotExperience() {
                     className="absolute left-1/2 top-14 h-44 w-28 cursor-grab active:cursor-grabbing"
                     style={{ zIndex: activeDragId === card.id ? 750 : index }}
                   >
-                    <CardBack compact />
+                    <CardBack />
                   </motion.div>
                 );
               })}
