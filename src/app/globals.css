@@ -191,9 +191,9 @@ textarea {
   pointer-events: none;
   content: "";
   border-radius: 14px;
-  background: rgba(4, 2, 1, 0.42);
-  filter: blur(12px);
-  transform: translate3d(0, 8px, 0);
+  background: rgba(4, 2, 1, 0.28);
+  filter: blur(10px);
+  transform: translate3d(0, 7px, 0);
 }
 
 .tarot-deck-stack-shadow {

@@ -481,14 +481,26 @@ export function TarotExperience() {
             return card;
           }
 
-          const force = (interactionRadius - distance) / interactionRadius;
-          const speedBoost = clamp(sample.movementLength / 24, 0.65, 2.1);
+          const proximity = (interactionRadius - distance) / interactionRadius;
+          const force = Math.pow(proximity, 1.65);
+          const speedBoost = clamp(sample.movementLength / 28, 0.55, 1.75);
+          const tangentX = -directionY;
+          const tangentY = directionX;
+          const drift = ((index % 5) - 2) / 2;
 
           return {
             id: card.id,
-            x: clamp(card.x + directionX * force * 52 * speedBoost + (Math.random() - 0.5) * 8, -500, 500),
-            y: clamp(card.y + directionY * force * 38 * speedBoost + (Math.random() - 0.5) * 7, -245, 245),
-            rotate: clamp(card.rotate + directionX * force * 16 + (Math.random() - 0.5) * 7, -72, 72),
+            x: clamp(
+              card.x + directionX * force * 42 * speedBoost + tangentX * force * drift * 9 + (Math.random() - 0.5) * 5,
+              -500,
+              500,
+            ),
+            y: clamp(
+              card.y + directionY * force * 31 * speedBoost + tangentY * force * drift * 7 + (Math.random() - 0.5) * 5,
+              -245,
+              245,
+            ),
+            rotate: clamp(card.rotate + (directionX + drift * 0.45) * force * 13 + (Math.random() - 0.5) * 5, -72, 72),
             z: 100 + index,
           };
         }),
@@ -498,7 +510,7 @@ export function TarotExperience() {
 
   function finishShuffle() {
     setStage("fan");
-    window.setTimeout(() => setStage("draw"), 650);
+    window.setTimeout(() => setStage("draw"), 460);
   }
 
   function handleCardDrop(card: TarotCardData, _event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
@@ -583,7 +595,7 @@ export function TarotExperience() {
         <span className="font-title text-xs tracking-[0.34em]">OLD WITCH TABLE</span>
       </div>
 
-      {(stage === "intro" || stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan" || stage === "draw") && (
+      {(stage === "intro" || stage === "question" || stage === "camera-lift" || stage === "shuffle" || stage === "fan") && (
         <section className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-[41%] h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d59b4c]/10 blur-3xl" />
           <div
@@ -600,8 +612,8 @@ export function TarotExperience() {
                   key={card.id}
                   initial={false}
                   animate={
-                    stage === "fan" || stage === "draw"
-                      ? { x: 0, y: 320, rotate: 0, opacity: 0 }
+                    stage === "fan"
+                      ? { x: 56, y: "calc(50vh - 112px)", rotate: 0, opacity: 1 }
                       : isStacked
                         ? { ...stack, opacity: stage === "intro" ? 0 : 1 }
                         : { x: card.x, y: card.y, rotate: card.rotate, opacity: 1 }
@@ -609,7 +621,9 @@ export function TarotExperience() {
                   transition={
                     isStacked
                       ? { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
-                      : { duration: 0.18, ease: "linear" }
+                      : stage === "fan"
+                        ? { duration: 0.42, ease: [0.4, 0, 0.2, 1] }
+                        : { type: "spring", stiffness: 108, damping: 17, mass: 0.9 }
                   }
                   className="absolute inset-0 will-change-transform"
                   style={{ zIndex: card.z }}
@@ -749,11 +763,11 @@ export function TarotExperience() {
                       document.body.classList.remove("tarot-dragging");
                       handleCardDrop(card, event, info);
                     }}
-                    initial={false}
+                    initial={{ x: 0, y: 0, rotate: 0 }}
                     animate={{ x, y, rotate: angle }}
                     whileHover={{ y: y - 28, scale: 1.04 }}
-                    whileDrag={{ scale: 1.08, zIndex: 750, boxShadow: "0 10px 24px rgba(0, 0, 0, 0.42)" }}
-                    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                    whileDrag={{ scale: 1.08, zIndex: 750, boxShadow: "0 6px 16px rgba(0, 0, 0, 0.28)" }}
+                    transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
                     className="absolute left-1/2 top-14 h-44 w-28 cursor-grab will-change-transform active:cursor-grabbing"
                     style={{ zIndex: index }}
                   >
