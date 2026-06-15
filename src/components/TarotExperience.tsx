@@ -166,7 +166,10 @@ function FaceUpMiniCard({
       className={`tarot-card relative ${sizeClass}`}
       style={{ zIndex: variant === "journal" ? 920 : "auto" }}
     >
-      <div className="relative h-full w-full">
+      <div
+        className="relative h-full w-full"
+        style={{ transform: orientation === "reversed" ? "rotate(180deg)" : undefined }}
+      >
         <CardFront card={card} orientation={orientation} />
       </div>
     </motion.div>
@@ -806,12 +809,6 @@ export function TarotExperience() {
                             variant="journal"
                           />
                         )}
-                      </div>
-                      <div className="mt-3 text-center text-[#23130c]">
-                        <p className="font-title text-xl">{positionCopy[position].title}</p>
-                        <p className="mt-1 text-sm">
-                          {card?.nameCn} · {placed ? orientationLabel(placed.orientation) : ""}
-                        </p>
                       </div>
                     </motion.div>
                   );
