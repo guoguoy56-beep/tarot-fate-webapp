@@ -134,12 +134,12 @@ const CardBack = memo(function CardBack({ elevated = true }: { elevated?: boolea
 
 function CardFront({ card }: { card: TarotCardData; orientation: "upright" | "reversed" }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[10px] bg-[#d6bd78] shadow-[0_8px_20px_rgba(0,0,0,0.35)]">
+    <div className="relative h-full w-full overflow-hidden rounded-[10px] bg-[radial-gradient(circle_at_50%_42%,#d8c07c_0%,#c6ad70_62%,#8f7447_100%)] shadow-[0_8px_20px_rgba(0,0,0,0.35)]">
       <img
         src={card.image}
         alt={`${card.nameCn} / ${card.nameEn}`}
         draggable={false}
-        className="absolute inset-0 h-full w-full select-none object-cover sepia-[0.42] saturate-[0.72] contrast-[0.9] brightness-[1.04]"
+        className="absolute inset-[3px] h-[calc(100%-6px)] w-[calc(100%-6px)] select-none rounded-[7px] object-cover sepia-[0.42] saturate-[0.72] contrast-[0.9] brightness-[1.04]"
       />
       <div className="pointer-events-none absolute inset-0 bg-[#c99b42]/16 mix-blend-multiply" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.2),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_48%,rgba(85,45,18,0.18)_78%,rgba(28,12,6,0.46)_100%)]" />
