@@ -33,7 +33,7 @@ const majorArcana: TarotCardData[] = [
   uprightKeywords: uprightKeywords as string[],
   reversedKeywords: reversedKeywords as string[],
   meaning: meaning as string,
-  image: `/cards/major/${id}.png`,
+  image: `/cards/rws/major-${String(number).padStart(2, "0")}-${id}.jpg`,
 }));
 
 const suits: Record<Exclude<TarotSuit, null>, { cn: string; en: string; theme: string }> = {
@@ -71,7 +71,7 @@ const minorArcana: TarotCardData[] = Object.entries(suits).flatMap(([suitKey, su
     uprightKeywords: rank.up,
     reversedKeywords: rank.rev,
     meaning: `${suit.theme}在这张牌里留下了${rank.cn}重痕迹。`,
-    image: `/cards/minor/${suitKey}-${rank.n}.png`,
+    image: `/cards/rws/${suitKey}-${rank.n}.jpg`,
   })),
 );
 

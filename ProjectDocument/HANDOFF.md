@@ -100,6 +100,7 @@ src/lib/tarot.ts
 src/types/reading.ts
 src/types/tarot.ts
 public/assets/old-witch-table-home-bg.png
+public/cards/rws/*.jpg
 ```
 
 当前实现仍主要集中在 `src/components/TarotExperience.tsx`，包括首页、洗牌、抽牌、阅读和终局手记的大部分界面与交互。
@@ -139,6 +140,7 @@ public/assets/old-witch-table-home-bg.png
 - 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
 - DeepSeek 真实在线接口已完成联调；服务端只向模型发送当前正逆位对应的关键词，并明确禁止模型改写牌的实际方向。
 - 已选定并接入 Eclipse Reliquary / 日蚀圣龛正式卡背，首页牌堆、洗牌、底部牌带、抽牌与翻牌背面统一使用 `public/assets/tarot-card-back.webp`。
+- 已接入完整 78 张 Rider-Waite-Smith 真实牌面 JPG 素材，文件位于 `public/cards/rws/`；`src/data/tarotCards.ts` 已改为使用 `/cards/rws/*.jpg` 路径，翻牌正面已从代码占位样式替换为真实牌面加旧牌外框、暗金描边和复古滤镜。
 - 已优化 78 张牌交互性能：洗牌指针更新限制为每动画帧一次并缓存卡背节点；抽牌牌带使用稳定牌位，抽走单牌时不再触发其余牌集体重排，并仅为当前拖拽牌绘制外阴影；首页牌堆改为单一整体阴影，避免 78 层阴影叠加。
 - 洗牌扰动采用非线性距离衰减与低刚度弹簧响应，卡牌带滞后和惯性而非锁定鼠标；洗牌结束后所有牌保持可见地快速收拢到下方同一位置，再从该位置连续展开为抽牌牌带，不使用渐隐渐显。
 - localStorage 历史记录读取和保存。
@@ -195,7 +197,7 @@ public/assets/old-witch-table-home-bg.png
 当前代码与最新设计文档仍有差异：
 
 - 仓库不包含 `.env.local`，在新设备或部署环境运行真实解读前仍需单独配置 DeepSeek API Key。
-- 真实 Rider-Waite-Smith 牌面资源尚未接入，目前翻牌正面仍为代码占位样式。
+- 真实牌面当前为 JPG 版本，尚未统一转换为 WebP；如后续接入可靠图片转换工具，可再压缩和统一格式。
 - `TarotExperience.tsx` 仍使用 `camera-lift` 阶段命名。
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
 - 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。

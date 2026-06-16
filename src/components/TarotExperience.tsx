@@ -136,18 +136,20 @@ function CardFront({ card, orientation }: { card: TarotCardData; orientation: "u
   const keywords = orientation === "upright" ? card.uprightKeywords : card.reversedKeywords;
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#9d7b42] bg-[#d9c390] text-[#23130c] shadow-[inset_0_0_32px_rgba(74,39,16,0.3)]">
-      <div className="absolute inset-2 rounded-[7px] border border-[#4b2b16]/50" />
-      <div className="absolute left-1/2 top-7 h-16 w-16 -translate-x-1/2 rounded-full border border-[#5d3519]/50 bg-[#b08a4a]/20" />
-      <div className="absolute inset-x-5 top-12 flex h-28 items-center justify-center rounded-full border border-[#5d3519]/25 bg-[#f4dfb7]/28 font-title text-4xl text-[#3a1115]">
-        {card.arcana === "major" ? card.number : card.nameCn.slice(-1)}
+    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#9d7b42] bg-[#1b100b] text-[#f4dfb7] shadow-[inset_0_0_20px_rgba(74,39,16,0.42),0_8px_20px_rgba(0,0,0,0.35)]">
+      <img
+        src={card.image}
+        alt={`${card.nameCn} / ${card.nameEn}`}
+        draggable={false}
+        className="absolute inset-[7px] h-[calc(100%-14px)] w-[calc(100%-14px)] select-none rounded-[6px] object-cover sepia-[0.16] saturate-[0.92] contrast-[0.96]"
+      />
+      <div className="pointer-events-none absolute inset-0 rounded-[9px] border border-[#f0c879]/35 shadow-[inset_0_0_18px_rgba(0,0,0,0.46)]" />
+      <div className="pointer-events-none absolute inset-[7px] rounded-[6px] bg-[radial-gradient(circle_at_50%_18%,rgba(244,217,158,0.13),transparent_36%),linear-gradient(180deg,transparent_58%,rgba(22,11,7,0.78))]" />
+      <div className="absolute inset-x-3 bottom-3 text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        <p className="font-title text-base leading-tight text-[#f8e4b8]">{card.nameCn}</p>
+        <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[#d8b56d]/88">{card.nameEn}</p>
+        <p className="mt-1 line-clamp-1 text-[9px] text-[#f4dfb7]/80">{keywords.join(" / ")}</p>
       </div>
-      <div className="absolute inset-x-4 bottom-8 text-center">
-        <p className="font-title text-lg leading-tight">{card.nameCn}</p>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-[#5d3519]">{card.nameEn}</p>
-        <p className="mt-3 text-[10px] text-[#44220f]">{keywords.join(" / ")}</p>
-      </div>
-      {orientation === "reversed" && <div className="absolute right-3 top-3 text-xs text-[#3a1115]">逆</div>}
     </div>
   );
 }
