@@ -132,24 +132,20 @@ const CardBack = memo(function CardBack({ elevated = true }: { elevated?: boolea
   );
 });
 
-function CardFront({ card, orientation }: { card: TarotCardData; orientation: "upright" | "reversed" }) {
-  const keywords = orientation === "upright" ? card.uprightKeywords : card.reversedKeywords;
-
+function CardFront({ card }: { card: TarotCardData; orientation: "upright" | "reversed" }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#9d7b42] bg-[#1b100b] text-[#f4dfb7] shadow-[inset_0_0_20px_rgba(74,39,16,0.42),0_8px_20px_rgba(0,0,0,0.35)]">
+    <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-[#8f6b36] bg-[#21140b] shadow-[inset_0_0_20px_rgba(74,39,16,0.5),0_8px_20px_rgba(0,0,0,0.35)]">
       <img
         src={card.image}
         alt={`${card.nameCn} / ${card.nameEn}`}
         draggable={false}
-        className="absolute inset-[7px] h-[calc(100%-14px)] w-[calc(100%-14px)] select-none rounded-[6px] object-cover sepia-[0.16] saturate-[0.92] contrast-[0.96]"
+        className="absolute inset-[8px] h-[calc(100%-16px)] w-[calc(100%-16px)] select-none rounded-[5px] object-cover sepia-[0.42] saturate-[0.72] contrast-[0.9] brightness-[1.04]"
       />
-      <div className="pointer-events-none absolute inset-0 rounded-[9px] border border-[#f0c879]/35 shadow-[inset_0_0_18px_rgba(0,0,0,0.46)]" />
-      <div className="pointer-events-none absolute inset-[7px] rounded-[6px] bg-[radial-gradient(circle_at_50%_18%,rgba(244,217,158,0.13),transparent_36%),linear-gradient(180deg,transparent_58%,rgba(22,11,7,0.78))]" />
-      <div className="absolute inset-x-3 bottom-3 text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-        <p className="font-title text-base leading-tight text-[#f8e4b8]">{card.nameCn}</p>
-        <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-[#d8b56d]/88">{card.nameEn}</p>
-        <p className="mt-1 line-clamp-1 text-[9px] text-[#f4dfb7]/80">{keywords.join(" / ")}</p>
-      </div>
+      <div className="pointer-events-none absolute inset-[8px] rounded-[5px] bg-[#c99b42]/18 mix-blend-multiply" />
+      <div className="pointer-events-none absolute inset-[8px] rounded-[5px] bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.22),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_44%,rgba(79,42,18,0.2)_76%,rgba(26,12,7,0.48)_100%)]" />
+      <div className="pointer-events-none absolute inset-[8px] rounded-[5px] bg-[linear-gradient(100deg,transparent_0%,rgba(88,45,18,0.14)_2%,transparent_4%,transparent_22%,rgba(255,236,172,0.1)_23%,transparent_25%,transparent_67%,rgba(80,43,19,0.12)_68%,transparent_71%),linear-gradient(8deg,rgba(255,244,201,0.1),transparent_28%,rgba(72,35,14,0.12)_88%)] opacity-80" />
+      <div className="pointer-events-none absolute inset-0 rounded-[9px] border border-[#d2a25b]/48 shadow-[inset_0_0_0_7px_rgba(37,20,12,0.72),inset_0_0_22px_rgba(0,0,0,0.58)]" />
+      <div className="pointer-events-none absolute inset-[7px] rounded-[6px] border border-[#f1d08a]/18 shadow-[inset_0_0_12px_rgba(96,49,18,0.46)]" />
     </div>
   );
 }
