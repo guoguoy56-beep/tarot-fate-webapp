@@ -139,13 +139,14 @@ function CardFront({ card }: { card: TarotCardData; orientation: "upright" | "re
         src={card.image}
         alt={`${card.nameCn} / ${card.nameEn}`}
         draggable={false}
-        className="absolute inset-[5px] h-[calc(100%-10px)] w-[calc(100%-10px)] select-none rounded-[6px] object-cover sepia-[0.42] saturate-[0.72] contrast-[0.9] brightness-[1.04]"
+        className="absolute inset-[5px] h-[calc(100%-10px)] w-[calc(100%-10px)] select-none rounded-[6px] object-cover sepia-[0.55] saturate-[0.66] contrast-[0.88] brightness-[1.02]"
       />
-      <div className="pointer-events-none absolute inset-0 bg-[#d8a640]/22 mix-blend-multiply" />
-      <div className="pointer-events-none absolute inset-0 bg-[#c99b42]/16 mix-blend-multiply" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.2),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_48%,rgba(85,45,18,0.18)_78%,rgba(28,12,6,0.46)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,transparent_0%,rgba(88,45,18,0.13)_2%,transparent_4%,transparent_22%,rgba(255,236,172,0.1)_23%,transparent_25%,transparent_67%,rgba(80,43,19,0.12)_68%,transparent_71%),linear-gradient(8deg,rgba(255,244,201,0.08),transparent_28%,rgba(72,35,14,0.12)_88%)] opacity-75" />
-      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_16px_rgba(0,0,0,0.42),inset_0_0_38px_rgba(53,27,10,0.34)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[rgba(226,181,84,0.2)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[#a96f26]/18 mix-blend-multiply" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.18),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_44%,rgba(93,55,21,0.2)_76%,rgba(31,14,6,0.5)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_8%,rgba(97,58,20,0.24),transparent_22%),radial-gradient(circle_at_94%_10%,rgba(92,54,20,0.22),transparent_24%),radial-gradient(circle_at_10%_92%,rgba(80,45,17,0.2),transparent_24%),radial-gradient(circle_at_91%_88%,rgba(90,51,18,0.24),transparent_26%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,transparent_0%,rgba(88,45,18,0.16)_2%,transparent_5%,transparent_22%,rgba(255,236,172,0.09)_23%,transparent_25%,transparent_67%,rgba(80,43,19,0.15)_68%,transparent_72%),linear-gradient(8deg,rgba(255,244,201,0.08),transparent_28%,rgba(72,35,14,0.15)_88%)] opacity-80" />
+      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_18px_rgba(0,0,0,0.46),inset_0_0_48px_rgba(57,29,10,0.42)]" />
     </div>
   );
 }
