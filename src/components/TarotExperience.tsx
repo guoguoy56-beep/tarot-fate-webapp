@@ -143,10 +143,11 @@ function CardFront({ card }: { card: TarotCardData; orientation: "upright" | "re
       />
       <div className="pointer-events-none absolute inset-0 bg-[rgba(226,181,84,0.2)]" />
       <div className="pointer-events-none absolute inset-0 bg-[#a96f26]/18 mix-blend-multiply" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.18),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_44%,rgba(93,55,21,0.2)_76%,rgba(31,14,6,0.5)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_8%,rgba(97,58,20,0.24),transparent_22%),radial-gradient(circle_at_94%_10%,rgba(92,54,20,0.22),transparent_24%),radial-gradient(circle_at_10%_92%,rgba(80,45,17,0.2),transparent_24%),radial-gradient(circle_at_91%_88%,rgba(90,51,18,0.24),transparent_26%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_22%,rgba(255,232,157,0.18),transparent_34%),radial-gradient(circle_at_50%_52%,transparent_50%,rgba(93,55,21,0.14)_80%,rgba(31,14,6,0.28)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_8%,rgba(97,58,20,0.14),transparent_23%),radial-gradient(circle_at_94%_10%,rgba(92,54,20,0.13),transparent_25%),radial-gradient(circle_at_10%_92%,rgba(80,45,17,0.12),transparent_25%),radial-gradient(circle_at_91%_88%,rgba(90,51,18,0.14),transparent_27%)]" />
+      <div className="pointer-events-none absolute inset-[5px] rounded-[6px] bg-[linear-gradient(90deg,rgba(67,34,13,0.42),rgba(67,34,13,0.18)_7%,transparent_18%,transparent_82%,rgba(67,34,13,0.2)_93%,rgba(67,34,13,0.44)),linear-gradient(180deg,rgba(67,34,13,0.36),rgba(67,34,13,0.16)_8%,transparent_18%,transparent_82%,rgba(67,34,13,0.2)_92%,rgba(67,34,13,0.42))] mix-blend-multiply" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,transparent_0%,rgba(88,45,18,0.16)_2%,transparent_5%,transparent_22%,rgba(255,236,172,0.09)_23%,transparent_25%,transparent_67%,rgba(80,43,19,0.15)_68%,transparent_72%),linear-gradient(8deg,rgba(255,244,201,0.08),transparent_28%,rgba(72,35,14,0.15)_88%)] opacity-80" />
-      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_18px_rgba(0,0,0,0.46),inset_0_0_48px_rgba(57,29,10,0.42)]" />
+      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_14px_rgba(0,0,0,0.24),inset_0_0_34px_rgba(57,29,10,0.24)]" />
     </div>
   );
 }
