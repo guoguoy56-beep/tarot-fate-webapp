@@ -86,8 +86,9 @@
 - 包管理器：npm。优先使用已有 `package-lock.json` 和 `node_modules`，不要无理由更换为 pnpm、yarn 或 bun。
 - 开发命令：`npm run dev`，默认本地地址为 `http://localhost:3000`。
 - 测试命令：当前未配置独立测试脚本；涉及功能或交互修改时，至少运行构建并进行必要的手动流程验证。
-- Lint 命令：`npm run lint`。注意当前脚本为 `next lint`，在当前 Next.js 版本组合下可能不可用；如无法运行，需要如实记录。
-- 类型检查命令：当前未配置单独 `typecheck` 脚本，类型检查由 `npm run build` 覆盖。
+- Lint 命令：`npm run lint`。
+- 类型检查命令：`npm run typecheck`。
+- 综合检查命令：`npm run check`，会依次运行 lint、typecheck 和 build。
 - 构建命令：`npm run build`。代码、类型、API 或资源路径修改后优先运行该命令验证。
 - 主要源码目录：`src/app/`、`src/components/`、`src/data/`、`src/lib/`、`src/types/`。
 - 项目文档目录：`ProjectDocument/`。修改代码、视觉方案、动效方案、AI 接口或素材策略时，需要同步更新相关文档；阶段进度或下一步变化需要同步更新 `ProjectDocument/HANDOFF.md`。

@@ -84,6 +84,188 @@ textarea {
     linear-gradient(90deg, rgba(0, 0, 0, 0.26), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.28));
 }
 
+.ambient-light {
+  z-index: 5;
+  overflow: hidden;
+  mix-blend-mode: screen;
+}
+
+.ambient-light__candle,
+.ambient-light__sweep,
+.ambient-light__center,
+.ambient-light__dust-field {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ambient-light__candle {
+  width: clamp(24rem, 34vw, 40rem);
+  height: clamp(20rem, 31vw, 36rem);
+  border-radius: 9999px;
+  filter: blur(10px);
+  opacity: var(--ambient-candle-mid);
+  transform-origin: center;
+}
+
+.ambient-light__candle--left {
+  left: 10.8%;
+  top: 3.2%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 226, 150, 0.64), rgba(222, 133, 47, 0.28) 32%, transparent 76%),
+    radial-gradient(circle at 48% 54%, rgba(152, 64, 23, 0.2), transparent 82%);
+  animation: candle-flicker-left 1.85s ease-in-out infinite;
+}
+
+.ambient-light__candle--right {
+  left: 89.7%;
+  top: 3.3%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 229, 156, 0.62), rgba(215, 123, 43, 0.27) 33%, transparent 78%),
+    radial-gradient(circle at 48% 54%, rgba(145, 58, 22, 0.18), transparent 82%);
+  animation: candle-flicker-right 1.55s ease-in-out infinite;
+}
+
+.ambient-light__sweep {
+  inset: 0;
+  opacity: var(--ambient-sweep-high);
+  background:
+    radial-gradient(ellipse at 11% 11%, rgba(248, 194, 105, 0.34), transparent 34%),
+    radial-gradient(ellipse at 90% 8%, rgba(248, 194, 105, 0.32), transparent 36%),
+    radial-gradient(ellipse at 50% 38%, rgba(205, 116, 42, 0.18), transparent 48%);
+  animation: candle-sweep 5.5s ease-in-out infinite alternate;
+}
+
+.ambient-light__center {
+  left: 50%;
+  top: 45%;
+  width: clamp(34rem, 58vw, 62rem);
+  height: clamp(20rem, 42vw, 42rem);
+  border-radius: 9999px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(245, 184, 91, 0.42), rgba(150, 74, 28, 0.18) 38%, transparent 70%);
+  filter: blur(18px);
+  opacity: var(--ambient-center-high);
+  transform: translate3d(-50%, -50%, 0);
+  animation: center-breath 6.4s ease-in-out infinite;
+}
+
+.ambient-light__dust-field {
+  inset: 0;
+  opacity: var(--ambient-dust);
+}
+
+.ambient-light__dust {
+  position: absolute;
+  left: var(--dust-left);
+  top: var(--dust-top);
+  width: var(--dust-size);
+  height: var(--dust-size);
+  border-radius: 9999px;
+  background: rgba(244, 217, 158, 0.8);
+  box-shadow: 0 0 7px rgba(244, 196, 114, 0.56);
+  opacity: 0;
+  animation: dust-float var(--dust-duration) ease-in-out infinite;
+  animation-delay: var(--dust-delay);
+}
+
+@keyframes candle-flicker-left {
+  0%,
+  100% {
+    opacity: var(--ambient-candle-low);
+    transform: translate3d(-50%, -50%, 0) scale(0.96);
+  }
+
+  18% {
+    opacity: var(--ambient-candle-high);
+    transform: translate3d(-50%, -50%, 0) scale(1.04);
+  }
+
+  37% {
+    opacity: var(--ambient-candle-low);
+    transform: translate3d(-50%, -50%, 0) scale(0.98);
+  }
+
+  58% {
+    opacity: var(--ambient-candle-peak);
+    transform: translate3d(-50%, -50%, 0) scale(1.08);
+  }
+
+  81% {
+    opacity: var(--ambient-candle-mid);
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes candle-flicker-right {
+  0%,
+  100% {
+    opacity: var(--ambient-candle-low);
+    transform: translate3d(-50%, -50%, 0) scale(0.95);
+  }
+
+  21% {
+    opacity: var(--ambient-candle-peak);
+    transform: translate3d(-50%, -50%, 0) scale(1.07);
+  }
+
+  43% {
+    opacity: var(--ambient-candle-low);
+    transform: translate3d(-50%, -50%, 0) scale(0.99);
+  }
+
+  66% {
+    opacity: var(--ambient-candle-high);
+    transform: translate3d(-50%, -50%, 0) scale(1.03);
+  }
+
+  84% {
+    opacity: var(--ambient-candle-mid);
+    transform: translate3d(-50%, -50%, 0) scale(1.01);
+  }
+}
+
+@keyframes candle-sweep {
+  from {
+    opacity: var(--ambient-sweep-low);
+    transform: translate3d(-0.4%, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: var(--ambient-sweep-high);
+    transform: translate3d(0.4%, 0.35%, 0) scale(1.015);
+  }
+}
+
+@keyframes center-breath {
+  0%,
+  100% {
+    opacity: var(--ambient-center-low);
+    transform: translate3d(-50%, -50%, 0) scale(0.985);
+  }
+
+  50% {
+    opacity: var(--ambient-center-high);
+    transform: translate3d(-50%, -50%, 0) scale(1.035);
+  }
+}
+
+@keyframes dust-float {
+  0%,
+  100% {
+    opacity: 0.04;
+    transform: translate3d(0, 0, 0);
+  }
+
+  22% {
+    opacity: 0.26;
+  }
+
+  68% {
+    opacity: 0.13;
+    transform: translate3d(var(--dust-x), var(--dust-y), 0);
+  }
+}
+
 .ritual-atmosphere {
   background: radial-gradient(circle at 50% 44%, transparent 0, rgba(0, 0, 0, 0.2) 34%, rgba(0, 0, 0, 0.88) 82%);
 }
@@ -215,4 +397,29 @@ textarea {
 
 .writing-mode-vertical {
   writing-mode: vertical-rl;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-light__candle,
+  .ambient-light__sweep,
+  .ambient-light__center,
+  .ambient-light__dust {
+    animation: none;
+  }
+
+  .ambient-light__candle {
+    opacity: var(--ambient-candle-low);
+  }
+
+  .ambient-light__sweep {
+    opacity: var(--ambient-sweep-low);
+  }
+
+  .ambient-light__center {
+    opacity: var(--ambient-center-low);
+  }
+
+  .ambient-light__dust-field {
+    opacity: 0;
+  }
 }

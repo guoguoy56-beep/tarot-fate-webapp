@@ -41,9 +41,14 @@
 
 ```powershell
 npm run dev
+npm run lint
+npm run typecheck
+npm run check
 npm run build
 npm run start
 ```
+
+`npm run dev` 和 `npm run start` 均固定使用 `3000` 端口；如果端口被占用，应先释放端口，不自动切换到 `3001`。
 
 本地开发地址：
 
@@ -113,16 +118,20 @@ public/cards/rws/*.jpg
 - Framer Motion 已接入。
 - `lucide-react` 已接入。
 - App Router 页面入口已配置。
+- 工程基线已补齐：`eslint.config.mjs` 使用 Next core-web-vitals 与 TypeScript 规则，`npm run lint` 不再进入交互初始化；新增 `npm run typecheck` 与 `npm run check`。
+- 本地开发与生产启动脚本已固定端口为 `3000`，避免 Next.js 自动切换到 `3001` 造成混乱。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
 - 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
 - 首页、洗牌、抽牌、阅读与终局阶段统一使用首页旧女巫木桌背景图和首页氛围遮罩，不在后续流程加强暗角；允许保留轻微场景缩放运镜。
+- 已实现 `AmbientLightEffects`：按阶段控制两侧蜡烛 flicker、中央桌面暖光呼吸、烛光附近少量尘埃，并支持 `prefers-reduced-motion` 降低动态。
+- 左右蜡烛局部 flicker 光源中心已按截图对齐到火焰中心，允许光效层向屏幕外溢出；局部光晕范围已扩大，但中心点保持不变。
 
 已完成的功能和交互：
 
 - 首页标题、引导语、羊皮纸输入区和“开始仪式”按钮。
 - 首页牌堆已使用独立中轴锚点固定在视口中心，避免 Framer Motion 动画覆盖 CSS 居中位移。
 - 首页羊皮纸输入区已改为底部安全距离定位并保持水平居中，与中央牌堆保留稳定间隔；矮窗口下自动压缩纵向内边距。
-- 首页与洗牌阶段已改为同一批 78 张牌和同一个中轴锚点持续渲染；首页 UI 退场期间牌堆保持原位，进入洗牌后才从原位响应鼠标扰动。
+- 首页 78 张真实牌堆已统一：首页与洗牌阶段已改为同一批 78 张牌和同一个中轴锚点持续渲染；首页 UI 退场期间牌堆保持原位，进入洗牌后才从原位响应鼠标扰动。
 - 本地随机塔罗牌 deck 生成。
 - 78 张牌的卡背渲染。
 - 鼠标轨迹扰动洗牌逻辑。
@@ -176,8 +185,8 @@ public/cards/rws/*.jpg
 
 - 采用方案 B：统一 `TarotDeck` 组件。
 - 首页牌堆、洗牌牌堆、底部牌带后续应由同一批真实牌数据和统一组件管理。
-- 首页牌堆是整齐压紧的一摞真实 78 张牌，不是 5 张装饰预览。
-- 当前代码里 `HomeDeckPreview` 仍只是 5 张装饰预览牌，后续需要替换。
+- 首页 78 张真实牌堆已统一；当前首页牌堆是整齐压紧的一摞真实 78 张牌，不是 5 张装饰预览。
+- 当前代码已在首页与洗牌阶段复用同一批 78 张牌的中轴牌堆，后续需要收敛为独立 `TarotDeck` 组件。
 
 镜头与背景：
 
@@ -202,7 +211,6 @@ public/cards/rws/*.jpg
 - 背景目前还有 `rotateX` 相关动效，需要按新方案弱化或取消。
 - 首页牌堆已与洗牌牌堆统一为同一批 78 张牌，但后续仍需将当前内联布局进一步收敛为独立 `TarotDeck` 组件。
 - `shuffle-ready` / `shuffle-active` 尚未拆分。
-- `AmbientLightEffects` 尚未实现。
 - `RitualTitle` 单字乱序入场尚未实现。
 - `CardRevealEffects` 当前牌聚光、边缘高光、神秘金粉粒子尚未实现。
 - `reading` 阶段三牌区上移和底部解读面板防遮挡布局尚未实现。
@@ -212,36 +220,31 @@ public/cards/rws/*.jpg
 
 建议按以下顺序推进，避免一次性重构过大：
 
-1. 实现 `AmbientLightEffects`。
-   - 首页两侧蜡烛 flicker。
-   - 中央桌面暖光呼吸。
-   - 烛光附近少量尘埃。
-   - 按阶段控制强度。
-
-2. 实现 `RitualTitle`。
+1. 实现 `RitualTitle`。
    - 主标题单字乱序重叠显现。
    - 保留完整 `aria-label`。
    - 英文小标题保持整体淡入。
 
-3. 替换首页牌堆。
-   - 先把 5 张装饰 `HomeDeckPreview` 替换为真实 deck 的整齐压紧牌堆。
+2. 收敛首页牌堆实现。
+   - 当前首页已渲染真实 deck 的整齐压紧牌堆。
+   - 后续把当前内联布局迁移到统一 `TarotDeck` 组件。
    - 保留现有鼠标扰动算法。
 
-4. 引入 `ritual-transition`。
+3. 引入 `ritual-transition`。
    - 替代当前明显 `camera-lift` 语义。
    - 标题淡出，羊皮纸模糊下沉，牌堆进入 `shuffle-ready`。
 
-5. 拆分统一 `TarotDeck`。
+4. 拆分统一 `TarotDeck`。
    - 支持 `home-stack / shuffle-ready / shuffle-active / fan / draw`。
    - 迁移现有鼠标扰动逻辑。
    - 保持现有抽牌流程可用。
 
-6. 修正阅读阶段布局。
+5. 修正阅读阶段布局。
    - 三牌区上移。
    - 底部解读面板防遮挡。
    - 移动端降低卡牌尺寸。
 
-7. 实现 `CardRevealEffects`。
+6. 实现 `CardRevealEffects`。
    - 当前牌暖光聚焦。
    - 当前牌边缘高光。
    - 神秘金粉粒子揭示效果。
@@ -252,6 +255,8 @@ public/cards/rws/*.jpg
 
 每次实现后至少检查：
 
+- `npm run lint` 是否通过。
+- `npm run typecheck` 是否通过。
 - `npm run build` 是否通过。
 - 首页是否能正常进入。
 - 用户能否输入问题并点击开始仪式。

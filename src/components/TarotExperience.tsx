@@ -1,5 +1,6 @@
 "use client";
 
+import { AmbientLightEffects, type AmbientMode } from "@/components/AmbientLightEffects";
 import { tarotCardMap } from "@/data/tarotCards";
 import { drawRandomDeck, orientationLabel, positionLabel, randomOrientation } from "@/lib/tarot";
 import { readReadingRecords, saveReadingRecord } from "@/lib/storage";
@@ -49,6 +50,26 @@ const positionCopy: Record<SpreadPosition, { title: string; hint: string }> = {
 };
 
 const readingKeys: SpreadPosition[] = ["past", "present", "future"];
+
+function getAmbientMode(stage: AppStage): AmbientMode {
+  if (stage === "intro" || stage === "question") {
+    return "home";
+  }
+
+  if (stage === "camera-lift") {
+    return "transition";
+  }
+
+  if (stage === "shuffle" || stage === "fan") {
+    return "shuffle";
+  }
+
+  if (stage === "draw") {
+    return "draw";
+  }
+
+  return stage;
+}
 
 function createShuffleState(deck: TarotCardData[]): ShuffleCard[] {
   return deck.map((card, index) => ({ id: card.id, ...getStackPosition(index, deck.length), z: index }));
@@ -589,6 +610,7 @@ export function TarotExperience() {
       />
 
       <div className="home-atmosphere pointer-events-none absolute inset-0" />
+      <AmbientLightEffects mode={getAmbientMode(stage)} />
 
       <div className="pointer-events-none absolute left-12 top-10 z-[40] flex items-center gap-3 text-[#d7b66e]/85">
         <Flame size={18} />
