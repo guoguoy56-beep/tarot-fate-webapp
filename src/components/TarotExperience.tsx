@@ -133,9 +133,9 @@ function TextReveal({ text }: { text: string }) {
 const CardBack = memo(function CardBack({ elevated = true }: { elevated?: boolean }) {
   return (
     <div
-      className={`relative h-full w-full overflow-hidden rounded-[10px] border border-[#8b6738]/75 bg-[#100a08] ${
+      className={`relative h-full w-full overflow-hidden rounded-[10px] border border-[#2d241b]/90 bg-[#0d0907] ${
         elevated
-          ? "shadow-[inset_0_0_16px_rgba(213,155,76,0.1),0_7px_18px_rgba(0,0,0,0.38)]"
+          ? "shadow-[inset_0_0_16px_rgba(150,104,56,0.08),0_7px_18px_rgba(0,0,0,0.38)]"
           : ""
       }`}
     >
