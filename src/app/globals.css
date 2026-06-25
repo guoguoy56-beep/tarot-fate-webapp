@@ -270,10 +270,144 @@ textarea {
   background: radial-gradient(circle at 50% 44%, transparent 0, rgba(0, 0, 0, 0.2) 34%, rgba(0, 0, 0, 0.88) 82%);
 }
 
+.home-title-mark,
+.home-title-submark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(216, 181, 109, 0.82);
+}
+
+.home-title-mark {
+  width: min(44rem, 78vw);
+  gap: 0.9rem;
+}
+
+.home-title-mark__line,
+.home-title-submark__line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216, 181, 109, 0.66), transparent);
+}
+
+.home-title-mark__line {
+  flex: 1;
+}
+
+.home-title-mark__sigil {
+  position: relative;
+  display: grid;
+  width: 3.75rem;
+  height: 3.75rem;
+  place-items: center;
+  color: #f2d492;
+  filter: drop-shadow(0 0 12px rgba(213, 155, 76, 0.34));
+}
+
+.home-title-mark__sigil::before,
+.home-title-mark__sigil::after {
+  position: absolute;
+  content: "";
+  border-radius: 9999px;
+}
+
+.home-title-mark__sigil::before {
+  inset: 0.55rem;
+  border: 1px solid rgba(216, 181, 109, 0.48);
+  border-top-color: transparent;
+}
+
+.home-title-mark__sigil::after {
+  inset: 0.1rem 1.83rem;
+  background: linear-gradient(180deg, transparent, rgba(216, 181, 109, 0.72), transparent);
+}
+
+.home-title-mark__moon {
+  position: absolute;
+  bottom: 0.24rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.58rem;
+  line-height: 1;
+  transform: rotate(-8deg);
+}
+
 .ritual-title {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: clamp(0.1rem, 0.9vw, 0.72rem);
+  font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+  font-weight: 700;
+  line-height: 0.9;
+  color: #f5d99a;
+  letter-spacing: 0;
   text-shadow:
-    0 0 18px rgba(213, 155, 76, 0.34),
-    0 8px 38px rgba(0, 0, 0, 0.72);
+    0 1px 0 rgba(255, 236, 181, 0.5),
+    0 5px 0 rgba(83, 43, 17, 0.58),
+    0 0 18px rgba(213, 155, 76, 0.38),
+    0 14px 34px rgba(0, 0, 0, 0.75);
+  filter: drop-shadow(0 0 10px rgba(213, 155, 76, 0.18));
+}
+
+.ritual-title__char {
+  position: relative;
+  display: inline-block;
+  background: linear-gradient(180deg, #fff0bd 0%, #d5a65c 38%, #8c5b28 68%, #f1c982 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 0.8px rgba(86, 45, 18, 0.52);
+}
+
+.ritual-title__char::after {
+  position: absolute;
+  inset: 10% 6% 5%;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(110deg, transparent 0 20%, rgba(255, 237, 177, 0.34) 22%, transparent 28%),
+    repeating-linear-gradient(165deg, rgba(47, 25, 11, 0.2) 0 1px, transparent 1px 5px);
+  mix-blend-mode: overlay;
+  opacity: 0.58;
+}
+
+.ritual-title__char--fate {
+  font-size: clamp(5.05rem, 7.8vw, 8.9rem);
+  transform: translateY(0.02em) scaleX(1.02);
+}
+
+.ritual-title__char--turn {
+  font-size: clamp(4.55rem, 6.95vw, 7.85rem);
+  transform: translateY(-0.01em) scaleX(0.96);
+}
+
+.ritual-title__char--of {
+  margin-inline: clamp(-0.18rem, -0.2vw, -0.05rem);
+  font-size: clamp(2.8rem, 4.55vw, 5.08rem);
+  transform: translateY(-0.06em) scaleX(0.88);
+}
+
+.ritual-title__char--card {
+  font-size: clamp(5.18rem, 7.95vw, 9.1rem);
+  transform: translateY(0.01em) scaleX(0.94);
+}
+
+.home-title-submark {
+  width: min(18rem, 42vw);
+  gap: 0.62rem;
+}
+
+.home-title-submark__line {
+  flex: 1;
+  opacity: 0.72;
+}
+
+.home-title-submark__moon {
+  color: #e9c27a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.32rem;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(213, 155, 76, 0.32);
+  transform: rotate(-12deg);
 }
 
 .parchment {

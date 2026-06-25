@@ -669,13 +669,26 @@ export function TarotExperience() {
             className="absolute inset-0 px-6"
           >
             <div className="absolute left-1/2 top-[clamp(2.5rem,8vh,6rem)] w-full -translate-x-1/2 text-center">
-              <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-center gap-4 text-[#d8b56d]/72">
-                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d8b56d]/55" />
-                <Sparkles size={16} />
-                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#d8b56d]/55" />
+              <div className="home-title-mark mx-auto mb-4" aria-hidden="true">
+                <span className="home-title-mark__line" />
+                <span className="home-title-mark__sigil">
+                  <Flame size={20} strokeWidth={1.7} />
+                  <span className="home-title-mark__moon">☾</span>
+                </span>
+                <span className="home-title-mark__line" />
               </div>
               <p className="mb-3 text-xs tracking-[0.58em] text-[#d8b56d]/78">THE FATE CARDS</p>
-              <h1 className="ritual-title font-title text-6xl text-[#f4d99e] md:text-7xl">命运之牌</h1>
+              <h1 className="ritual-title" aria-label="命运之牌">
+                <span className="ritual-title__char ritual-title__char--fate">命</span>
+                <span className="ritual-title__char ritual-title__char--turn">运</span>
+                <span className="ritual-title__char ritual-title__char--of">之</span>
+                <span className="ritual-title__char ritual-title__char--card">牌</span>
+              </h1>
+              <div className="home-title-submark mx-auto mt-2" aria-hidden="true">
+                <span className="home-title-submark__line" />
+                <span className="home-title-submark__moon">☽</span>
+                <span className="home-title-submark__line" />
+              </div>
               <p className="mt-4 text-sm tracking-[0.18em] text-[#d8c08c]/82">在烛光熄灭之前，说出你的疑问。</p>
             </div>
             <div className="home-parchment absolute bottom-[clamp(1.5rem,6vh,4rem)] left-1/2 w-[calc(100%_-_3rem)] max-w-3xl -translate-x-1/2 px-9 py-5">
