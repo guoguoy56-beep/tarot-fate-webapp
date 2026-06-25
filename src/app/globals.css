@@ -334,28 +334,28 @@ textarea {
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
-  gap: clamp(0.1rem, 0.9vw, 0.72rem);
+  gap: clamp(0.05rem, 0.62vw, 0.5rem);
   font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
   font-weight: 700;
   line-height: 0.9;
-  color: #f5d99a;
+  color: #d6a45a;
   letter-spacing: 0;
   text-shadow:
-    0 1px 0 rgba(255, 236, 181, 0.5),
-    0 5px 0 rgba(83, 43, 17, 0.58),
-    0 0 18px rgba(213, 155, 76, 0.38),
+    0 1px 0 rgba(255, 223, 151, 0.34),
+    0 4px 0 rgba(71, 36, 14, 0.64),
+    0 0 14px rgba(179, 111, 44, 0.3),
     0 14px 34px rgba(0, 0, 0, 0.75);
-  filter: drop-shadow(0 0 10px rgba(213, 155, 76, 0.18));
+  filter: drop-shadow(0 0 8px rgba(163, 96, 35, 0.16));
 }
 
 .ritual-title__char {
   position: relative;
   display: inline-block;
-  background: linear-gradient(180deg, #fff0bd 0%, #d5a65c 38%, #8c5b28 68%, #f1c982 100%);
+  background: linear-gradient(180deg, #f2cf83 0%, #b77a35 42%, #654018 72%, #d09a4d 100%);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  -webkit-text-stroke: 0.8px rgba(86, 45, 18, 0.52);
+  -webkit-text-stroke: 0.7px rgba(60, 31, 13, 0.7);
 }
 
 .ritual-title__char::after {
@@ -363,31 +363,29 @@ textarea {
   inset: 10% 6% 5%;
   pointer-events: none;
   content: "";
-  background:
-    linear-gradient(110deg, transparent 0 20%, rgba(255, 237, 177, 0.34) 22%, transparent 28%),
-    repeating-linear-gradient(165deg, rgba(47, 25, 11, 0.2) 0 1px, transparent 1px 5px);
+  background: linear-gradient(110deg, transparent 0 22%, rgba(255, 224, 143, 0.24) 26%, transparent 34%);
   mix-blend-mode: overlay;
-  opacity: 0.58;
+  opacity: 0.42;
 }
 
 .ritual-title__char--fate {
-  font-size: clamp(5.05rem, 7.8vw, 8.9rem);
+  font-size: clamp(4.05rem, 6.15vw, 7.05rem);
   transform: translateY(0.02em) scaleX(1.02);
 }
 
 .ritual-title__char--turn {
-  font-size: clamp(4.55rem, 6.95vw, 7.85rem);
+  font-size: clamp(3.7rem, 5.55vw, 6.28rem);
   transform: translateY(-0.01em) scaleX(0.96);
 }
 
 .ritual-title__char--of {
   margin-inline: clamp(-0.18rem, -0.2vw, -0.05rem);
-  font-size: clamp(2.8rem, 4.55vw, 5.08rem);
+  font-size: clamp(2.25rem, 3.65vw, 4.05rem);
   transform: translateY(-0.06em) scaleX(0.88);
 }
 
 .ritual-title__char--card {
-  font-size: clamp(5.18rem, 7.95vw, 9.1rem);
+  font-size: clamp(4.18rem, 6.35vw, 7.25rem);
   transform: translateY(0.01em) scaleX(0.94);
 }
 
