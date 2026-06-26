@@ -120,6 +120,7 @@ public/cards/rws/*.jpg
 - App Router 页面入口已配置。
 - 工程基线已补齐：`eslint.config.mjs` 使用 Next core-web-vitals 与 TypeScript 规则，`npm run lint` 不再进入交互初始化；新增 `npm run typecheck` 与 `npm run check`。
 - 本地开发与生产启动脚本已固定端口为 `3000`，避免 Next.js 自动切换到 `3001` 造成混乱。
+- Next.js 开发缓存目录已配置为 `.next-dev`，与生产构建 `.next` 分离；`.gitignore` 和 `tsconfig.json` 已同步覆盖 `.next-dev`。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
 - 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
 - 首页、洗牌、抽牌、阅读与终局阶段统一使用首页旧女巫木桌背景图和首页氛围遮罩，不在后续流程加强暗角；允许保留轻微场景缩放运镜。
