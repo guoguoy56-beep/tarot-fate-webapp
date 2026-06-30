@@ -341,9 +341,8 @@ textarea {
   color: #d6a45a;
   letter-spacing: 0;
   text-shadow:
-    0 1px 0 rgba(255, 223, 151, 0.34),
-    0 4px 0 rgba(71, 36, 14, 0.64),
-    0 0 14px rgba(179, 111, 44, 0.3),
+    0 1px 0 rgba(255, 223, 151, 0.24),
+    0 0 12px rgba(179, 111, 44, 0.24),
     0 14px 34px rgba(0, 0, 0, 0.75);
   filter: drop-shadow(0 0 8px rgba(163, 96, 35, 0.16));
 }
@@ -355,12 +354,28 @@ textarea {
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  -webkit-text-stroke: 0.45px rgba(60, 31, 13, 0.58);
 }
 
 .ritual-title__char--fate {
   font-size: clamp(4.05rem, 6.15vw, 7.05rem);
   transform: translateY(0.02em) scaleX(1.02);
+}
+
+.ritual-title__char--fate::after,
+.ritual-title__char--card::after {
+  position: absolute;
+  bottom: -0.22em;
+  width: clamp(0.09rem, 0.15vw, 0.17rem);
+  height: 0.48em;
+  pointer-events: none;
+  content: "";
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #c68a3f, #654018 72%, rgba(101, 64, 24, 0));
+  box-shadow: 0 0 8px rgba(179, 111, 44, 0.18);
+}
+
+.ritual-title__char--fate::after {
+  left: 49%;
 }
 
 .ritual-title__char--turn {
@@ -377,6 +392,10 @@ textarea {
 .ritual-title__char--card {
   font-size: clamp(4.18rem, 6.35vw, 7.25rem);
   transform: translateY(0.01em) scaleX(0.94);
+}
+
+.ritual-title__char--card::after {
+  right: 8%;
 }
 
 .home-title-submark {
