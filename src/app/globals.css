@@ -355,17 +355,7 @@ textarea {
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  -webkit-text-stroke: 0.7px rgba(60, 31, 13, 0.7);
-}
-
-.ritual-title__char::after {
-  position: absolute;
-  inset: 10% 6% 5%;
-  pointer-events: none;
-  content: "";
-  background: linear-gradient(110deg, transparent 0 22%, rgba(255, 224, 143, 0.24) 26%, transparent 34%);
-  mix-blend-mode: overlay;
-  opacity: 0.42;
+  -webkit-text-stroke: 0.45px rgba(60, 31, 13, 0.58);
 }
 
 .ritual-title__char--fate {
@@ -379,9 +369,9 @@ textarea {
 }
 
 .ritual-title__char--of {
-  margin-inline: clamp(-0.18rem, -0.2vw, -0.05rem);
-  font-size: clamp(2.25rem, 3.65vw, 4.05rem);
-  transform: translateY(-0.06em) scaleX(0.88);
+  margin-inline: clamp(-0.12rem, -0.12vw, -0.03rem);
+  font-size: clamp(2.78rem, 4.45vw, 4.9rem);
+  transform: translateY(-0.045em) scaleX(0.9);
 }
 
 .ritual-title__char--card {
