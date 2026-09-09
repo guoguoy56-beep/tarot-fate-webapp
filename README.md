@@ -18,35 +18,35 @@
 
 ## 技术栈
 
-- Next.js 14
-- React 18
-- TypeScript
-- Tailwind CSS
-- Framer Motion
+- Next.js 16.3.4（App Router）
+- React / React DOM 19.2.8
+- TypeScript 5.9.3
+- Tailwind CSS 3.4.19
+- Framer Motion 12.43.0
 - DeepSeek API
 
 ## 本地运行
 
-项目统一使用以下运行时主版本：
+项目统一使用以下运行时版本：
 
 - Node.js 24 LTS（`24.x`）
-- npm 11（`11.x`）
+- npm `>=11.19.1 <12`
 
-`.nvmrc` 与 `package.json#engines` 是版本约束的权威来源。首次运行前先确认版本：
+`.nvmrc`、`package.json#engines` 与 `package.json#packageManager` 是版本约束的权威来源；其中 `packageManager` 固定为 `npm@11.19.1`，用于保证锁文件生成与安装行为一致。首次运行前先确认版本：
 
 ```bash
 node --version
 npm --version
 ```
 
-如果使用 nvm，可先执行 `nvm use`；未安装 Node 24 时执行 `nvm install 24` 后再切换。然后安装依赖并启动开发服务：
+如果使用 nvm，可先执行 `nvm use`；未安装 Node 24 时执行 `nvm install 24` 后再切换。npm 版本低于要求时，先升级到 `11.19.1`。然后按锁文件进行标准可复现安装并启动开发服务：
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-当前 `package-lock.json` 的可复现安装问题将在计划任务 `BASE-003` 中修复；完成前不要把 `npm install` 成功视为干净环境可复现的证明。
+日常拉取代码、CI 和部署环境统一使用 `npm ci`；仅在明确变更依赖并需要同步更新 `package-lock.json` 时使用 `npm install`。
 
 启动后访问 [http://localhost:3000](http://localhost:3000)。
 
@@ -68,4 +68,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 ## 当前状态
 
-项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，旧前端已进入维护冻结，后续将整体重新设计和实现；当前按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 优先恢复工程、API、数据与测试基础。运行时主版本已固定为 Node.js 24 LTS / npm 11，下一项任务是 `BASE-002` 框架升级方案。
+项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
+
+截至当前，`BASE-001` 运行时基线、`BASE-002` 框架升级决策和 `BASE-003` 框架/工具链升级均已完成；下一项是 `BASE-004`，为干净安装、Lint、类型检查和生产构建建立自动化 CI 门禁。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。

@@ -1,26 +1,20 @@
-import { FlatCompat } from "@eslint/eslintrc";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  {
-    ignores: [
-      ".next/**",
-      ".next-dev/**",
-      "dist/**",
-      "node_modules/**",
-      "out/**",
-      "output/**",
-      "public/**",
-      "next-env.d.ts",
-    ],
-  },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTypescript,
+  globalIgnores([
+    ".next/**",
+    ".next-dev/**",
+    "dist/**",
+    "node_modules/**",
+    "out/**",
+    "output/**",
+    "public/**",
+    "next-env.d.ts",
+  ]),
   {
     files: ["*.config.js", "next.config.js", "postcss.config.js"],
     rules: {
@@ -33,6 +27,6 @@ const eslintConfig = [
       "@next/next/no-img-element": "off",
     },
   },
-];
+]);
 
 export default eslintConfig;

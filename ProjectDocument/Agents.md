@@ -82,8 +82,9 @@
 
 本项目的具体要求：
 
-- 技术栈：Next.js 14 App Router、React 18、TypeScript、Tailwind CSS、Framer Motion、Lucide React、DeepSeek API、localStorage。
-- 包管理器：npm。优先使用已有 `package-lock.json` 和 `node_modules`，不要无理由更换为 pnpm、yarn 或 bun。
+- 技术栈：Next.js 16.3.4 App Router、React / React DOM 19.2.8、TypeScript 5.9.3、Tailwind CSS 3.4.19、Framer Motion 12.43.0、Lucide React、DeepSeek API、localStorage。
+- 运行时与包管理器：Node.js 24 LTS（`24.x`）、npm `>=11.19.1 <12`；`package.json#packageManager` 固定为 `npm@11.19.1`。不要无理由更换为 pnpm、yarn 或 bun。
+- 依赖安装：日常拉取代码、干净环境、CI 和部署统一使用现有 `package-lock.json` 执行 `npm ci`；仅在明确新增、删除或升级依赖并需要同步锁文件时使用 `npm install`。执行前先确认 Node/npm 版本满足仓库约束。
 - 开发命令：`npm run dev`，默认本地地址为 `http://localhost:3000`。
 - 测试命令：当前未配置独立测试脚本；涉及功能或交互修改时，至少运行构建并进行必要的手动流程验证。
 - Lint 命令：`npm run lint`。
@@ -96,7 +97,7 @@
 - 测试目录：当前未设置专用测试目录。
 - 禁止修改的目录或文件：不要手动修改 `node_modules/`、`.next/`、构建缓存、临时文件、`.env.local` 或任何包含密钥的文件；不要提交 API Key、令牌、密码或本地私密配置。
 - DeepSeek 约束：API Key 只能由服务端读取，前端不得直接调用 DeepSeek 或暴露环境变量；接口失败时保留抽牌状态并允许手动重试，不自动生成模拟解读。
-- 视觉约束：整体保持“旧女巫木桌风”，避免现代霓虹、科技星空、大面积玻璃拟态、高饱和渐变和全屏粒子；真实牌面需要保持旧牌外框、暗金描边和复古滤镜。
+- 旧前端维护期视觉约束（有效至 `FE-GATE`）：维护现有界面时整体保持“旧女巫木桌风”，避免现代霓虹、科技星空、大面积玻璃拟态、高饱和渐变和全屏粒子；真实牌面保持旧牌外框、暗金描边和复古滤镜。`FE-GATE` 之后的前端重做以届时确认的新设计方案和实施文档为准，不预设沿用这些视觉限制。
 - 交互约束：优先保证完整占卜主流程可跑通，包括提问、洗牌、抽牌、翻牌、AI 解读、命运手记和历史保存。
 - Git 规则：所有代码或项目文档修改完成并验证后，需要提交 Git 版本并推送到 GitHub；提交前检查范围，避免纳入无关文件。
 

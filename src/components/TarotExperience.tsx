@@ -114,7 +114,6 @@ function TextReveal({ text }: { text: string }) {
   const [visibleText, setVisibleText] = useState("");
 
   useEffect(() => {
-    setVisibleText("");
     let index = 0;
     const timer = window.setInterval(() => {
       index += 1;
@@ -297,9 +296,13 @@ export function TarotExperience() {
   const deckIndexById = useMemo(() => new Map(deck.map((card, index) => [card.id, index])), [deck]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setStage("question"), 700);
-    setRecords(readReadingRecords());
-    return () => window.clearTimeout(timer);
+    const stageTimer = window.setTimeout(() => setStage("question"), 700);
+    const recordsTimer = window.setTimeout(() => setRecords(readReadingRecords()), 0);
+
+    return () => {
+      window.clearTimeout(stageTimer);
+      window.clearTimeout(recordsTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -920,7 +923,7 @@ export function TarotExperience() {
                   </div>
                   <BookOpen className="text-[#d8b56d]/70" size={22} />
                 </div>
-                <TextReveal text={reading[currentReadingKey]} />
+                <TextReveal key={currentReadingKey} text={reading[currentReadingKey]} />
                 <div className="mt-5 flex justify-end">
                   <FateButton
                     onClick={() => {

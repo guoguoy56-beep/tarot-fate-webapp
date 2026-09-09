@@ -1,7 +1,7 @@
-const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
-
-/** @type {(phase: string) => import('next').NextConfig} */
-module.exports = (phase) => ({
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  agentRules: false,
   reactStrictMode: true,
-  distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
-});
+};
+
+module.exports = nextConfig;

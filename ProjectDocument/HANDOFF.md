@@ -28,9 +28,9 @@
 
 技术栈：
 
-- Next.js App Router。
-- React 18。
-- TypeScript。
+- Next.js `16.3.4` App Router。
+- React / React DOM `19.2.8`。
+- TypeScript `5.9.3`。
 - Tailwind CSS。
 - Framer Motion。
 - Lucide React。
@@ -40,15 +40,17 @@
 运行时版本基线：
 
 - Node.js 24 LTS（`24.x`）。
-- npm 11（`11.x`）。
-- `.nvmrc` 与 `package.json#engines` 为版本约束来源。
-- 2026-09-09 本地验证环境为 Node.js `v24.12.0`、npm `11.6.2`；允许在同一主版本内跟进安全补丁。
+- npm `>=11.19.1 <12`。
+- `.nvmrc`、`package.json#engines` 与 `package.json#packageManager` 为版本约束来源；当前包管理器声明为 `npm@11.19.1`。
+- 2026-09-09 本地 Node.js 验证环境为 `v24.12.0`，依赖安装、锁文件生成与验收统一使用 npm `11.19.1`。
+- npm `11.6.2` 曾生成包含 `@emnapi` / `wasi-threads` 解析错配的无效锁文件，因此不再视为合格基线；不得用低于 `11.19.1` 的 npm 重写 `package-lock.json`。
 
-进入项目后先执行 `node --version` 和 `npm --version`。使用 nvm 时可执行 `nvm use`；如本机尚未安装 Node 24，则先执行 `nvm install 24`。
+进入项目后先执行 `node --version` 和 `npm --version`。使用 nvm 时可执行 `nvm use`；如本机尚未安装 Node 24，则先执行 `nvm install 24`。若本机 npm 版本低于 `11.19.1`，先升级到 `npm@11.19.1`，再执行依赖安装或锁文件维护。
 
 常用命令：
 
 ```powershell
+npm ci
 npm run dev
 npm run lint
 npm run typecheck
@@ -127,9 +129,13 @@ public/cards/rws/*.jpg
 - Framer Motion 已接入。
 - `lucide-react` 已接入。
 - App Router 页面入口已配置。
-- 工程基线已补齐：`eslint.config.mjs` 使用 Next core-web-vitals 与 TypeScript 规则，`npm run lint` 不再进入交互初始化；新增 `npm run typecheck` 与 `npm run check`。
+- 工程基线已补齐：`eslint.config.mjs` 已迁移为 ESLint `9.39.5` 原生 Flat Config，直接组合 `eslint-config-next/core-web-vitals` 与 `eslint-config-next/typescript`；新增 `npm run typecheck` 与 `npm run check`。
 - 本地开发与生产启动脚本已固定端口为 `3000`，避免 Next.js 自动切换到 `3001` 造成混乱。
-- Next.js 开发缓存目录已配置为 `.next-dev`，与生产构建 `.next` 分离；`.gitignore` 和 `tsconfig.json` 已同步覆盖 `.next-dev`。
+- 已移除旧的自定义 `.next-dev` / `distDir` 配置，使用 Next.js 16 默认隔离目录：开发类型输出为 `.next/dev`，生产构建输出为 `.next`；`tsconfig.json` 已同步覆盖两者。
+- `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
+- `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
+- 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
+- npm 全量审计与仅生产依赖审计均为 `0` 个漏洞。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
 - 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
 - 首页、洗牌、抽牌、阅读与终局阶段统一使用首页旧女巫木桌背景图和首页氛围遮罩，不在后续流程加强暗角；允许保留轻微场景缩放运镜。
@@ -306,11 +312,12 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 本轮评估后的核心判断：
 
 - 桌面端毕业设计演示 DEMO 完成度约 75%，综合产品化完成度约 55%。
-- 依赖临时恢复后，`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run check` 均通过。
-- `BASE-001` 已完成：运行时统一为 Node.js 24 LTS / npm 11，并通过 `.nvmrc`、`package.json#engines`、README 和本交接文档固化；该环境下 `npm run check` 通过。
-- `BASE-002` 已完成：目标组合确定为 Next.js `16.3.4`、React/React DOM `19.2.8`、ESLint `10.10.0`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
-- `package-lock.json` 当前与依赖解析不同步，标准 `npm ci` 失败，新环境不可可靠复现。
-- `next@14.2.23` 被当前 `npm audit` 标记为关键风险版本，依赖审计合计 8 个漏洞项。
+- `BASE-001` 已完成：运行时统一为 Node.js 24 LTS，npm 基线经 `BASE-003` 实测收紧为 `>=11.19.1 <12`，并通过 `.nvmrc`、`package.json#engines`、`package.json#packageManager`、README 和本交接文档固化。
+- `BASE-002` 已完成：升级目标最终确定为 Next.js `16.3.4`、React / React DOM `19.2.8`、ESLint `9.39.5`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；选择 ESLint 9 是为了同时满足 Next 16 及其规则插件的已声明 peer 范围。Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
+- `BASE-003` 已完成：框架和工具链已按最终组合升级；ESLint 已迁移到原生 Flat Config；旧自定义 `.next-dev` / `distDir` 已移除并采用 Next.js 16 默认 `.next/dev`；`package-lock.json` 已用 npm `11.19.1` 从干净状态重建。
+- npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
+- 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
+- `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
 - DeepSeek 真实请求当前因账户余额不足返回 503；错误保留牌局和手动重试逻辑可用。
 - 桌面端后半流程已通过浏览器级模拟响应验证；发现阅读面板遮牌、终局历史按钮不可点击和保存可重复等问题。
 - 390×844 移动端布局明显未完成，核心抽牌页不满足可用标准。
@@ -344,8 +351,10 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - 上述基础通过阶段关口后，再共同输出新前端专项方案。
 - 新前端达到功能、桌面/移动端、数据兼容和 E2E 验收标准后，才删除旧前端代码。
 
-当前下一项任务：
+当前唯一下一项任务：
 
-1. `BASE-003`：按照框架升级决策记录升级依赖与 ESLint 配置，重建 `package-lock.json`，使干净环境 `npm ci` 成功。
-2. `BASE-004`：建立 CI 基线。
-3. `BASE-005`：重新审计并清理或接受剩余依赖风险。
+1. `BASE-004`：建立 CI 基线，在干净环境固定执行 npm `11.19.1` 的 `npm ci`、静态检查和生产构建，并固化可复现验收门禁。
+
+`BASE-004` 完成后再进入 `BASE-005`：在 CI 基础上复核依赖与供应链风险；当前全量和生产依赖审计均为 `0` 个漏洞，重点转为持续审计策略和升级纪律。
+
+`BASE-001`、`BASE-002`、`BASE-003` 均已完成。除上述唯一当前任务 `BASE-004` 外，不并行启动新前端设计或实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
