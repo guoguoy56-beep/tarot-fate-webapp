@@ -27,12 +27,26 @@
 
 ## 本地运行
 
-确保本机已安装 Node.js，然后执行：
+项目统一使用以下运行时主版本：
+
+- Node.js 24 LTS（`24.x`）
+- npm 11（`11.x`）
+
+`.nvmrc` 与 `package.json#engines` 是版本约束的权威来源。首次运行前先确认版本：
+
+```bash
+node --version
+npm --version
+```
+
+如果使用 nvm，可先执行 `nvm use`；未安装 Node 24 时执行 `nvm install 24` 后再切换。然后安装依赖并启动开发服务：
 
 ```bash
 npm install
 npm run dev
 ```
+
+当前 `package-lock.json` 的可复现安装问题将在计划任务 `BASE-003` 中修复；完成前不要把 `npm install` 成功视为干净环境可复现的证明。
 
 启动后访问 [http://localhost:3000](http://localhost:3000)。
 
@@ -54,4 +68,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 ## 当前状态
 
-项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。部署到新环境时仍需配置有效 API Key。目前继续完善首页环境光、统一牌堆组件、移动端布局和阅读阶段揭示特效。
+项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，旧前端已进入维护冻结，后续将整体重新设计和实现；当前按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 优先恢复工程、API、数据与测试基础。运行时主版本已固定为 Node.js 24 LTS / npm 11，下一项任务是 `BASE-002` 框架升级方案。
