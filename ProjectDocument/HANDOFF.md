@@ -308,6 +308,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - 桌面端毕业设计演示 DEMO 完成度约 75%，综合产品化完成度约 55%。
 - 依赖临时恢复后，`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run check` 均通过。
 - `BASE-001` 已完成：运行时统一为 Node.js 24 LTS / npm 11，并通过 `.nvmrc`、`package.json#engines`、README 和本交接文档固化；该环境下 `npm run check` 通过。
+- `BASE-002` 已完成：目标组合确定为 Next.js `16.3.4`、React/React DOM `19.2.8`、ESLint `10.10.0`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
 - `package-lock.json` 当前与依赖解析不同步，标准 `npm ci` 失败，新环境不可可靠复现。
 - `next@14.2.23` 被当前 `npm audit` 标记为关键风险版本，依赖审计合计 8 个漏洞项。
 - DeepSeek 真实请求当前因账户余额不足返回 503；错误保留牌局和手动重试逻辑可用。
@@ -345,6 +346,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前下一项任务：
 
-1. `BASE-002`：制定 Next.js/React 工具链升级方案。
-2. `BASE-003`：修复依赖与 `package-lock.json`，使干净环境 `npm ci` 成功。
-3. `BASE-004`：建立 CI 基线。
+1. `BASE-003`：按照框架升级决策记录升级依赖与 ESLint 配置，重建 `package-lock.json`，使干净环境 `npm ci` 成功。
+2. `BASE-004`：建立 CI 基线。
+3. `BASE-005`：重新审计并清理或接受剩余依赖风险。
