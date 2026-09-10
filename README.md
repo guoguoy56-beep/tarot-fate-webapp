@@ -1,5 +1,7 @@
 # 命运之牌 Tarot Fate WebApp
 
+[![CI](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/workflows/ci.yml/badge.svg)](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/workflows/ci.yml)
+
 一个基于React等技术栈开发的沉浸式 AI 塔罗牌占卜 Web 应用。
 
 项目通过古典女巫木桌视觉、卡牌物理交互动效和大语言模型解读能力，为用户提供完整的占卜仪式体验。用户可以输入问题、扰动洗牌、抽取代表过去、现在与未来的三张牌，并获得对应的 AI 解读与命运总结。
@@ -48,6 +50,10 @@ npm run dev
 
 日常拉取代码、CI 和部署环境统一使用 `npm ci`；仅在明确变更依赖并需要同步更新 `package-lock.json` 时使用 `npm install`。
 
+## 持续集成
+
+GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后依次执行 `npm run lint`、`npm run typecheck` 和 `npm run build`。npm 缓存只用于加速下载，不替代锁文件安装。当前项目尚未建立独立自动化测试脚本，测试将在后续 `TEST-001～006` 阶段补齐并接入 CI。
+
 启动后访问 [http://localhost:3000](http://localhost:3000)。
 
 ## 环境变量
@@ -70,4 +76,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至当前，`BASE-001` 运行时基线、`BASE-002` 框架升级决策和 `BASE-003` 框架/工具链升级均已完成；下一项是 `BASE-004`，为干净安装、Lint、类型检查和生产构建建立自动化 CI 门禁。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。
+截至 2026-09-10，`BASE-001` 运行时基线、`BASE-002` 框架升级决策、`BASE-003` 框架/工具链升级和 `BASE-004` CI 基线均已完成；下一项是 `BASE-005`，复核并记录依赖与供应链风险。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。

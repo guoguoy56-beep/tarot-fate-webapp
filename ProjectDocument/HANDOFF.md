@@ -134,6 +134,8 @@ public/cards/rws/*.jpg
 - 已移除旧的自定义 `.next-dev` / `distDir` 配置，使用 Next.js 16 默认隔离目录：开发类型输出为 `.next/dev`，生产构建输出为 `.next`；`tsconfig.json` 已同步覆盖两者。
 - `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
 - `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
+- `BASE-004` CI 基线已完成：`.github/workflows/ci.yml` 会在推送到 `main` 和面向 `main` 的 Pull Request 上，以 Node.js 24、npm `11.19.1` 执行 `npm ci`、Lint、类型检查和生产构建；首次 GitHub 托管运行 [#34424590039](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/34424590039) 全部通过。
+- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；当前尚无独立测试脚本，待 `TEST-001～006` 阶段补建后接入门禁。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
 - npm 全量审计与仅生产依赖审计均为 `0` 个漏洞。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
@@ -315,6 +317,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `BASE-001` 已完成：运行时统一为 Node.js 24 LTS，npm 基线经 `BASE-003` 实测收紧为 `>=11.19.1 <12`，并通过 `.nvmrc`、`package.json#engines`、`package.json#packageManager`、README 和本交接文档固化。
 - `BASE-002` 已完成：升级目标最终确定为 Next.js `16.3.4`、React / React DOM `19.2.8`、ESLint `9.39.5`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；选择 ESLint 9 是为了同时满足 Next 16 及其规则插件的已声明 peer 范围。Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
 - `BASE-003` 已完成：框架和工具链已按最终组合升级；ESLint 已迁移到原生 Flat Config；旧自定义 `.next-dev` / `distDir` 已移除并采用 Next.js 16 默认 `.next/dev`；`package-lock.json` 已用 npm `11.19.1` 从干净状态重建。
+- `BASE-004` 已完成：GitHub Actions CI 已固化 Node/npm 版本，并自动执行干净安装、Lint、类型检查和生产构建；本地与首次远程质量门禁均通过。实施记录见 `ProjectDocument/BASE-004-CI基线实施记录-2026-09-10.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -353,8 +356,8 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `BASE-004`：建立 CI 基线，在干净环境固定执行 npm `11.19.1` 的 `npm ci`、静态检查和生产构建，并固化可复现验收门禁。
+1. `BASE-005`：重新审计生产与开发依赖，记录风险暴露条件、处理决定和持续审计策略。
 
-`BASE-004` 完成后再进入 `BASE-005`：在 CI 基础上复核依赖与供应链风险；当前全量和生产依赖审计均为 `0` 个漏洞，重点转为持续审计策略和升级纪律。
+`BASE-004` 已通过首次 GitHub 托管运行验收。`BASE-005` 的当前审计起点为全量和生产依赖均 `0` 个已知漏洞，重点转为复核直接/传递依赖、供应链暴露面和长期升级纪律。
 
-`BASE-001`、`BASE-002`、`BASE-003` 均已完成。除上述唯一当前任务 `BASE-004` 外，不并行启动新前端设计或实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+`BASE-001`～`BASE-004` 均已完成。除上述唯一当前任务 `BASE-005` 外，不并行启动新前端设计或实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
