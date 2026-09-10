@@ -1,19 +1,27 @@
 import type { CardOrientation, SpreadPosition } from "./tarot";
 
-export interface ReadingCardPayload {
+export interface ReadingCardSelection {
   cardId: string;
   position: SpreadPosition;
+  orientation: CardOrientation;
+}
+
+export interface ReadingRequest {
+  question: string;
+  cards: ReadingCardSelection[];
+}
+
+export interface TrustedReadingCard extends ReadingCardSelection {
   nameCn: string;
   nameEn: string;
-  orientation: CardOrientation;
   uprightKeywords: string[];
   reversedKeywords: string[];
   meaning: string;
 }
 
-export interface ReadingRequest {
+export interface TrustedReadingRequest {
   question: string;
-  cards: ReadingCardPayload[];
+  cards: TrustedReadingCard[];
 }
 
 export interface ReadingResponse {

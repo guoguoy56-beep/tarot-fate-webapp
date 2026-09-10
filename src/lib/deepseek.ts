@@ -1,4 +1,4 @@
-import type { ReadingApiErrorCode, ReadingRequest, ReadingResponse } from "@/types/reading";
+import type { ReadingApiErrorCode, ReadingResponse, TrustedReadingRequest } from "@/types/reading";
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
@@ -102,7 +102,7 @@ function parseReading(content: unknown): ReadingResponse {
   };
 }
 
-export async function requestDeepSeekReading(payload: ReadingRequest): Promise<ReadingResponse> {
+export async function requestDeepSeekReading(payload: TrustedReadingRequest): Promise<ReadingResponse> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   const baseUrl = (process.env.DEEPSEEK_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const model = process.env.DEEPSEEK_MODEL ?? DEFAULT_MODEL;

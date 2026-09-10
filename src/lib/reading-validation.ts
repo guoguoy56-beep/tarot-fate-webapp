@@ -1,8 +1,8 @@
 import { tarotCardMap } from "@/data/tarotCards";
 import type {
-  ReadingCardPayload,
-  ReadingRequest,
   ReadingRequestErrorCode,
+  TrustedReadingCard,
+  TrustedReadingRequest,
 } from "@/types/reading";
 import type { CardOrientation, SpreadPosition } from "@/types/tarot";
 
@@ -15,7 +15,7 @@ interface ReadingRequestValidationError {
 }
 
 export type ReadingRequestValidationResult =
-  | { success: true; data: ReadingRequest }
+  | { success: true; data: TrustedReadingRequest }
   | { success: false; error: ReadingRequestValidationError };
 
 function failure(code: ReadingRequestErrorCode, message: string): ReadingRequestValidationResult {
@@ -24,10 +24,6 @@ function failure(code: ReadingRequestErrorCode, message: string): ReadingRequest
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 export function isSpreadPosition(value: unknown): value is SpreadPosition {
@@ -61,7 +57,7 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
 
   const positions = new Set<SpreadPosition>();
   const cardIds = new Set<string>();
-  const cards: ReadingCardPayload[] = [];
+  const cards: TrustedReadingCard[] = [];
 
   for (const card of value.cards) {
     if (!isRecord(card)) {
@@ -73,6 +69,12 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
     }
 
     if (!isTarotCardId(card.cardId)) {
+      return failure("UNKNOWN_CARD", "解读请求包含未知卡牌。");
+    }
+
+    const trustedCard = tarotCardMap.get(card.cardId);
+
+    if (!trustedCard) {
       return failure("UNKNOWN_CARD", "解读请求包含未知卡牌。");
     }
 
@@ -92,27 +94,17 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
       return failure("DUPLICATE_CARD", "三张牌不能重复。");
     }
 
-    if (
-      typeof card.nameCn !== "string" ||
-      typeof card.nameEn !== "string" ||
-      typeof card.meaning !== "string" ||
-      !isStringArray(card.uprightKeywords) ||
-      !isStringArray(card.reversedKeywords)
-    ) {
-      return failure("INVALID_REQUEST", "卡牌信息格式无效。");
-    }
-
     positions.add(card.position);
     cardIds.add(card.cardId);
     cards.push({
       cardId: card.cardId,
       position: card.position,
-      nameCn: card.nameCn,
-      nameEn: card.nameEn,
+      nameCn: trustedCard.nameCn,
+      nameEn: trustedCard.nameEn,
       orientation: card.orientation,
-      uprightKeywords: card.uprightKeywords,
-      reversedKeywords: card.reversedKeywords,
-      meaning: card.meaning,
+      uprightKeywords: trustedCard.uprightKeywords,
+      reversedKeywords: trustedCard.reversedKeywords,
+      meaning: trustedCard.meaning,
     });
   }
 

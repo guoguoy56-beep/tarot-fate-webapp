@@ -343,23 +343,11 @@ export function TarotExperience() {
       setReadingError(null);
       setIsReadingLoading(true);
 
-      const cards = cardsToRead.map((placed) => {
-        const card = tarotCardMap.get(placed.cardId);
-        if (!card) {
-          throw new Error("Missing card data.");
-        }
-
-        return {
-          cardId: placed.cardId,
-          position: placed.position,
-          nameCn: card.nameCn,
-          nameEn: card.nameEn,
-          orientation: placed.orientation,
-          uprightKeywords: card.uprightKeywords,
-          reversedKeywords: card.reversedKeywords,
-          meaning: card.meaning,
-        };
-      });
+      const cards = cardsToRead.map(({ cardId, position, orientation }) => ({
+        cardId,
+        position,
+        orientation,
+      }));
 
       const response = await fetch("/api/reading", {
         method: "POST",
