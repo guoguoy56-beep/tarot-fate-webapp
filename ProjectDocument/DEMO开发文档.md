@@ -386,6 +386,8 @@ interface ReadingRequest {
 - `question` 最多 500 个 Unicode 字符，浏览器显示计数并阻止超限提交，服务端独立校验。
 - 整个请求体最多 4096 个 UTF-8 字节；超限返回 HTTP 413 和 `REQUEST_TOO_LARGE`。
 - 浏览器不得提交牌名、关键词和含义；服务端按 `cardId` 从 `tarotCardMap` 补全可信牌义。
+- 生产环境按匿名客户端 HMAC 标识限制为 5 次有效请求/10 分钟、最多 1 个并发；频率和并发超限分别返回 `READING_RATE_LIMITED` 与 `READING_CONCURRENT_LIMIT`（HTTP 429，并带 `Retry-After`）。
+- 生产限流配置、可信客户端地址或 Redis 不可用时返回 `RATE_LIMIT_UNAVAILABLE`（HTTP 503），不继续调用 DeepSeek。
 
 ### 8.3 响应体
 
@@ -408,9 +410,13 @@ DeepSeek API Key 必须只存在于服务端环境变量中。
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
+RATE_LIMIT_TRUSTED_PROXY=vercel
+READING_RATE_LIMIT_SECRET=at_least_32_random_utf8_bytes
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_rest_token
 ```
 
-前端不得直接调用 DeepSeek API。当前默认使用 `deepseek-v4-flash` 非思考模式，由服务端一次性获取严格 JSON；接口失败时保留抽牌状态并提供手动重试，不自动回退到模拟解读。
+前端不得直接调用 DeepSeek API。当前默认使用 `deepseek-v4-flash` 非思考模式，由服务端一次性获取严格 JSON；接口失败时保留抽牌状态并提供手动重试，不自动回退到模拟解读。目标部署为 Vercel Node.js Functions + Upstash Redis REST；`next dev` 旁路共享限流，Vercel Preview/Production 和本地 `next start` 必须具备完整限流配置。详细信任边界与云端验收步骤见 `ProjectDocument/API-004-部署与限流边界实施记录-2026-09-10.md`。
 
 ## 9. AI Prompt 规范
 

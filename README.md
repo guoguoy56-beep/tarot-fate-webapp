@@ -26,6 +26,7 @@
 - Tailwind CSS 3.4.19
 - Framer Motion 12.43.0
 - DeepSeek API
+- Upstash Redis（生产环境共享限流）
 
 ## 本地运行
 
@@ -70,6 +71,17 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 
 API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴露在前端代码中。当前默认使用 `deepseek-v4-flash` 非思考模式，并要求返回包含 `past`、`present`、`future`、`summary` 的结构化 JSON。未配置或调用失败时不会自动生成模拟解读，页面会保留当前抽牌状态并允许手动重试。
 
+`next dev` 不依赖共享限流服务；Vercel Preview/Production 或本地 `next start` 会启用生产保护，还必须配置：
+
+```env
+RATE_LIMIT_TRUSTED_PROXY=vercel
+READING_RATE_LIMIT_SECRET=at_least_32_random_utf8_bytes
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_rest_token
+```
+
+生产方案为 Vercel Node.js Functions + Upstash Redis REST：同一匿名客户端最多 5 次有效请求/10 分钟、最多 1 个并发请求。客户端地址仅在内存中用于 HMAC-SHA256，Redis 不保存原始 IP 或问题文本。生产配置或 Redis 不可用时接口会返回 `RATE_LIMIT_UNAVAILABLE`，不会在保护失效时继续调用收费上游。完整边界和部署步骤见 [`ProjectDocument/API-004-部署与限流边界实施记录-2026-09-10.md`](./ProjectDocument/API-004-部署与限流边界实施记录-2026-09-10.md)。
+
 ## 项目文档
 
 详细的中文项目说明、视觉规范、DEMO 开发方案、动态效果设计和当前开发交接信息位于 [`ProjectDocument`](./ProjectDocument/) 目录。
@@ -78,4 +90,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-09-10，阶段 1 的 `BASE-001～BASE-005` 均已完成：运行时、框架、锁文件、CI 和依赖风险治理已经建立。下一项是阶段 2 的 `API-001`，建立共享领域校验。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。
+截至 2026-09-10，`BASE-001～BASE-005`、`KIT-001` 和 `API-001～API-003` 已完成。`API-004` 的部署决策、共享频率/并发限流和本地双实例验收已完成，当前状态为“待部署验证”：需要绑定真实 Vercel 项目与 Upstash Redis 并完成云端冒烟后，才能进入 `API-005`。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。
