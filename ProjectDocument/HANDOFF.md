@@ -35,7 +35,6 @@
 - Framer Motion。
 - Lucide React。
 - DeepSeek API，经 Next.js API Route 服务端调用。
-- 目标部署为 Vercel Node.js Functions；`@upstash/redis@1.38.4` 提供跨实例共享限流状态。
 - localStorage 保存本地占卜历史。
 
 运行时版本基线：
@@ -115,7 +114,6 @@ src/app/api/reading/route.ts
 src/components/TarotExperience.tsx
 src/data/tarotCards.ts
 src/lib/deepseek.ts
-src/lib/reading-rate-limit.ts
 src/lib/reading-validation.ts
 src/lib/storage.ts
 src/lib/tarot.ts
@@ -173,7 +171,7 @@ public/cards/rws/*.jpg
 - `API-001` 共享领域校验已完成：服务端用可复用校验器检查三牌数量、已知 ID、牌位、方向、重复牌位和重复卡牌，并以稳定错误码返回 400。
 - `API-002` 服务端可信牌义已完成：浏览器只发送问题与 `cardId`、牌位、方向；服务端从 `tarotCardMap` 补全名称、关键词和含义，伪造或附加的客户端牌义字段会被丢弃，不能进入 DeepSeek Prompt。
 - `API-003` 请求规模限制已完成：问题最多 500 个 Unicode 字符，首尾空白清理、换行统一且内部换行保留；请求体最多 4096 个 UTF-8 字节，普通和分块超大请求均返回稳定 413。旧前端显示计数、超限提示并阻止提交。
-- `API-004` 工程实现与本地双实例验收已完成、状态为待部署验证：目标确定为 Vercel Node.js Functions + Upstash Redis REST；匿名客户端 5 次有效请求/10 分钟、最多 1 个并发，状态由原子 Lua 跨实例共享。频率/并发超限返回稳定 429 与 `Retry-After`，生产保护不可用时 fail closed 为 503。真实 Vercel + Upstash 尚未绑定，不能标记任务完成。
+- `API-004` 已完成范围纠偏：用户确认项目当前仅做本地开发与运行，没有云端部署计划。此前未经确认假设 Vercel + Upstash 的实现已撤销，当前仓库不依赖 Redis、不要求云端环境变量，也没有公网匿名限流。该任务移至未来发布阶段，只有用户明确决定公开部署并选定平台后才重新启动。
 - DeepSeek API 服务端调用封装，默认使用 `deepseek-v4-flash` 非思考模式和一次性 JSON 响应。
 - DeepSeek 请求已增加 30 秒超时、返回字段校验，以及配置、认证、余额、限流、上游服务和格式错误分类。
 - 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
@@ -312,13 +310,9 @@ DeepSeek API 相关环境变量建议：
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
-RATE_LIMIT_TRUSTED_PROXY=vercel
-READING_RATE_LIMIT_SECRET=at_least_32_random_utf8_bytes
-UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_rest_token
 ```
 
-API Key、Redis Token 和匿名标识 Secret 均不得暴露在前端。当前接口使用非思考模式、严格 JSON 输出和 30 秒服务端超时；未配置 Key 时返回明确配置错误，不生成模拟解读。`next dev` 旁路共享限流；Vercel Preview/Production 和本地 `next start` 会启用生产保护，四个限流变量缺失或无效时返回 `RATE_LIMIT_UNAVAILABLE`，不会无保护调用 DeepSeek。完整部署与信任边界见 `ProjectDocument/API-004-部署与限流边界实施记录-2026-09-10.md`。
+API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 输出和 30 秒服务端超时；未配置 Key 时返回明确配置错误，不生成模拟解读。项目当前没有 Redis、Vercel 或其他云端运行依赖，`npm run dev` 与 `npm run start` 均只需要本地 Node.js 环境和可选的 DeepSeek Key。
 
 ## 13. 2026-09-09 项目重启评估
 
@@ -333,12 +327,12 @@ API Key、Redis Token 和匿名标识 Secret 均不得暴露在前端。当前�
 - `BASE-002` 已完成：升级目标最终确定为 Next.js `16.3.4`、React / React DOM `19.2.8`、ESLint `9.39.5`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；选择 ESLint 9 是为了同时满足 Next 16 及其规则插件的已声明 peer 范围。Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
 - `BASE-003` 已完成：框架和工具链已按最终组合升级；ESLint 已迁移到原生 Flat Config；旧自定义 `.next-dev` / `distDir` 已移除并采用 Next.js 16 默认 `.next/dev`；`package-lock.json` 已用 npm `11.19.1` 从干净状态重建。
 - `BASE-004` 已完成：GitHub Actions CI 已固化 Node/npm 版本，并自动执行干净安装、Lint、类型检查和生产构建；本地与首次远程质量门禁均通过。实施记录见 `ProjectDocument/BASE-004-CI基线实施记录-2026-09-10.md`。
-- `BASE-005` 已完成：完整与生产依赖审计均为 0；CI 会阻断 high/critical 漏洞；依赖安装脚本采用严格、精确版本白名单。ESLint 9 EOL 仍按期限复核；npm 签名接口曾返回 503，已在 API-004 新增依赖后重试通过，详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
+- `BASE-005` 已完成：完整与生产依赖审计均为 0；CI 会阻断 high/critical 漏洞；依赖安装脚本采用严格、精确版本白名单。ESLint 9 EOL 仍按期限复核；npm 签名接口曾返回 503，已在 API-004 范围纠偏后重试通过，详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
 - `KIT-001` 已完成：用户提供的“全栈开发专家”套件经评估为部分适用。原包是面向 Qoder 的 Java Spring Boot + Vue 3 套件，不能原样作为本项目 Codex 技能；原件保持不动，适用方法已重写为 `.agents/skills/` 下的 API、代码审查、测试策略、性能诊断和安全重构五个仓库技能。Vue、Java、数据库能力搁置，新前端技能等 `FE-GATE` 后再定。详见 `ProjectDocument/KIT-001-全栈开发专家套件评估与适配记录-2026-09-10.md`。
 - `API-001` 已完成：新增 `src/lib/reading-validation.ts` 共享校验，`ReadingCardPayload` 和旧前端请求增加 `cardId`；非法 JSON、缺字段、错误类型、错误牌数、非法/未知 ID、非法/重复牌位、非法方向和重复卡牌均返回稳定 400。生产 HTTP 矩阵 13/13 通过，合法请求通过本地模拟 DeepSeek 返回 200，未调用真实服务。详见 `ProjectDocument/API-001-共享领域校验实施记录-2026-09-10.md`。
 - `API-002` 已完成：公开请求类型已收敛为问题和三张牌的 `cardId`、牌位、方向；共享校验器按 ID 从 `tarotCardMap` 重建 `TrustedReadingRequest`，DeepSeek 适配层只接受该可信类型并按实际方向选择关键词。最小请求、伪造元数据和未知卡牌三项本地生产形态 HTTP/Prompt 验收全部通过，未调用真实服务。详见 `ProjectDocument/API-002-服务端可信牌义实施记录-2026-09-10.md`。
 - `API-003` 已完成：新增共享 500 字限制和 4096 字节请求体限制；服务端按标准 `Request.body` 流累计实际字节，不能通过省略 `Content-Length` 绕过。新增 `QUESTION_TOO_LONG`（400）和 `REQUEST_TOO_LARGE`（413）；HTTP 边界矩阵 8/8、真实浏览器 500/501 字和 emoji 计数均通过。详见 `ProjectDocument/API-003-请求长度与规模限制实施记录-2026-09-10.md`。
-- `API-004` 已完成部署决策、代码和本地生产形态验证，状态保持“待部署验证”：Vercel Node.js Functions 只信任平台覆写的 `x-forwarded-for`，原始 IP 经服务端 Secret 做 HMAC-SHA256；Upstash Lua 原子执行 5 次/10 分钟和单并发租约。两个独立 Next.js 进程共享限流、稳定 429、租约释放、Redis 故障 503 关闭保护和隐私键矩阵均通过。真实 Vercel + Upstash 云端冒烟尚未执行，详见 `ProjectDocument/API-004-部署与限流边界实施记录-2026-09-10.md`。
+- `API-004` 的部署前提已按用户决定纠正：当前项目仅本地运行，不选定云平台、不创建云资源，也不为尚不存在的公网环境引入 Redis。此前 Vercel + Upstash 方案及实现已从当前代码和运行文档撤销；未来出现明确部署计划时，API-004 与 `REL-001` 一起重新评估。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -346,9 +340,9 @@ API Key、Redis Token 和匿名标识 Secret 均不得暴露在前端。当前�
 - 桌面端后半流程已通过浏览器级模拟响应验证；发现阅读面板遮牌、终局历史按钮不可点击和保存可重复等问题。
 - 390×844 移动端布局明显未完成，核心抽牌页不满足可用标准。
 - localStorage 只做 JSON 解析，没有运行时结构校验；错误结构会导致历史弹窗崩溃。
-- `/api/reading` 已完成卡牌身份、牌位、方向、三牌唯一性、服务端可信牌义、问题长度、请求体规模限制，以及共享频率/并发保护的代码与本地双实例验证；仍缺 API-004 真实云端验收和 API-005 成本/故障保护。
+- `/api/reading` 已完成卡牌身份、牌位、方向、三牌唯一性、服务端可信牌义、问题长度和请求体规模限制；当前本地范围仍需 API-005 成本/故障保护。公网频率/并发保护随部署决策延期。
 - ESLint `9.39.5` 已进入 EOL，但 ESLint 10 仍与当前 `eslint-config-next` 带入的三个插件 peer 范围冲突；该风险只影响开发工具链、当前没有已知漏洞，已限时接受并要求最迟 2026-10-10 复核。
-- `npm audit signatures` 曾因 npm 注册表的 Next.js SWC 来源证明接口连续返回 503；2026-09-10 已成功重试，391 个包签名有效、84 个包具有已验证 attestations，公开发布前仍需再次执行。
+- `npm audit signatures` 曾因 npm 注册表的 Next.js SWC 来源证明接口连续返回 503；2026-09-10 已成功重试，当前 389 个包签名有效、83 个包具有已验证 attestations，公开发布前仍需再次执行。
 
 以下是技术评估完成时给出的初始优先顺序。由于用户随后确认前端整体重做，该顺序已被第 14 节和新总计划替代，仅保留为评估历史：
 
@@ -385,8 +379,6 @@ API Key、Redis Token 和匿名标识 Secret 均不得暴露在前端。当前�
 
 当前唯一下一项任务：
 
-1. `API-004` 云端验收：由项目所有者绑定 Vercel 与 Upstash、配置服务端 Secret，部署后执行真实频率、并发、Preview/Production 隔离和 fail-closed 冒烟。
+1. `API-005`：在纯本地运行前提下评估并实现最小成本与故障保护，不增加管理后台、数据库或云端依赖。
 
-API-004 的部署决策、代码和本地双实例矩阵已经完成，提交后仍不得因“本地通过”把状态改为已完成；Vercel/Upstash 真实证据是本任务最后验收条件。
-
-`BASE-001`～`BASE-005`、`KIT-001` 和 `API-001`～`API-003` 均已完成。API-004 当前待部署验证，不并行启动 `API-005` 或新前端设计实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+`BASE-001`～`BASE-005`、`KIT-001` 和 `API-001`～`API-003` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。

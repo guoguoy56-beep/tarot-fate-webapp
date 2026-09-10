@@ -45,9 +45,6 @@ export type ReadingRequestErrorCode =
 
 export type ReadingApiErrorCode =
   | ReadingRequestErrorCode
-  | "READING_RATE_LIMITED"
-  | "READING_CONCURRENT_LIMIT"
-  | "RATE_LIMIT_UNAVAILABLE"
   | "DEEPSEEK_NOT_CONFIGURED"
   | "DEEPSEEK_AUTH_FAILED"
   | "DEEPSEEK_INSUFFICIENT_BALANCE"
