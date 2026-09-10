@@ -373,16 +373,19 @@ POST /api/reading
 interface ReadingRequest {
   question: string
   cards: {
+    cardId: string
     position: 'past' | 'present' | 'future'
-    nameCn: string
-    nameEn: string
     orientation: 'upright' | 'reversed'
-    uprightKeywords: string[]
-    reversedKeywords: string[]
-    meaning: string
   }[]
 }
 ```
+
+当前约束：
+
+- `question` 清理首尾空白并统一换行为 `\n`，内部换行保留；纯空白问题拒绝。
+- `question` 最多 500 个 Unicode 字符，浏览器显示计数并阻止超限提交，服务端独立校验。
+- 整个请求体最多 4096 个 UTF-8 字节；超限返回 HTTP 413 和 `REQUEST_TOO_LARGE`。
+- 浏览器不得提交牌名、关键词和含义；服务端按 `cardId` 从 `tarotCardMap` 补全可信牌义。
 
 ### 8.3 响应体
 

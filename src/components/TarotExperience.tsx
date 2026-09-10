@@ -2,6 +2,11 @@
 
 import { AmbientLightEffects, type AmbientMode } from "@/components/AmbientLightEffects";
 import { tarotCardMap } from "@/data/tarotCards";
+import {
+  countReadingQuestionCharacters,
+  MAX_READING_QUESTION_CHARACTERS,
+  normalizeReadingQuestion,
+} from "@/lib/reading-limits";
 import { drawRandomDeck, orientationLabel, positionLabel, randomOrientation } from "@/lib/tarot";
 import { readReadingRecords, saveReadingRecord } from "@/lib/storage";
 import type { ReadingApiError, ReadingRecord, ReadingResponse } from "@/types/reading";
@@ -276,6 +281,9 @@ export function TarotExperience() {
   const [showHistory, setShowHistory] = useState(false);
   const [journalOpening, setJournalOpening] = useState(false);
   const [journalCardsSettled, setJournalCardsSettled] = useState(false);
+  const normalizedQuestion = normalizeReadingQuestion(question);
+  const questionCharacterCount = countReadingQuestionCharacters(normalizedQuestion);
+  const isQuestionTooLong = questionCharacterCount > MAX_READING_QUESTION_CHARACTERS;
   const tableRef = useRef<HTMLDivElement | null>(null);
   const lastShufflePoint = useRef<PointerPoint | null>(null);
   const pendingShuffleSample = useRef<ShufflePointerSample | null>(null);
@@ -396,10 +404,11 @@ export function TarotExperience() {
   }
 
   function beginRitual() {
-    if (!question.trim()) {
+    if (!normalizedQuestion || isQuestionTooLong) {
       return;
     }
 
+    setQuestion(normalizedQuestion);
     setStage("camera-lift");
     window.setTimeout(() => setStage("shuffle"), 1200);
   }
@@ -687,15 +696,33 @@ export function TarotExperience() {
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
+                aria-describedby="reading-question-guidance reading-question-count"
+                aria-invalid={isQuestionTooLong}
                 placeholder="提问越清晰，命运的指引越具体..."
                 className="relative z-10 h-14 w-full resize-none border-none bg-transparent text-base leading-7 text-[#28150c] outline-none placeholder:text-[#6f4a2b]/70"
               />
               <div className="home-parchment-footer relative z-10 mt-4 flex flex-col items-center justify-between gap-3 border-t border-[#6f4a2b]/25 pt-4 sm:flex-row">
-                <span className="text-xs tracking-[0.16em] text-[#5c351c]">问题会被交给旧牌与火光。</span>
+                <div className="flex w-full items-center justify-between gap-4 sm:w-auto">
+                  <span
+                    id="reading-question-guidance"
+                    className={`text-xs tracking-[0.12em] ${isQuestionTooLong ? "text-[#8c2f24]" : "text-[#5c351c]"}`}
+                  >
+                    {isQuestionTooLong
+                      ? `问题最多 ${MAX_READING_QUESTION_CHARACTERS} 个字符，请删减后再开始。`
+                      : "问题会被交给旧牌与火光，允许换行。"}
+                  </span>
+                  <span
+                    id="reading-question-count"
+                    aria-live="polite"
+                    className={`shrink-0 text-xs tabular-nums ${isQuestionTooLong ? "text-[#8c2f24]" : "text-[#5c351c]/75"}`}
+                  >
+                    {questionCharacterCount}/{MAX_READING_QUESTION_CHARACTERS}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={beginRitual}
-                  disabled={!question.trim()}
+                  disabled={!normalizedQuestion || isQuestionTooLong}
                   className="ritual-button-glow inline-flex items-center justify-center gap-2 border border-[#d0a85a]/80 bg-[#22120c]/88 px-7 py-3 text-sm tracking-[0.18em] text-[#f7dfad] transition hover:bg-[#3b2013] disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <Sparkles size={16} />

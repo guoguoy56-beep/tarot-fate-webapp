@@ -1,4 +1,9 @@
 import { tarotCardMap } from "@/data/tarotCards";
+import {
+  countReadingQuestionCharacters,
+  MAX_READING_QUESTION_CHARACTERS,
+  normalizeReadingQuestion,
+} from "@/lib/reading-limits";
 import type {
   ReadingRequestErrorCode,
   TrustedReadingCard,
@@ -43,8 +48,18 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
     return failure("INVALID_REQUEST", "解读请求格式无效。");
   }
 
-  if (typeof value.question !== "string" || !value.question.trim()) {
+  if (typeof value.question !== "string") {
     return failure("INVALID_REQUEST", "请提供非空问题。");
+  }
+
+  const question = normalizeReadingQuestion(value.question);
+
+  if (!question) {
+    return failure("INVALID_REQUEST", "请提供非空问题。");
+  }
+
+  if (countReadingQuestionCharacters(question) > MAX_READING_QUESTION_CHARACTERS) {
+    return failure("QUESTION_TOO_LONG", `问题不能超过 ${MAX_READING_QUESTION_CHARACTERS} 个字符。`);
   }
 
   if (!Array.isArray(value.cards)) {
@@ -111,7 +126,7 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
   return {
     success: true,
     data: {
-      question: value.question.trim(),
+      question,
       cards,
     },
   };

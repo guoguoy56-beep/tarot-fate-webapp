@@ -1,4 +1,5 @@
 import { DeepSeekReadingError, requestDeepSeekReading } from "@/lib/deepseek";
+import { readReadingRequestBody } from "@/lib/reading-request-body";
 import { validateReadingRequest } from "@/lib/reading-validation";
 import type { ReadingApiError } from "@/types/reading";
 import { NextResponse } from "next/server";
@@ -8,15 +9,20 @@ function errorResponse(error: ReadingApiError["error"], status: number) {
 }
 
 export async function POST(request: Request) {
-  let payload: unknown;
+  const body = await readReadingRequestBody(request);
 
-  try {
-    payload = await request.json();
-  } catch {
+  if (!body.success && body.reason === "too-large") {
+    return errorResponse(
+      { code: "REQUEST_TOO_LARGE", message: "解读请求内容过大。", retryable: false },
+      413,
+    );
+  }
+
+  if (!body.success) {
     return errorResponse({ code: "INVALID_REQUEST", message: "解读请求格式无效。", retryable: false }, 400);
   }
 
-  const validation = validateReadingRequest(payload);
+  const validation = validateReadingRequest(body.data);
 
   if (!validation.success) {
     return errorResponse({ ...validation.error, retryable: false }, 400);

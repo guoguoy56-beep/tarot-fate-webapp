@@ -33,6 +33,8 @@ export interface ReadingResponse {
 
 export type ReadingRequestErrorCode =
   | "INVALID_REQUEST"
+  | "QUESTION_TOO_LONG"
+  | "REQUEST_TOO_LARGE"
   | "INVALID_CARD_COUNT"
   | "INVALID_CARD_ID"
   | "UNKNOWN_CARD"
