@@ -350,6 +350,7 @@ export function TarotExperience() {
         }
 
         return {
+          cardId: placed.cardId,
           position: placed.position,
           nameCn: card.nameCn,
           nameEn: card.nameEn,

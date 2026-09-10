@@ -114,6 +114,7 @@ src/app/api/reading/route.ts
 src/components/TarotExperience.tsx
 src/data/tarotCards.ts
 src/lib/deepseek.ts
+src/lib/reading-validation.ts
 src/lib/storage.ts
 src/lib/tarot.ts
 src/types/reading.ts
@@ -167,6 +168,7 @@ public/cards/rws/*.jpg
 - 逆位牌从翻开、阅读到进入命运手记的共享布局动画全程保持逆位，不再在过渡中翻回正向；飞向手记的临时卡牌层不再显示重复文字。
 - 前端打字机式文本显示。
 - `/api/reading` 后端 API 路由。
+- `API-001` 共享领域校验已完成：浏览器请求补充 `cardId`；服务端用可复用校验器检查三牌数量、已知 ID、牌位、方向、重复牌位和重复卡牌，并以稳定错误码返回 400。当前仍保留客户端牌义字段作为 API-002 前的过渡契约。
 - DeepSeek API 服务端调用封装，默认使用 `deepseek-v4-flash` 非思考模式和一次性 JSON 响应。
 - DeepSeek 请求已增加 30 秒超时、返回字段校验，以及配置、认证、余额、限流、上游服务和格式错误分类。
 - 阅读阶段在接口失败时保留当前问题与三张牌，显示中文错误并支持手动重试；不再自动回退到模拟解读。
@@ -324,6 +326,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `BASE-004` 已完成：GitHub Actions CI 已固化 Node/npm 版本，并自动执行干净安装、Lint、类型检查和生产构建；本地与首次远程质量门禁均通过。实施记录见 `ProjectDocument/BASE-004-CI基线实施记录-2026-09-10.md`。
 - `BASE-005` 已完成：完整与生产依赖审计均为 0；CI 会阻断 high/critical 漏洞；依赖安装脚本采用严格、精确版本白名单。ESLint 9 EOL 和 npm 签名接口 503 已作为有期限的已知风险记录，详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
 - `KIT-001` 已完成：用户提供的“全栈开发专家”套件经评估为部分适用。原包是面向 Qoder 的 Java Spring Boot + Vue 3 套件，不能原样作为本项目 Codex 技能；原件保持不动，适用方法已重写为 `.agents/skills/` 下的 API、代码审查、测试策略、性能诊断和安全重构五个仓库技能。Vue、Java、数据库能力搁置，新前端技能等 `FE-GATE` 后再定。详见 `ProjectDocument/KIT-001-全栈开发专家套件评估与适配记录-2026-09-10.md`。
+- `API-001` 已完成：新增 `src/lib/reading-validation.ts` 共享校验，`ReadingCardPayload` 和旧前端请求增加 `cardId`；非法 JSON、缺字段、错误类型、错误牌数、非法/未知 ID、非法/重复牌位、非法方向和重复卡牌均返回稳定 400。生产 HTTP 矩阵 13/13 通过，合法请求通过本地模拟 DeepSeek 返回 200，未调用真实服务。详见 `ProjectDocument/API-001-共享领域校验实施记录-2026-09-10.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -331,7 +334,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - 桌面端后半流程已通过浏览器级模拟响应验证；发现阅读面板遮牌、终局历史按钮不可点击和保存可重复等问题。
 - 390×844 移动端布局明显未完成，核心抽牌页不满足可用标准。
 - localStorage 只做 JSON 解析，没有运行时结构校验；错误结构会导致历史弹窗崩溃。
-- `/api/reading` 缺少频率限制、长度限制，并信任客户端传入的牌名、关键词和含义，公网部署前必须加固。
+- `/api/reading` 已完成卡牌身份、牌位、方向和三牌唯一性校验，但仍缺少频率限制、长度限制，并暂时信任客户端传入的牌名、关键词和含义；API-002～005 必须继续完成公网加固。
 - ESLint `9.39.5` 已进入 EOL，但 ESLint 10 仍与当前 `eslint-config-next` 带入的三个插件 peer 范围冲突；该风险只影响开发工具链、当前没有已知漏洞，已限时接受并要求最迟 2026-10-10 复核。
 - `npm audit signatures` 当前因 npm 注册表的 Next.js SWC 来源证明接口连续返回 503 而无法完成；锁文件来源与 integrity 检查正常，要求最迟 2026-09-17 和公开发布前重试。
 
@@ -370,8 +373,8 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `API-001`：建立共享领域校验，定义牌 ID、牌位、正逆位和三牌请求的运行时校验，并统一 400 错误码。
+1. `API-002`：服务端规范化牌义，让前端只发送问题与 `cardId`、牌位、方向，服务端从 `tarotCardMap` 读取可信名称、关键词和含义。
 
-阶段 1 的工程基线恢复已经完成。API-001 的验收重点是缺字段、错误类型、重复牌位、重复卡牌和未知 `cardId` 均稳定返回 400；校验实现先比较手写方案与轻量 Schema 方案，不为单一路由引入过重依赖。
+API-001 已采用零新增依赖的手写判别联合校验并完成 13 项生产 HTTP 验收。API-002 的验收重点是：直接篡改或附加客户端牌名、关键词和含义不能改变服务端用于 DeepSeek 的真实牌义。
 
-`BASE-001`～`BASE-005` 均已完成。除上述唯一当前任务 `API-001` 外，不并行启动后续 API 任务或新前端设计实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+`BASE-001`～`BASE-005`、`KIT-001` 和 `API-001` 均已完成。除上述唯一当前任务 `API-002` 外，不并行启动后续 API 任务或新前端设计实现。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。

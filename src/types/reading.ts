@@ -1,6 +1,7 @@
 import type { CardOrientation, SpreadPosition } from "./tarot";
 
 export interface ReadingCardPayload {
+  cardId: string;
   position: SpreadPosition;
   nameCn: string;
   nameEn: string;
@@ -22,8 +23,18 @@ export interface ReadingResponse {
   summary: string;
 }
 
-export type ReadingApiErrorCode =
+export type ReadingRequestErrorCode =
   | "INVALID_REQUEST"
+  | "INVALID_CARD_COUNT"
+  | "INVALID_CARD_ID"
+  | "UNKNOWN_CARD"
+  | "INVALID_CARD_POSITION"
+  | "DUPLICATE_CARD_POSITION"
+  | "INVALID_CARD_ORIENTATION"
+  | "DUPLICATE_CARD";
+
+export type ReadingApiErrorCode =
+  | ReadingRequestErrorCode
   | "DEEPSEEK_NOT_CONFIGURED"
   | "DEEPSEEK_AUTH_FAILED"
   | "DEEPSEEK_INSUFFICIENT_BALANCE"
