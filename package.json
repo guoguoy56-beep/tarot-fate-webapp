@@ -8,7 +8,7 @@
     "npm": ">=11.19.1 <12"
   },
   "allowScripts": {
-    "unrs-resolver": true
+    "unrs-resolver@1.12.2": true
   },
   "scripts": {
     "dev": "next dev -p 3000",
@@ -16,7 +16,10 @@
     "start": "next start -p 3000",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "audit:all": "npm audit --audit-level=high",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:signatures": "npm audit signatures"
   },
   "dependencies": {
     "framer-motion": "12.43.0",
