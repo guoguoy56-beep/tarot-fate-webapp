@@ -50,11 +50,11 @@ npm run dev
 
 日常拉取代码、CI 和部署环境统一使用 `npm ci`；仅在明确变更依赖并需要同步更新 `package-lock.json` 时使用 `npm install`。
 
+启动后访问 [http://localhost:3000](http://localhost:3000)。
+
 ## 持续集成
 
 GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后依次执行 `npm run lint`、`npm run typecheck` 和 `npm run build`。npm 缓存只用于加速下载，不替代锁文件安装。当前项目尚未建立独立自动化测试脚本，测试将在后续 `TEST-001～006` 阶段补齐并接入 CI。
-
-启动后访问 [http://localhost:3000](http://localhost:3000)。
 
 ## 环境变量
 
