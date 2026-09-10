@@ -323,6 +323,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `BASE-003` 已完成：框架和工具链已按最终组合升级；ESLint 已迁移到原生 Flat Config；旧自定义 `.next-dev` / `distDir` 已移除并采用 Next.js 16 默认 `.next/dev`；`package-lock.json` 已用 npm `11.19.1` 从干净状态重建。
 - `BASE-004` 已完成：GitHub Actions CI 已固化 Node/npm 版本，并自动执行干净安装、Lint、类型检查和生产构建；本地与首次远程质量门禁均通过。实施记录见 `ProjectDocument/BASE-004-CI基线实施记录-2026-09-10.md`。
 - `BASE-005` 已完成：完整与生产依赖审计均为 0；CI 会阻断 high/critical 漏洞；依赖安装脚本采用严格、精确版本白名单。ESLint 9 EOL 和 npm 签名接口 503 已作为有期限的已知风险记录，详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
+- `KIT-001` 已完成：用户提供的“全栈开发专家”套件经评估为部分适用。原包是面向 Qoder 的 Java Spring Boot + Vue 3 套件，不能原样作为本项目 Codex 技能；原件保持不动，适用方法已重写为 `.agents/skills/` 下的 API、代码审查、测试策略、性能诊断和安全重构五个仓库技能。Vue、Java、数据库能力搁置，新前端技能等 `FE-GATE` 后再定。详见 `ProjectDocument/KIT-001-全栈开发专家套件评估与适配记录-2026-09-10.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -360,6 +361,12 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - 先完成依赖可复现、框架安全升级、API 可信边界、测试底座、AI 可用性和本地数据兼容。
 - 上述基础通过阶段关口后，再共同输出新前端专项方案。
 - 新前端达到功能、桌面/移动端、数据兼容和 E2E 验收标准后，才删除旧前端代码。
+
+工程套件规则：
+
+- Codex 仓库技能位于 `.agents/skills/`，只在描述匹配的任务中使用；它们辅助执行，不替代本 HANDOFF 和总计划。
+- `kit/AI用全栈开发套件包/` 是用户提供的 Qoder/Java/Vue 原始参考，不作为项目技术栈或默认实现规范。
+- 性能和重构技能不能绕过当前优先级；React 前端实现技能在 `FE-GATE` 前不创建、不使用。
 
 当前唯一下一项任务：
 

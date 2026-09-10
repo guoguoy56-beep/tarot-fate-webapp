@@ -95,6 +95,7 @@
 - 安装脚本策略：`.npmrc` 启用严格安装脚本白名单；只允许 `package.json#allowScripts` 中经过审查且精确到版本的依赖执行安装脚本。依赖变化后必须运行 `npm install-scripts ls`，不得使用允许所有脚本的绕过参数。
 - 主要源码目录：`src/app/`、`src/components/`、`src/data/`、`src/lib/`、`src/types/`。
 - 项目文档目录：`ProjectDocument/`。修改代码、视觉方案、动效方案、AI 接口或素材策略时，需要同步更新相关文档；阶段进度或下一步变化需要同步更新 `ProjectDocument/HANDOFF.md`。
+- 项目仓库技能目录：`.agents/skills/`。任务匹配时读取对应 `SKILL.md`，但技能不替代 `HANDOFF.md`、总计划或用户当前要求；`kit/AI用全栈开发套件包/` 是 Qoder/Java/Vue 原始参考，不能作为本项目默认技术规范。
 - 静态资源目录：`public/assets/` 存放背景和卡背，`public/cards/rws/` 存放 78 张 Rider-Waite-Smith 真实牌面。
 - 测试目录：当前未设置专用测试目录。
 - 禁止修改的目录或文件：不要手动修改 `node_modules/`、`.next/`、构建缓存、临时文件、`.env.local` 或任何包含密钥的文件；不要提交 API Key、令牌、密码或本地私密配置。
