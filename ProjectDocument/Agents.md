@@ -90,7 +90,9 @@
 - Lint 命令：`npm run lint`。
 - 类型检查命令：`npm run typecheck`。
 - 综合检查命令：`npm run check`，会依次运行 lint、typecheck 和 build。
+- 依赖审计命令：`npm run audit:all` 检查完整依赖树，`npm run audit:prod` 检查生产依赖；两者以 high 为失败阈值。`npm run audit:signatures` 用于周期性人工签名与来源证明核验，不作为常规 CI 硬门禁。
 - 构建命令：`npm run build`。代码、类型、API 或资源路径修改后优先运行该命令验证。
+- 安装脚本策略：`.npmrc` 启用严格安装脚本白名单；只允许 `package.json#allowScripts` 中经过审查且精确到版本的依赖执行安装脚本。依赖变化后必须运行 `npm install-scripts ls`，不得使用允许所有脚本的绕过参数。
 - 主要源码目录：`src/app/`、`src/components/`、`src/data/`、`src/lib/`、`src/types/`。
 - 项目文档目录：`ProjectDocument/`。修改代码、视觉方案、动效方案、AI 接口或素材策略时，需要同步更新相关文档；阶段进度或下一步变化需要同步更新 `ProjectDocument/HANDOFF.md`。
 - 静态资源目录：`public/assets/` 存放背景和卡背，`public/cards/rws/` 存放 78 张 Rider-Waite-Smith 真实牌面。

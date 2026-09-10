@@ -54,7 +54,9 @@ npm run dev
 
 ## 持续集成
 
-GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后依次执行 `npm run lint`、`npm run typecheck` 和 `npm run build`。npm 缓存只用于加速下载，不替代锁文件安装。当前项目尚未建立独立自动化测试脚本，测试将在后续 `TEST-001～006` 阶段补齐并接入 CI。
+GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后依次执行 high/critical 全量依赖审计、`npm run lint`、`npm run typecheck` 和 `npm run build`。npm 缓存只用于加速下载，不替代锁文件安装。
+
+可单独运行 `npm run audit:all` 检查全部依赖、`npm run audit:prod` 检查生产依赖；`npm run audit:signatures` 用于人工核验注册表签名和来源证明，不作为每次提交的硬门禁。项目通过 `.npmrc` 拒绝未审批的依赖安装脚本，获准脚本必须在 `package.json#allowScripts` 中精确固定版本。当前项目尚未建立独立自动化测试脚本，测试将在后续 `TEST-001～006` 阶段补齐并接入 CI。
 
 ## 环境变量
 
@@ -76,4 +78,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-09-10，`BASE-001` 运行时基线、`BASE-002` 框架升级决策、`BASE-003` 框架/工具链升级和 `BASE-004` CI 基线均已完成；下一项是 `BASE-005`，复核并记录依赖与供应链风险。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。
+截至 2026-09-10，阶段 1 的 `BASE-001～BASE-005` 均已完成：运行时、框架、锁文件、CI 和依赖风险治理已经建立。下一项是阶段 2 的 `API-001`，建立共享领域校验。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后，届时再单独讨论设计细节与实现路径。
