@@ -408,9 +408,12 @@ DeepSeek API Key 必须只存在于服务端环境变量中。
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_READING_ENABLED=true
 ```
 
-前端不得直接调用 DeepSeek API。当前默认使用 `deepseek-v4-flash` 非思考模式，由服务端一次性获取严格 JSON；接口失败时保留抽牌状态并提供手动重试，不自动回退到模拟解读。项目当前仅做本地开发与运行，不引入公网匿名限流或外部 Redis；若未来决定公开部署，再按实际平台重新评估 API-004。
+前端不得直接调用 DeepSeek API。当前默认使用 `deepseek-v4-flash` 非思考模式，由服务端一次性获取严格 JSON；单次输出上限为 1200 Token，服务端超时为 30 秒。将 `DEEPSEEK_READING_ENABLED=false` 并重启本地服务可人工暂停在线解读；暂停时返回 503 `DEEPSEEK_DISABLED`，且不访问上游。
+
+接口失败时保留抽牌状态并提供手动重试，不自动重试 DeepSeek，也不回退到模拟解读。每个通过领域校验的 AI 阶段请求会在服务端写入 `[tarot.reading]` 结构化日志，记录结果、耗时、稳定错误码、上游状态和上游实际返回的 Token 用量；累计值只覆盖当前 Node.js 进程，重启后归零。日志不得包含用户问题、卡牌内容、Prompt、API Key 或解读正文，浏览器响应也不包含 Usage 和 Provider 状态。项目当前仅做本地开发与运行，不引入公网匿名限流或外部 Redis；若未来决定公开部署，再按实际平台重新评估 API-004。
 
 ## 9. AI Prompt 规范
 

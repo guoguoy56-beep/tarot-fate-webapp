@@ -45,6 +45,7 @@ export type ReadingRequestErrorCode =
 
 export type ReadingApiErrorCode =
   | ReadingRequestErrorCode
+  | "DEEPSEEK_DISABLED"
   | "DEEPSEEK_NOT_CONFIGURED"
   | "DEEPSEEK_AUTH_FAILED"
   | "DEEPSEEK_INSUFFICIENT_BALANCE"

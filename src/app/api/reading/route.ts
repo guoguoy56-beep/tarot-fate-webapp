@@ -1,5 +1,6 @@
 import { DeepSeekReadingError, requestDeepSeekReading } from "@/lib/deepseek";
 import { readReadingRequestBody } from "@/lib/reading-request-body";
+import { recordReadingMetric } from "@/lib/reading-observability";
 import { validateReadingRequest } from "@/lib/reading-validation";
 import type { ReadingApiError } from "@/types/reading";
 import { NextResponse } from "next/server";
@@ -28,17 +29,46 @@ export async function POST(request: Request) {
     return errorResponse({ ...validation.error, retryable: false }, 400);
   }
 
+  const startedAt = performance.now();
+
   try {
-    const reading = await requestDeepSeekReading(validation.data);
-    return NextResponse.json(reading);
+    const result = await requestDeepSeekReading(validation.data);
+    recordReadingMetric({
+      outcome: "success",
+      durationMs: performance.now() - startedAt,
+      upstreamRequested: true,
+      model: result.model,
+      usage: result.usage,
+    });
+    return NextResponse.json(result.reading);
   } catch (error) {
     if (error instanceof DeepSeekReadingError) {
+      const upstreamRequested = error.code !== "DEEPSEEK_DISABLED" && error.code !== "DEEPSEEK_NOT_CONFIGURED";
+      recordReadingMetric({
+        outcome: upstreamRequested ? "failure" : "blocked",
+        durationMs: performance.now() - startedAt,
+        upstreamRequested,
+        model: error.model ?? undefined,
+        usage: error.usage,
+        errorCode: error.code,
+        status: error.status,
+        retryable: error.retryable,
+        providerStatus: error.providerStatus,
+      });
       return errorResponse(
         { code: error.code, message: error.message, retryable: error.retryable },
         error.status,
       );
     }
 
+    recordReadingMetric({
+      outcome: "failure",
+      durationMs: performance.now() - startedAt,
+      upstreamRequested: true,
+      errorCode: "INTERNAL_ERROR",
+      status: 500,
+      retryable: true,
+    });
     return errorResponse({ code: "INTERNAL_ERROR", message: "解读服务发生未知错误。", retryable: true }, 500);
   }
 }

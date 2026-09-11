@@ -66,9 +66,10 @@ GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执�
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_READING_ENABLED=true
 ```
 
-API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴露在前端代码中。当前默认使用 `deepseek-v4-flash` 非思考模式，并要求返回包含 `past`、`present`、`future`、`summary` 的结构化 JSON。未配置或调用失败时不会自动生成模拟解读，页面会保留当前抽牌状态并允许手动重试。
+API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴露在前端代码中。当前默认使用 `deepseek-v4-flash` 非思考模式，并要求返回包含 `past`、`present`、`future`、`summary` 的结构化 JSON。将 `DEEPSEEK_READING_ENABLED=false` 并重启本地服务可暂停新的在线解读请求；未配置时默认启用。服务端将每次合法 AI 请求的结果、耗时、错误分类和上游实际返回的 Token 用量写入带 `[tarot.reading]` 前缀的本地结构化日志，计数随进程重启归零，且不记录用户问题、卡牌、Prompt、API Key 或解读正文。未配置或调用失败时不会自动生成模拟解读，页面会保留当前抽牌状态并允许手动重试。
 
 ## 项目文档
 
@@ -78,4 +79,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-09-10，项目范围明确为本地开发与运行，当前没有云端部署计划。`BASE-001～BASE-005`、`KIT-001` 和 `API-001～API-003` 已完成；`API-004` 的公网部署与匿名限流工作已移至未来发布阶段，只有用户明确决定公开部署后才重新评估。当前下一项是本地同样需要的 `API-005` 成本与故障保护。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+截至 2026-09-11，项目范围明确为本地开发与运行，当前没有云端部署计划。`BASE-001～BASE-005`、`KIT-001`、`API-001～API-003` 和 `API-005` 已完成；`API-004` 的公网部署与匿名限流工作已移至未来发布阶段，只有用户明确决定公开部署后才重新评估。当前下一项是 `DATA-001` 塔罗牌数据完整性测试。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。

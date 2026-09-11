@@ -114,6 +114,7 @@ src/app/api/reading/route.ts
 src/components/TarotExperience.tsx
 src/data/tarotCards.ts
 src/lib/deepseek.ts
+src/lib/reading-observability.ts
 src/lib/reading-validation.ts
 src/lib/storage.ts
 src/lib/tarot.ts
@@ -310,9 +311,10 @@ DeepSeek API 相关环境变量建议：
 DEEPSEEK_API_KEY=your_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_READING_ENABLED=true
 ```
 
-API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 输出和 30 秒服务端超时；未配置 Key 时返回明确配置错误，不生成模拟解读。项目当前没有 Redis、Vercel 或其他云端运行依赖，`npm run dev` 与 `npm run start` 均只需要本地 Node.js 环境和可选的 DeepSeek Key。
+API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 输出、1200 Token 输出上限和 30 秒服务端超时；未配置 Key 时返回明确配置错误，不生成模拟解读。将 `DEEPSEEK_READING_ENABLED=false` 并重启本地服务，可在访问上游前人工熔断新的在线解读；未配置该变量时默认启用。合法 AI 阶段请求会输出 `[tarot.reading]` 本地结构化日志，记录结果、耗时、错误分类、Provider 状态和实际 Token，累计值只覆盖当前进程且不含问题、卡牌、Prompt、Key 或解读正文。项目当前没有 Redis、Vercel 或其他云端运行依赖，`npm run dev` 与 `npm run start` 均只需要本地 Node.js 环境和可选的 DeepSeek Key。
 
 ## 13. 2026-09-09 项目重启评估
 
@@ -333,6 +335,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `API-002` 已完成：公开请求类型已收敛为问题和三张牌的 `cardId`、牌位、方向；共享校验器按 ID 从 `tarotCardMap` 重建 `TrustedReadingRequest`，DeepSeek 适配层只接受该可信类型并按实际方向选择关键词。最小请求、伪造元数据和未知卡牌三项本地生产形态 HTTP/Prompt 验收全部通过，未调用真实服务。详见 `ProjectDocument/API-002-服务端可信牌义实施记录-2026-09-10.md`。
 - `API-003` 已完成：新增共享 500 字限制和 4096 字节请求体限制；服务端按标准 `Request.body` 流累计实际字节，不能通过省略 `Content-Length` 绕过。新增 `QUESTION_TOO_LONG`（400）和 `REQUEST_TOO_LARGE`（413）；HTTP 边界矩阵 8/8、真实浏览器 500/501 字和 emoji 计数均通过。详见 `ProjectDocument/API-003-请求长度与规模限制实施记录-2026-09-10.md`。
 - `API-004` 的部署前提已按用户决定纠正：当前项目仅本地运行，不选定云平台、不创建云资源，也不为尚不存在的公网环境引入 Redis。此前 Vercel + Upstash 方案及实现已从当前代码和运行文档撤销；未来出现明确部署计划时，API-004 与 `REL-001` 一起重新评估。
+- `API-005` 已完成：增加 `DEEPSEEK_READING_ENABLED=false` 本地人工熔断、1200 Token 单次输出上限和进程内 `[tarot.reading]` 结构化指标；成功路径统计上游实际 Usage，失败路径区分本地阻止、余额不足、限流、Provider 故障和无效响应。浏览器契约不变，不增加自动重试、假解读、数据库或云端依赖。实施记录见 `ProjectDocument/API-005-成本与故障保护实施记录-2026-09-11.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -340,7 +343,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - 桌面端后半流程已通过浏览器级模拟响应验证；发现阅读面板遮牌、终局历史按钮不可点击和保存可重复等问题。
 - 390×844 移动端布局明显未完成，核心抽牌页不满足可用标准。
 - localStorage 只做 JSON 解析，没有运行时结构校验；错误结构会导致历史弹窗崩溃。
-- `/api/reading` 已完成卡牌身份、牌位、方向、三牌唯一性、服务端可信牌义、问题长度和请求体规模限制；当前本地范围仍需 API-005 成本/故障保护。公网频率/并发保护随部署决策延期。
+- `/api/reading` 已完成卡牌身份、牌位、方向、三牌唯一性、服务端可信牌义、问题长度、请求体规模限制和本地成本/故障保护。公网频率/并发保护仍随部署决策延期。
 - ESLint `9.39.5` 已进入 EOL，但 ESLint 10 仍与当前 `eslint-config-next` 带入的三个插件 peer 范围冲突；该风险只影响开发工具链、当前没有已知漏洞，已限时接受并要求最迟 2026-10-10 复核。
 - `npm audit signatures` 曾因 npm 注册表的 Next.js SWC 来源证明接口连续返回 503；2026-09-10 已成功重试，当前 389 个包签名有效、83 个包具有已验证 attestations，公开发布前仍需再次执行。
 
@@ -379,6 +382,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `API-005`：在纯本地运行前提下评估并实现最小成本与故障保护，不增加管理后台、数据库或云端依赖。
+1. `DATA-001`：建立塔罗牌数据和牌面资源完整性测试，验证 78 张牌数量、ID 唯一性、大小阿卡纳分布、必要字段和资源路径。
 
-`BASE-001`～`BASE-005`、`KIT-001` 和 `API-001`～`API-003` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003` 和 `API-005` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
