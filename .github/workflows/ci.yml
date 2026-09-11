@@ -47,6 +47,9 @@ jobs:
       - name: Audit dependencies
         run: npm run audit:all
 
+      - name: Test tarot data integrity
+        run: npm run test:data
+
       - name: Lint
         run: npm run lint
 
