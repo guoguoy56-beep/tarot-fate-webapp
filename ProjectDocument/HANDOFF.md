@@ -118,10 +118,12 @@ src/lib/deepseek.ts
 src/lib/reading-observability.ts
 src/lib/reading-validation.ts
 src/lib/storage.ts
+src/lib/tarot-random.ts
 src/lib/tarot.ts
 src/types/reading.ts
 src/types/tarot.ts
 tests/data/tarot-data.test.mjs
+tests/data/tarot-random.test.mjs
 public/assets/old-witch-table-home-bg.png
 public/cards/rws/*.jpg
 ```
@@ -142,7 +144,7 @@ public/cards/rws/*.jpg
 - `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
 - `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
 - `BASE-004` CI 基线已完成：`.github/workflows/ci.yml` 会在推送到 `main` 和面向 `main` 的 Pull Request 上，以 Node.js 24、npm `11.19.1` 执行 `npm ci`、Lint、类型检查和生产构建；首次 GitHub 托管运行 [#34424590039](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/34424590039) 全部通过。
-- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；`DATA-001` 已将 `npm run test:data` 接入门禁，直接验证 78 张生产数据和真实 JPG 资源。领域、API、AI Mock 与浏览器测试仍待 `TEST-001～006` 补齐。
+- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；`DATA-001～002` 已将 `npm run test:data` 接入门禁，7 项测试直接验证 78 张生产数据、真实 JPG 资源、Fisher–Yates 和正逆位边界。其余领域、API、AI Mock 与浏览器测试仍待 `TEST-001～006` 补齐。
 - `BASE-005` 依赖与供应链风险复核已完成：全量和生产依赖审计均为 0 个已知漏洞；CI 已加入 high/critical 全量审计；`.npmrc` 严格限制安装脚本，并将已审查的 `unrs-resolver@1.12.2` 精确加入白名单。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
 - npm 全量审计与仅生产依赖审计均为 `0` 个漏洞。
@@ -159,7 +161,7 @@ public/cards/rws/*.jpg
 - 首页牌堆已使用独立中轴锚点固定在视口中心，避免 Framer Motion 动画覆盖 CSS 居中位移。
 - 首页羊皮纸输入区已改为底部安全距离定位并保持水平居中，与中央牌堆保留稳定间隔；矮窗口下自动压缩纵向内边距。
 - 首页 78 张真实牌堆已统一：首页与洗牌阶段已改为同一批 78 张牌和同一个中轴锚点持续渲染；首页 UI 退场期间牌堆保持原位，进入洗牌后才从原位响应鼠标扰动。
-- 本地随机塔罗牌 deck 生成。
+- 本地随机塔罗牌 deck 生成；已使用不修改源数组的 Fisher–Yates，并保留“随机值严格大于 0.5 为正位”的既有规则。
 - 78 张牌的卡背渲染。
 - 鼠标轨迹扰动洗牌逻辑。
 - 洗牌结束后进入底部弧形牌带。
@@ -339,6 +341,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `API-004` 的部署前提已按用户决定纠正：当前项目仅本地运行，不选定云平台、不创建云资源，也不为尚不存在的公网环境引入 Redis。此前 Vercel + Upstash 方案及实现已从当前代码和运行文档撤销；未来出现明确部署计划时，API-004 与 `REL-001` 一起重新评估。
 - `API-005` 已完成：增加 `DEEPSEEK_READING_ENABLED=false` 本地人工熔断、1200 Token 单次输出上限和进程内 `[tarot.reading]` 结构化指标；成功路径统计上游实际 Usage，失败路径区分本地阻止、余额不足、限流、Provider 故障和无效响应。浏览器契约不变，不增加自动重试、假解读、数据库或云端依赖。实施记录见 `ProjectDocument/API-005-成本与故障保护实施记录-2026-09-11.md`。
 - `DATA-001` 已完成：新增无第三方依赖的 Node 24 数据测试，直接验证 78 张牌、唯一 ID/图片路径、22/56 大小阿卡纳、四花色各 14 张、编号范围、必要文本与正逆位关键词，以及 78 个实际 JPG 文件和 JPEG 首尾标记；`npm run test:data` 已接入 GitHub Actions。生产数据无需修正。实施记录见 `ProjectDocument/DATA-001-塔罗牌数据与资源完整性测试实施记录-2026-09-11.md`。
+- `DATA-002` 已完成：`drawRandomDeck` 已从随机 seed 排序切换为复制输入后执行 Fisher–Yates；纯随机模块支持注入确定性随机源，旧前端仍按原入口无参数调用。新增固定交换、250 个种子和正逆位 `0.5` 边界测试，连同 DATA-001 共 7 项通过；没有修改 `TarotExperience.tsx`、生产牌组或牌面。实施记录见 `ProjectDocument/DATA-002-随机逻辑规范化实施记录-2026-09-11.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -385,6 +388,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `DATA-002`：规范随机牌组与正逆位逻辑，用明确的 Fisher-Yates 实现替换随机比较器，并验证不丢牌、不重复和不修改源数据。
+1. `TEST-001`：结合 TypeScript 单元、Next.js API、DeepSeek Mock、React 与浏览器 E2E 需求，比较并确定完整但最小的测试工具组合，形成书面决策。
 
-`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005` 和 `DATA-001` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+阶段 1 与当前本地范围内的阶段 2 已完成；`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005` 和 `DATA-001～002` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。

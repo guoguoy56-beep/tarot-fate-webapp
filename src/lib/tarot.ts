@@ -1,16 +1,13 @@
 import { tarotCards } from "@/data/tarotCards";
+import { shuffleDeck } from "@/lib/tarot-random";
+import type { RandomSource } from "@/lib/tarot-random";
 import type { CardOrientation, TarotCardData } from "@/types/tarot";
 
-export function drawRandomDeck(): TarotCardData[] {
-  return [...tarotCards]
-    .map((card) => ({ card, seed: Math.random() }))
-    .sort((a, b) => a.seed - b.seed)
-    .map((item) => item.card);
+export function drawRandomDeck(random: RandomSource = Math.random): TarotCardData[] {
+  return shuffleDeck(tarotCards, random);
 }
 
-export function randomOrientation(): CardOrientation {
-  return Math.random() > 0.5 ? "upright" : "reversed";
-}
+export { randomOrientation } from "@/lib/tarot-random";
 
 export function positionLabel(position: string): string {
   const labels: Record<string, string> = {

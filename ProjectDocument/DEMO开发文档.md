@@ -332,8 +332,8 @@ const y = Math.abs(index - centerIndex) * curveDepth
 
 职责：
 
-- 从 78 张牌中随机确定牌序。
-- 判断正逆位。
+- 通过 `src/lib/tarot-random.ts` 的 Fisher–Yates 从 78 张牌中随机确定牌序，不修改生产源数组。
+- 按“随机值严格大于 `0.5` 为正位，否则为逆位”的既有规则判断正逆位。
 - 记录三张被抽中的牌。
 - 管理过去、现在、未来的放置顺序。
 
@@ -600,7 +600,7 @@ const STORAGE_KEY = 'tarot_reading_records'
 npm run test:data
 ```
 
-该命令直接读取 `src/data/tarotCards.ts` 和 `public/cards/rws/`，验证 78 张牌总数、ID 与图片路径唯一性、22/56 大小阿卡纳结构、四花色各 14 张、牌名/含义/正逆位关键词非空，以及 78 个 JPG 文件存在且具有完整 JPEG 首尾标记。该检查已接入 CI；数据或牌面资源缺失会直接使质量门禁失败。
+该命令直接读取 `src/data/tarotCards.ts`、`src/lib/tarot-random.ts` 和 `public/cards/rws/`，验证 78 张牌总数、ID 与图片路径唯一性、22/56 大小阿卡纳结构、四花色各 14 张、牌名/含义/正逆位关键词非空，以及 78 个 JPG 文件存在且具有完整 JPEG 首尾标记；同时用固定交换序列、250 个确定性种子和 `0.5` 边界验证 Fisher–Yates 与正逆位规则。该检查已接入 CI；数据、随机逻辑或牌面资源回归会直接使质量门禁失败。
 
 ### 15.2 功能测试
 
