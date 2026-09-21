@@ -602,6 +602,8 @@ npm run test:data
 
 该命令直接读取 `src/data/tarotCards.ts`、`src/lib/tarot-random.ts` 和 `public/cards/rws/`，验证 78 张牌总数、ID 与图片路径唯一性、22/56 大小阿卡纳结构、四花色各 14 张、牌名/含义/正逆位关键词非空，以及 78 个 JPG 文件存在且具有完整 JPEG 首尾标记；同时用固定交换序列、250 个确定性种子和 `0.5` 边界验证 Fisher–Yates 与正逆位规则。该检查已接入 CI；数据、随机逻辑或牌面资源回归会直接使质量门禁失败。
 
+`TEST-001` 已于 2026-09-21 确定后续使用 Vitest 统一领域、DeepSeek 适配器和 API 集成测试，使用 Playwright Test 承担浏览器 E2E。当前尚未安装新依赖，已有 `npm run test:data` 与 CI 保持不变；TEST-002 将先等价迁移现有 7 项测试并建立统一 `npm test`。旧前端只计划保留一条核心流程冒烟，不建设大规模视觉快照。详细决策见 `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`。
+
 ### 15.2 功能测试
 
 - 问题为空时是否允许开始仪式。

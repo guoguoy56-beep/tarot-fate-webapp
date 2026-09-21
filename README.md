@@ -56,7 +56,7 @@ npm run dev
 
 GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后依次执行 high/critical 全量依赖审计、`npm run test:data`、`npm run lint`、`npm run typecheck` 和 `npm run build`。npm 缓存只用于加速下载，不替代锁文件安装。
 
-`npm run test:data` 会直接检查 78 张生产卡牌的数据、分类、必要字段、真实 JPG 资源，以及 Fisher–Yates 牌组和正逆位规则。可单独运行 `npm run audit:all` 检查全部依赖、`npm run audit:prod` 检查生产依赖；`npm run audit:signatures` 用于人工核验注册表签名和来源证明，不作为每次提交的硬门禁。项目通过 `.npmrc` 拒绝未审批的依赖安装脚本，获准脚本必须在 `package.json#allowScripts` 中精确固定版本。更完整的领域、API、AI Mock 和浏览器测试仍将在后续 `TEST-001～006` 阶段补齐。
+`npm run test:data` 会直接检查 78 张生产卡牌的数据、分类、必要字段、真实 JPG 资源，以及 Fisher–Yates 牌组和正逆位规则。可单独运行 `npm run audit:all` 检查全部依赖、`npm run audit:prod` 检查生产依赖；`npm run audit:signatures` 用于人工核验注册表签名和来源证明，不作为每次提交的硬门禁。项目通过 `.npmrc` 拒绝未审批的依赖安装脚本，获准脚本必须在 `package.json#allowScripts` 中精确固定版本。`TEST-001` 已选定 Vitest 负责 TypeScript 单元、DeepSeek 适配器和 API 集成测试，Playwright Test 负责最小浏览器 E2E；依赖和统一命令将在 `TEST-002～006` 按顺序接入，当前 CI 仍运行已有 `test:data`。
 
 ## 环境变量
 
@@ -79,4 +79,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-09-11，阶段 1 与当前本地范围内的阶段 2 已完成。`BASE-001～BASE-005`、`KIT-001`、`API-001～API-003`、`API-005`、`DATA-001～DATA-002` 已完成；`API-004` 的公网部署与匿名限流工作已移至未来发布阶段，只有用户明确决定公开部署后才重新评估。当前下一项是 `TEST-001` 测试工具选择。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+截至 2026-09-21，阶段 1 与当前本地范围内的阶段 2 已完成，阶段 3 已启动。`BASE-001～BASE-005`、`KIT-001`、`API-001～API-003`、`API-005`、`DATA-001～DATA-002`、`TEST-001` 已完成；`API-004` 的公网部署与匿名限流工作已移至未来发布阶段，只有用户明确决定公开部署后才重新评估。当前下一项是 `TEST-002` 领域单元测试。旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
