@@ -34,6 +34,7 @@
 - Tailwind CSS。
 - Framer Motion。
 - Lucide React。
+- Vitest `5.0.1` + Vite `8.3.0`（Node 环境领域单元测试）。
 - DeepSeek API，经 Next.js API Route 服务端调用。
 - localStorage 保存本地占卜历史。
 
@@ -52,9 +53,10 @@
 ```powershell
 npm ci
 npm run dev
+npm test
+npm run test:watch
 npm run lint
 npm run typecheck
-npm run test:data
 npm run check
 npm run build
 npm run start
@@ -90,6 +92,7 @@ npm run dev
 - `ProjectDocument/DEMO开发文档.md`：第一版可展示 DEMO 的功能、类型、组件和开发阶段拆分。
 - `ProjectDocument/首页动态效果设计文档.md`：首页环境光、标题入场、真实牌堆衔接、阅读揭示特效等动效决策。
 - `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`：Vitest + Playwright 测试分层、兼容性、迁移顺序与 CI 边界。
+- `ProjectDocument/TEST-002-领域单元测试实施记录-2026-09-22.md`：Vitest 接入、79 项领域测试、运行时守卫与 CI 验收记录。
 
 ## 5. 项目维护规则
 
@@ -118,13 +121,14 @@ src/data/tarotCards.ts
 src/lib/deepseek.ts
 src/lib/reading-observability.ts
 src/lib/reading-validation.ts
+src/lib/reading-response.ts
 src/lib/storage.ts
 src/lib/tarot-random.ts
 src/lib/tarot.ts
 src/types/reading.ts
 src/types/tarot.ts
-tests/data/tarot-data.test.mjs
-tests/data/tarot-random.test.mjs
+tests/unit/*.test.ts
+vitest.config.mts
 public/assets/old-witch-table-home-bg.png
 public/cards/rws/*.jpg
 ```
@@ -145,7 +149,7 @@ public/cards/rws/*.jpg
 - `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
 - `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
 - `BASE-004` CI 基线已完成：`.github/workflows/ci.yml` 会在推送到 `main` 和面向 `main` 的 Pull Request 上，以 Node.js 24、npm `11.19.1` 执行 `npm ci`、Lint、类型检查和生产构建；首次 GitHub 托管运行 [#34424590039](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/34424590039) 全部通过。
-- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；`DATA-001～002` 已将 `npm run test:data` 接入门禁，7 项测试直接验证 78 张生产数据、真实 JPG 资源、Fisher–Yates 和正逆位边界。其余领域、API、AI Mock 与浏览器测试仍待 `TEST-001～006` 补齐。
+- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；TEST-002 已将统一 `npm test` 接入门禁，8 个文件、79 项测试覆盖生产牌组/资源、随机规则、请求/响应/错误守卫和本地记录校验。DeepSeek 适配器、API 集成与浏览器测试仍待 TEST-003～006 补齐。
 - `BASE-005` 依赖与供应链风险复核已完成：全量和生产依赖审计均为 0 个已知漏洞；CI 已加入 high/critical 全量审计；`.npmrc` 严格限制安装脚本，并将已审查的 `unrs-resolver@1.12.2` 精确加入白名单。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
 - npm 全量审计与仅生产依赖审计均为 `0` 个漏洞。
@@ -293,6 +297,7 @@ public/cards/rws/*.jpg
 
 每次实现后至少检查：
 
+- `npm test` 是否通过。
 - `npm run lint` 是否通过。
 - `npm run typecheck` 是否通过。
 - `npm run build` 是否通过。
@@ -341,16 +346,17 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `API-003` 已完成：新增共享 500 字限制和 4096 字节请求体限制；服务端按标准 `Request.body` 流累计实际字节，不能通过省略 `Content-Length` 绕过。新增 `QUESTION_TOO_LONG`（400）和 `REQUEST_TOO_LARGE`（413）；HTTP 边界矩阵 8/8、真实浏览器 500/501 字和 emoji 计数均通过。详见 `ProjectDocument/API-003-请求长度与规模限制实施记录-2026-09-10.md`。
 - `API-004` 的部署前提已按用户决定纠正：当前项目仅本地运行，不选定云平台、不创建云资源，也不为尚不存在的公网环境引入 Redis。此前 Vercel + Upstash 方案及实现已从当前代码和运行文档撤销；未来出现明确部署计划时，API-004 与 `REL-001` 一起重新评估。
 - `API-005` 已完成：增加 `DEEPSEEK_READING_ENABLED=false` 本地人工熔断、1200 Token 单次输出上限和进程内 `[tarot.reading]` 结构化指标；成功路径统计上游实际 Usage，失败路径区分本地阻止、余额不足、限流、Provider 故障和无效响应。浏览器契约不变，不增加自动重试、假解读、数据库或云端依赖。实施记录见 `ProjectDocument/API-005-成本与故障保护实施记录-2026-09-11.md`。
-- `DATA-001` 已完成：新增无第三方依赖的 Node 24 数据测试，直接验证 78 张牌、唯一 ID/图片路径、22/56 大小阿卡纳、四花色各 14 张、编号范围、必要文本与正逆位关键词，以及 78 个实际 JPG 文件和 JPEG 首尾标记；`npm run test:data` 已接入 GitHub Actions。生产数据无需修正。实施记录见 `ProjectDocument/DATA-001-塔罗牌数据与资源完整性测试实施记录-2026-09-11.md`。
+- `DATA-001` 已完成：建立生产牌组与真实牌面完整性断言，直接验证 78 张牌、唯一 ID/图片路径、22/56 大小阿卡纳、四花色各 14 张、编号范围、必要文本与正逆位关键词，以及 78 个实际 JPG 文件和 JPEG 首尾标记；这些断言已在 TEST-002 等价迁移到 Vitest。生产数据无需修正。实施记录见 `ProjectDocument/DATA-001-塔罗牌数据与资源完整性测试实施记录-2026-09-11.md`。
 - `DATA-002` 已完成：`drawRandomDeck` 已从随机 seed 排序切换为复制输入后执行 Fisher–Yates；纯随机模块支持注入确定性随机源，旧前端仍按原入口无参数调用。新增固定交换、250 个种子和正逆位 `0.5` 边界测试，连同 DATA-001 共 7 项通过；没有修改 `TarotExperience.tsx`、生产牌组或牌面。实施记录见 `ProjectDocument/DATA-002-随机逻辑规范化实施记录-2026-09-11.md`。
-- `TEST-001` 已完成：确定 Vitest 负责 TypeScript 领域单元、DeepSeek 适配器和 Next.js Route Handler/API 集成测试，Playwright Test 负责浏览器 E2E；旧前端只保留一条 Chromium 核心流程。当前未安装测试依赖、未改 CI，现有 7 项 `test:data` 将在 TEST-002 等价迁移后统一到 `npm test`。决策见 `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`。
+- `TEST-001` 已完成：确定 Vitest 负责 TypeScript 领域单元、DeepSeek 适配器和 Next.js Route Handler/API 集成测试，Playwright Test 负责浏览器 E2E；旧前端只保留一条 Chromium 核心流程。决策见 `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`。
+- `TEST-002` 已完成：接入 Vitest `5.0.1` / Vite `8.3.0`，将原 7 项数据/随机断言无损迁移并扩展为 8 个文件、79 项测试；新增阅读响应/API 错误纯函数守卫和当前格式 localStorage 运行时校验，统一 `npm test` 已替代 `test:data` 接入 CI。干净安装、测试、Lint、类型检查、构建、审计和安装脚本复核均通过，未调用 DeepSeek。详见 `ProjectDocument/TEST-002-领域单元测试实施记录-2026-09-22.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
 - DeepSeek 真实请求当前因账户余额不足返回 503；错误保留牌局和手动重试逻辑可用。
 - 桌面端后半流程已通过浏览器级模拟响应验证；发现阅读面板遮牌、终局历史按钮不可点击和保存可重复等问题。
 - 390×844 移动端布局明显未完成，核心抽牌页不满足可用标准。
-- localStorage 只做 JSON 解析，没有运行时结构校验；错误结构会导致历史弹窗崩溃。
+- localStorage 已对当前三牌记录执行最小运行时结构校验，坏 JSON、错误对象和部分坏记录会安全降级；schema version、旧格式迁移、单条删除和清空全部仍待 STORE-001～003。
 - `/api/reading` 已完成卡牌身份、牌位、方向、三牌唯一性、服务端可信牌义、问题长度、请求体规模限制和本地成本/故障保护。公网频率/并发保护仍随部署决策延期。
 - ESLint `9.39.5` 已进入 EOL，但 ESLint 10 仍与当前 `eslint-config-next` 带入的三个插件 peer 范围冲突；该风险只影响开发工具链、当前没有已知漏洞，已限时接受并要求最迟 2026-10-10 复核。
 - `npm audit signatures` 曾因 npm 注册表的 Next.js SWC 来源证明接口连续返回 503；2026-09-10 已成功重试，当前 389 个包签名有效、83 个包具有已验证 attestations，公开发布前仍需再次执行。
@@ -390,6 +396,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `TEST-002`：在 npm `11.19.1` 基线上接入 Vitest/Vite，等价迁移现有 7 项数据和随机测试，补齐请求校验、错误码映射与存储校验单元测试，并建立统一 `npm test` 和 CI 门禁。
+1. `TEST-003`：使用受控 `fetch` Mock、环境变量隔离和假时钟测试 DeepSeek 适配器的成功、非 JSON、缺字段、401、402、429、5xx、超时与网络异常；禁止真实付费请求。
 
-阶段 1 与当前本地范围内的阶段 2 已完成，阶段 3 已启动；`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005`、`DATA-001～002` 和 `TEST-001` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+阶段 1 与当前本地范围内的阶段 2 已完成，阶段 3 正在推进；`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005`、`DATA-001～002` 和 `TEST-001～002` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。

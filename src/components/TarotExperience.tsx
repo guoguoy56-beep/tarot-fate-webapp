@@ -7,6 +7,7 @@ import {
   MAX_READING_QUESTION_CHARACTERS,
   normalizeReadingQuestion,
 } from "@/lib/reading-limits";
+import { getReadingApiError, isReadingResponse } from "@/lib/reading-response";
 import { drawRandomDeck, orientationLabel, positionLabel, randomOrientation } from "@/lib/tarot";
 import { readReadingRecords, saveReadingRecord } from "@/lib/storage";
 import type { ReadingApiError, ReadingRecord, ReadingResponse } from "@/types/reading";
@@ -82,37 +83,6 @@ function createShuffleState(deck: TarotCardData[]): ShuffleCard[] {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function isReadingResponse(value: unknown): value is ReadingResponse {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const response = value as Record<string, unknown>;
-  return ["past", "present", "future", "summary"].every(
-    (key) => typeof response[key] === "string" && Boolean((response[key] as string).trim()),
-  );
-}
-
-function getReadingApiError(value: unknown): ReadingApiError["error"] | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const error = (value as { error?: unknown }).error;
-
-  if (!error || typeof error !== "object") {
-    return null;
-  }
-
-  const detail = error as Record<string, unknown>;
-
-  if (typeof detail.code !== "string" || typeof detail.message !== "string" || typeof detail.retryable !== "boolean") {
-    return null;
-  }
-
-  return detail as ReadingApiError["error"];
 }
 
 function TextReveal({ text }: { text: string }) {

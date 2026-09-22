@@ -86,7 +86,7 @@
 - 运行时与包管理器：Node.js 24 LTS（`24.x`）、npm `>=11.19.1 <12`；`package.json#packageManager` 固定为 `npm@11.19.1`。不要无理由更换为 pnpm、yarn 或 bun。
 - 依赖安装：日常拉取代码、干净环境、CI 和部署统一使用现有 `package-lock.json` 执行 `npm ci`；仅在明确新增、删除或升级依赖并需要同步锁文件时使用 `npm install`。执行前先确认 Node/npm 版本满足仓库约束。
 - 开发命令：`npm run dev`，默认本地地址为 `http://localhost:3000`。
-- 测试命令：当前未配置独立测试脚本；涉及功能或交互修改时，至少运行构建并进行必要的手动流程验证。
+- 测试命令：`npm test` 使用 Vitest 一次运行稳定单元测试；开发监听使用 `npm run test:watch`。修改业务逻辑时先运行最相关测试，再运行完整 `npm test` 和必要的手动流程验证。
 - Lint 命令：`npm run lint`。
 - 类型检查命令：`npm run typecheck`。
 - 综合检查命令：`npm run check`，会依次运行 lint、typecheck 和 build。
@@ -97,7 +97,7 @@
 - 项目文档目录：`ProjectDocument/`。修改代码、视觉方案、动效方案、AI 接口或素材策略时，需要同步更新相关文档；阶段进度或下一步变化需要同步更新 `ProjectDocument/HANDOFF.md`。
 - 项目仓库技能目录：`.agents/skills/`。任务匹配时读取对应 `SKILL.md`，但技能不替代 `HANDOFF.md`、总计划或用户当前要求；`kit/AI用全栈开发套件包/` 是 Qoder/Java/Vue 原始参考，不能作为本项目默认技术规范。
 - 静态资源目录：`public/assets/` 存放背景和卡背，`public/cards/rws/` 存放 78 张 Rider-Waite-Smith 真实牌面。
-- 测试目录：当前未设置专用测试目录。
+- 测试目录：`tests/unit/` 存放 Node 环境 TypeScript 单元测试；后续 `tests/integration/`、`tests/e2e/` 和共享 fixture 只按 TEST-003～006 的任务边界逐步创建。
 - 禁止修改的目录或文件：不要手动修改 `node_modules/`、`.next/`、构建缓存、临时文件、`.env.local` 或任何包含密钥的文件；不要提交 API Key、令牌、密码或本地私密配置。
 - DeepSeek 约束：API Key 只能由服务端读取，前端不得直接调用 DeepSeek 或暴露环境变量；接口失败时保留抽牌状态并允许手动重试，不自动生成模拟解读。
 - 旧前端维护期视觉约束（有效至 `FE-GATE`）：维护现有界面时整体保持“旧女巫木桌风”，避免现代霓虹、科技星空、大面积玻璃拟态、高饱和渐变和全屏粒子；真实牌面保持旧牌外框、暗金描边和复古滤镜。`FE-GATE` 之后的前端重做以届时确认的新设计方案和实施文档为准，不预设沿用这些视觉限制。

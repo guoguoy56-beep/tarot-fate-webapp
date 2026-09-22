@@ -457,6 +457,9 @@ const STORAGE_KEY = 'tarot_reading_records'
 2. 保存前生成唯一 ID。
 3. 使用 ISO 时间字符串保存创建时间。
 4. 保存失败时给出前端提示。
+5. 读取时只保留通过当前 `ReadingRecord` 运行时校验的三牌记录；坏 JSON、错误对象和部分坏记录不得使历史界面崩溃。
+
+当前最小校验已在 TEST-002 落地；schema version、旧格式迁移、删除单条和清空全部仍属于 STORE-001～003。
 
 ## 11. DEMO 开发阶段拆分
 
@@ -597,12 +600,12 @@ const STORAGE_KEY = 'tarot_reading_records'
 运行：
 
 ```powershell
-npm run test:data
+npm test
 ```
 
-该命令直接读取 `src/data/tarotCards.ts`、`src/lib/tarot-random.ts` 和 `public/cards/rws/`，验证 78 张牌总数、ID 与图片路径唯一性、22/56 大小阿卡纳结构、四花色各 14 张、牌名/含义/正逆位关键词非空，以及 78 个 JPG 文件存在且具有完整 JPEG 首尾标记；同时用固定交换序列、250 个确定性种子和 `0.5` 边界验证 Fisher–Yates 与正逆位规则。该检查已接入 CI；数据、随机逻辑或牌面资源回归会直接使质量门禁失败。
+该命令使用 Vitest 在 Node 环境运行 8 个 TypeScript 测试文件、79 项测试。它继续直接读取 `src/data/tarotCards.ts`、`src/lib/tarot-random.ts` 和 `public/cards/rws/`，验证 78 张牌总数、ID 与图片路径唯一性、22/56 大小阿卡纳结构、四花色各 14 张、必要文本、78 个完整 JPEG、Fisher–Yates、250 个确定性种子和 `0.5` 正逆位边界；同时新增问题字符/请求字节限制、请求可信重建与错误码、阅读响应/API 错误载荷和 localStorage 当前记录结构测试。
 
-`TEST-001` 已于 2026-09-21 确定后续使用 Vitest 统一领域、DeepSeek 适配器和 API 集成测试，使用 Playwright Test 承担浏览器 E2E。当前尚未安装新依赖，已有 `npm run test:data` 与 CI 保持不变；TEST-002 将先等价迁移现有 7 项测试并建立统一 `npm test`。旧前端只计划保留一条核心流程冒烟，不建设大规模视觉快照。详细决策见 `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`。
+`npm test` 已接入 CI；领域规则、数据或牌面资源回归会直接使质量门禁失败。开发时可使用 `npm run test:watch`。TEST-003～004 将继续补齐 DeepSeek Mock 与 API 集成，TEST-005 只为旧前端保留一条核心流程冒烟，不建设大规模视觉快照。详细实施见 `ProjectDocument/TEST-002-领域单元测试实施记录-2026-09-22.md`。
 
 ### 15.2 功能测试
 
