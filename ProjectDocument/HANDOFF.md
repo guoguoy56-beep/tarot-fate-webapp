@@ -34,7 +34,7 @@
 - Tailwind CSS。
 - Framer Motion。
 - Lucide React。
-- Vitest `5.0.1` + Vite `8.3.0`（Node 环境领域单元测试）。
+- Vitest `5.0.1` + Vite `8.3.0`（Node 环境领域单元、DeepSeek 适配器及 API 集成测试）。
 - DeepSeek API，经 Next.js API Route 服务端调用。
 - localStorage 保存本地占卜历史。
 
@@ -94,6 +94,7 @@ npm run dev
 - `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`：Vitest + Playwright 测试分层、兼容性、迁移顺序与 CI 边界。
 - `ProjectDocument/TEST-002-领域单元测试实施记录-2026-09-22.md`：Vitest 接入、79 项领域测试、运行时守卫与 CI 验收记录。
 - `ProjectDocument/TEST-003-DeepSeek适配器Mock测试实施记录-2026-10-21.md`：24 项适配器 Mock 测试、上游错误与超时验证，以及 103 项全量测试验收记录。
+- `ProjectDocument/TEST-004-API集成测试实施记录-2026-10-21.md`：32 项真实 Route Handler 集成测试、HTTP 契约与日志隐私，以及 135 项全量测试验收记录。
 
 ## 5. 项目维护规则
 
@@ -129,6 +130,7 @@ src/lib/tarot.ts
 src/types/reading.ts
 src/types/tarot.ts
 tests/unit/*.test.ts
+tests/integration/reading-route.test.ts
 vitest.config.mts
 public/assets/old-witch-table-home-bg.png
 public/cards/rws/*.jpg
@@ -150,7 +152,7 @@ public/cards/rws/*.jpg
 - `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
 - `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
 - `BASE-004` CI 基线已完成：`.github/workflows/ci.yml` 会在推送到 `main` 和面向 `main` 的 Pull Request 上，以 Node.js 24、npm `11.19.1` 执行 `npm ci`、Lint、类型检查和生产构建；首次 GitHub 托管运行 [#34424590039](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/34424590039) 全部通过。
-- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；TEST-002 已将统一 `npm test` 接入门禁，TEST-003 完成后共 9 个文件、103 项测试，覆盖生产牌组/资源、随机规则、请求/响应/错误守卫、本地记录校验和 DeepSeek 适配器。API 集成、浏览器测试与共享 Mock 规范仍待 TEST-004～006 补齐。
+- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；TEST-002 已将统一 `npm test` 接入门禁，TEST-004 完成后共 10 个文件、135 项测试，覆盖生产牌组/资源、随机规则、请求/响应/错误守卫、本地记录校验、DeepSeek 适配器和真实 API Route Handler。浏览器测试与共享 Mock 规范仍待 TEST-005～006 补齐。
 - `BASE-005` 依赖与供应链风险复核已完成：全量和生产依赖审计均为 0 个已知漏洞；CI 已加入 high/critical 全量审计；`.npmrc` 严格限制安装脚本，并将已审查的 `unrs-resolver@1.12.2` 精确加入白名单。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
 - npm 全量审计与仅生产依赖审计均为 `0` 个漏洞。
@@ -352,6 +354,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `TEST-001` 已完成：确定 Vitest 负责 TypeScript 领域单元、DeepSeek 适配器和 Next.js Route Handler/API 集成测试，Playwright Test 负责浏览器 E2E；旧前端只保留一条 Chromium 核心流程。决策见 `ProjectDocument/TEST-001-测试工具选型决策-2026-09-21.md`。
 - `TEST-002` 已完成：接入 Vitest `5.0.1` / Vite `8.3.0`，将原 7 项数据/随机断言无损迁移并扩展为 8 个文件、79 项测试；新增阅读响应/API 错误纯函数守卫和当前格式 localStorage 运行时校验，统一 `npm test` 已替代 `test:data` 接入 CI。干净安装、测试、Lint、类型检查、构建、审计和安装脚本复核均通过，未调用 DeepSeek。详见 `ProjectDocument/TEST-002-领域单元测试实施记录-2026-09-22.md`。
 - `TEST-003` 已完成（2026-10-21）：新增 `tests/unit/deepseek.test.ts` 的 24 项受控 Mock 测试，覆盖成功与正逆位关键词、人工熔断与缺 Key、响应格式、上游错误分类、Token 用量、请求/正文超时和网络异常。假 Key、环境变量隔离及假时钟保证常规测试不消耗真实额度；全量 9 个文件、103 项测试和 `npm run check` 通过，生产代码、依赖与 CI 无变更。详见 `ProjectDocument/TEST-003-DeepSeek适配器Mock测试实施记录-2026-10-21.md`。
+- `TEST-004` 已完成（2026-10-21）：新增 `tests/integration/reading-route.test.ts` 的 32 项 API 集成测试，直接调用真实 `POST(Request)`，验证合法三牌、问题规范化、可信牌义重建、字符/字节边界、全部请求错误码、DeepSeek 错误 HTTP 映射、未知异常兜底与响应/日志隐私。只替换 DeepSeek 调用边界，网络由失败替身阻断；Vitest 和 CI 已统一收集单元与集成测试。全量 10 个文件、135 项测试及 `npm run check` 通过，未修改生产代码或依赖，未调用真实服务。详见 `ProjectDocument/TEST-004-API集成测试实施记录-2026-10-21.md`。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - `npm audit` 全量审计与 `npm audit --omit=dev` 生产依赖审计均为 `0` 个漏洞，旧版 Next.js 安全风险已随升级消除。
@@ -398,6 +401,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `TEST-004`：沿用 Vitest 建立真实 `/api/reading` Route Handler 集成测试，覆盖合法三牌、空/超长问题、重复牌位/卡牌、未知 `cardId`、上游错误映射和敏感信息不泄露；隔离 DeepSeek，禁止真实付费请求。
+1. `TEST-005`：按既定选型接入 Playwright Test 与 Chromium，针对本地生产形态应用保留一条旧前端核心闭环：提问 → 洗牌 → 抽三张牌 → 模拟 AI → 逐张揭示 → 手记 → 保存。通过网络拦截返回本地 fixture，禁止真实付费请求，不建立大规模旧 UI 快照。
 
-阶段 1 与当前本地范围内的阶段 2 已完成，阶段 3 正在推进；`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005`、`DATA-001～002` 和 `TEST-001～003` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
+阶段 1 与当前本地范围内的阶段 2 已完成，阶段 3 正在推进；`BASE-001`～`BASE-005`、`KIT-001`、`API-001`～`API-003`、`API-005`、`DATA-001～002` 和 `TEST-001～004` 均已完成。API-004 的公网部署与匿名限流已按用户决定延期到未来发布阶段；当前不创建云资源。前端整体重做继续冻结，只有在工程、API、数据、测试与 AI 可用性门禁全部满足后，才进入新前端专项讨论与建设。
