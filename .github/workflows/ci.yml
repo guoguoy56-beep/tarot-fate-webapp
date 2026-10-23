@@ -56,5 +56,19 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Build
-        run: npm run build
+      - name: Install Chromium for browser smoke
+        run: npx playwright install --with-deps --only-shell chromium
+
+      - name: Run browser smoke
+        run: npm run test:e2e
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            output/playwright/test-results/
+            output/playwright/report/
+          if-no-files-found: ignore
+          retention-days: 7
