@@ -16,8 +16,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Quality gate
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use project npm version
+        run: npm install --global npm@11.19.1 --no-audit --no-fund
+
+      - name: Install dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Audit dependencies
+        run: npm run audit:all
+
+  validation:
+    name: Tests and browser smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -44,9 +68,6 @@ jobs:
       - name: Install dependencies from lockfile
         run: npm ci --no-audit --no-fund
 
-      - name: Audit dependencies
-        run: npm run audit:all
-
       - name: Run unit and API tests
         run: npm test
 
@@ -72,3 +93,18 @@ jobs:
             output/playwright/report/
           if-no-files-found: ignore
           retention-days: 7
+
+  quality:
+    name: Quality gate
+    needs: [audit, validation]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require audit and validation to succeed
+        env:
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          VALIDATION_RESULT: ${{ needs.validation.result }}
+        run: |
+          test "$AUDIT_RESULT" = success
+          test "$VALIDATION_RESULT" = success

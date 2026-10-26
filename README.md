@@ -20,12 +20,12 @@
 
 ## 技术栈
 
-- Next.js 16.3.4（App Router）
+- Next.js 16.4.2（App Router）
 - React / React DOM 19.2.8
 - TypeScript 5.9.3
 - Tailwind CSS 3.4.19
 - Framer Motion 12.43.0
-- Vitest 5.0.1（领域单元、DeepSeek 适配器和 API 集成测试）
+- Vitest 5.0.5（领域单元、DeepSeek 适配器和 API 集成测试）
 - Playwright Test 1.64.1（Chromium 桌面浏览器冒烟）
 - DeepSeek API
 
@@ -56,7 +56,7 @@ npm run dev
 
 ## 持续集成
 
-GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁：固定 Node.js 24 与 npm `11.19.1`，运行干净的 `npm ci`，随后执行 high/critical 全量依赖审计、`npm test`、Lint、类型检查，最后安装 Chromium 无头浏览器并运行 `npm run test:e2e`。E2E 启动前自动构建生产应用；失败时上传 trace、截图和报告，保留 7 天。npm 缓存只用于加速下载，不替代锁文件安装。
+GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁。`Dependency audit` 与 `Tests and browser smoke` 独立运行，各自固定 Node.js 24、npm `11.19.1` 并执行干净 `npm ci`；前者阻断 high/critical 全量依赖风险，后者执行 `npm test`、Lint、类型检查和 Chromium 浏览器冒烟。原名 `Quality gate` 的汇总检查要求两个作业全部成功。E2E 启动前自动构建生产应用；失败时上传 trace、截图和报告，保留 7 天。npm 缓存只加速下载，不替代锁文件安装。
 
 `npm test` 使用 Vitest 在 Node 环境运行 10 个文件、135 项测试，包含 79 项领域单元测试、24 项 DeepSeek 适配器 Mock 测试和 32 项 API 集成测试。覆盖 78 张生产卡牌和真实 JPG、Fisher–Yates 与正逆位、请求/响应校验、localStorage 结构与 20 条上限，以及 DeepSeek 成功、格式错误、上游错误、超时和网络异常。API 集成测试直接调用真实 `POST(Request)`，验证 500 字符/4096 字节边界、可信牌义重建、HTTP 错误契约及响应/日志隐私。适配器测试使用受控 `fetch` Mock，API 测试替换 DeepSeek 模块边界，均使用假 Key，不访问真实付费服务；超时用例使用假时钟。
 
@@ -92,6 +92,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-10-21，阶段 1 与当前本地范围内的阶段 2 已有历史验收，阶段 3 正在推进，`TEST-001～TEST-004` 已完成。`TEST-005` 已实现且通过本地浏览器验收，CI 验收待恢复依赖安全基线：本次全量审计报告 14 项漏洞（1 critical、11 high、2 moderate），生产依赖报告 3 项（1 critical、2 high）；对加入 Playwright 前的锁文件复核也得到相同的全量结果。详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md` 和 TEST-005 实施记录。
+截至 2026-10-26，阶段 3 正在推进，`TEST-001～TEST-004` 已完成，`TEST-005` 已通过本地浏览器验收，待远程 CI 确认。兼容安全更新后，生产依赖审计为 0，全量审计剩 3 项 moderate、0 high/critical，符合现有门禁；剩余项来自 Tailwind 3 的 PostCSS 开发依赖，继续记录在风险清单中。详见 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-当前优先处理 BASE-005 安全基线复核与修复，恢复 CI 后确认 TEST-005，再推进 TEST-006 共享 Mock 规范。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+当前确认 BASE-005 与 TEST-005 的远程 CI，随后推进 TEST-006 共享 Mock 规范。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。

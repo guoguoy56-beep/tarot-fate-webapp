@@ -82,7 +82,7 @@
 
 本项目的具体要求：
 
-- 技术栈：Next.js 16.3.4 App Router、React / React DOM 19.2.8、TypeScript 5.9.3、Tailwind CSS 3.4.19、Framer Motion 12.43.0、Lucide React、DeepSeek API、localStorage。
+- 技术栈：Next.js 16.4.2 App Router、React / React DOM 19.2.8、TypeScript 5.9.3、Tailwind CSS 3.4.19、Framer Motion 12.43.0、Lucide React、DeepSeek API、localStorage。
 - 运行时与包管理器：Node.js 24 LTS（`24.x`）、npm `>=11.19.1 <12`；`package.json#packageManager` 固定为 `npm@11.19.1`。不要无理由更换为 pnpm、yarn 或 bun。
 - 依赖安装：日常拉取代码、干净环境、CI 和部署统一使用现有 `package-lock.json` 执行 `npm ci`；仅在明确新增、删除或升级依赖并需要同步锁文件时使用 `npm install`。执行前先确认 Node/npm 版本满足仓库约束。
 - 开发命令：`npm run dev`，默认本地地址为 `http://localhost:3000`。

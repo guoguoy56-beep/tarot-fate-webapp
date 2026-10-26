@@ -28,13 +28,13 @@
 
 技术栈：
 
-- Next.js `16.3.4` App Router。
+- Next.js `16.4.2` App Router。
 - React / React DOM `19.2.8`。
 - TypeScript `5.9.3`。
 - Tailwind CSS。
 - Framer Motion。
 - Lucide React。
-- Vitest `5.0.1` + Vite `8.3.0`（Node 环境领域单元、DeepSeek 适配器及 API 集成测试）。
+- Vitest `5.0.5` + Vite `8.3.5`（Node 环境领域单元、DeepSeek 适配器及 API 集成测试）。
 - Playwright Test `1.64.1`（Chromium 无头桌面浏览器冒烟）。
 - DeepSeek API，经 Next.js API Route 服务端调用。
 - localStorage 保存本地占卜历史。
@@ -98,6 +98,7 @@ npm run dev
 - `ProjectDocument/TEST-003-DeepSeek适配器Mock测试实施记录-2026-10-21.md`：24 项适配器 Mock 测试、上游错误与超时验证，以及 103 项全量测试验收记录。
 - `ProjectDocument/TEST-004-API集成测试实施记录-2026-10-21.md`：32 项真实 Route Handler 集成测试、HTTP 契约与日志隐私，以及 135 项全量测试验收记录。
 - `ProjectDocument/TEST-005-旧前端浏览器冒烟实施记录-2026-10-21.md`：单条 Chromium 核心闭环、本地验收、参考截图和 CI 审计阻塞。
+- `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`：兼容安全更新、公告撤回核实、Zod 修复和新的 CI 汇总门禁。
 
 ## 5. 项目维护规则
 
@@ -160,7 +161,7 @@ public/cards/rws/*.jpg
 - CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；统一 `npm test` 运行 10 个文件、135 项单元/API 测试。TEST-005 另提供 `npm run test:e2e` 的一条 Chromium 浏览器冒烟，已通过本地验收并接入 CI；远程验收受依赖审计阻断，TEST-006 共享 Mock 规范尚未开始。
 - `BASE-005` 于 2026-09-10 验收时全量和生产依赖审计均为 0；2026-10-21 复核已发现全量 14 项漏洞、生产依赖 3 项，安全基线待修复。CI 保留 high/critical 审计门禁；`.npmrc` 继续严格限制安装脚本，只批准既有精确版本白名单。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
-- npm 审计当前为全量 `14` 项（1 critical、11 high、2 moderate）、生产依赖 `3` 项（1 critical、2 high）；此前 `0` 漏洞结论仅代表历史验收快照。
+- 2026-10-26 安全更新后，全量审计为 `3` 项 moderate、0 high/critical，生产依赖为 `0`；达到原有 high/critical 门禁阈值。此前 2026-10-21 和 10-23 的阻塞数据保留为历史证据。
 - 全局样式、暗色基础背景和首页背景图样式已配置。
 - 首页背景图已放置在 `public/assets/old-witch-table-home-bg.png`。
 - 首页、洗牌、抽牌、阅读与终局阶段统一使用首页旧女巫木桌背景图和首页氛围遮罩，不在后续流程加强暗角；允许保留轻微场景缩放运镜。
@@ -407,6 +408,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. `BASE-005` 安全基线复核与修复：处理现有 high/critical 依赖风险，评估框架、开发工具链和必要迁移的兼容方案，恢复全量与生产审计以及远程 CI。随后确认 TEST-005 的 CI 验收，再推进 TEST-006 共享 Mock 规范。
+1. 确认 `BASE-005` 与 `TEST-005` 的远程 CI；本地已恢复审计门禁并通过 135 项单元/API 测试和一条 Chromium 核心流程，随后推进 TEST-006 共享 Mock 规范。
 
-阶段 1 和本地范围内阶段 2 保留历史验收记录，当前 BASE-005 安全基线待恢复；阶段 3 的 TEST-001～004 已完成，TEST-005 本地验收通过但待 CI，TEST-006 未开始。API-004 的公网部署与匿名限流继续延期；当前不创建云资源。前端整体重做继续冻结，基础门禁恢复后再进入后续专项讨论。
+2026-10-26：Next.js/eslint-config-next 已更新至 16.4.2，Vite 至 8.3.5、Vitest 至 5.0.5，Zod 间接依赖至 4.6.7；生产依赖审计 0，全量仅剩 3 moderate。braces 公告已被官方撤回，减少的对应审计项来自数据库状态更新，未通过忽略规则隐藏。CI 将审计与功能验证独立执行，原名 Quality gate 仍要求两者都成功。本地全流程通过，远程结果待确认；TEST-006 尚未开始。公网部署继续延期，前端重做仍受 FE-GATE 约束。
