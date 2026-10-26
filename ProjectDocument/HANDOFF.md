@@ -408,6 +408,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. 确认 `BASE-005` 与 `TEST-005` 的远程 CI；本地已恢复审计门禁并通过 135 项单元/API 测试和一条 Chromium 核心流程，随后推进 TEST-006 共享 Mock 规范。
+1. `TEST-006`：收敛现有单元、API 和浏览器测试的共享 fixture/Mock，明确常规测试与真实服务手动冒烟边界；保持 CI 无真实 Key、无付费请求，不扩大旧 UI 覆盖。
 
-2026-10-26：Next.js/eslint-config-next 已更新至 16.4.2，Vite 至 8.3.5、Vitest 至 5.0.5，Zod 间接依赖至 4.6.7；生产依赖审计 0，全量仅剩 3 moderate。braces 公告已被官方撤回，减少的对应审计项来自数据库状态更新，未通过忽略规则隐藏。CI 将审计与功能验证独立执行，原名 Quality gate 仍要求两者都成功。本地全流程通过，远程结果待确认；TEST-006 尚未开始。公网部署继续延期，前端重做仍受 FE-GATE 约束。
+2026-10-26：Next.js/eslint-config-next 已更新至 16.4.2，Vite 至 8.3.5、Vitest 至 5.0.5，Zod 间接依赖至 4.6.7；生产依赖审计 0，全量仅剩 3 moderate。braces 公告已被官方撤回，减少的对应审计项来自数据库状态更新，未通过忽略规则隐藏。CI 将审计与功能验证独立执行，原名 Quality gate 仍要求两者都成功。[远程运行 #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 对代码提交 `c71642e` 的三个作业全部成功，BASE-005 本轮复核及 TEST-005 已完成，TEST-006 尚未开始。公网部署继续延期，前端重做仍受 FE-GATE 约束。

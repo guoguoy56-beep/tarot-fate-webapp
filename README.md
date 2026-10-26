@@ -92,6 +92,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-10-26，阶段 3 正在推进，`TEST-001～TEST-004` 已完成，`TEST-005` 已通过本地浏览器验收，待远程 CI 确认。兼容安全更新后，生产依赖审计为 0，全量审计剩 3 项 moderate、0 high/critical，符合现有门禁；剩余项来自 Tailwind 3 的 PostCSS 开发依赖，继续记录在风险清单中。详见 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
+截至 2026-10-26，阶段 3 正在推进，`TEST-001～TEST-005` 已完成，BASE-005 本轮复核通过；[远程 CI #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 的审计、功能测试与汇总门禁全部成功。兼容安全更新后，生产依赖审计为 0，全量审计剩 3 项 moderate、0 high/critical，符合现有门禁；剩余项来自 Tailwind 3 的 PostCSS 开发依赖，继续记录在风险清单中。详见 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-当前确认 BASE-005 与 TEST-005 的远程 CI，随后推进 TEST-006 共享 Mock 规范。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+下一项是 TEST-006 共享 fixture/Mock 规范。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
