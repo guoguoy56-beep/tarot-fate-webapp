@@ -86,6 +86,8 @@ DEEPSEEK_READING_ENABLED=true
 
 API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴露在前端代码中。当前默认使用 `deepseek-v4-flash` 非思考模式，并要求返回包含 `past`、`present`、`future`、`summary` 的结构化 JSON。将 `DEEPSEEK_READING_ENABLED=false` 并重启本地服务可暂停新的在线解读请求；未配置时默认启用。服务端将每次合法 AI 请求的结果、耗时、错误分类和上游实际返回的 Token 用量写入带 `[tarot.reading]` 前缀的本地结构化日志，计数随进程重启归零，且不记录用户问题、卡牌、Prompt、API Key 或解读正文。未配置或调用失败时不会自动生成模拟解读，页面会保留当前抽牌状态并允许手动重试。
 
+2026-10-27 真实验收时，现有配置模型名被正常接受，三次响应的模型字段均为 `deepseek-flash`；官方仍支持该旧名的兼容路由，项目本轮保留配置。[官方说明](https://api-docs.deepseek.com/)
+
 ## 项目文档
 
 详细的中文项目说明、视觉规范、DEMO 开发方案、动态效果设计和当前开发交接信息位于 [`ProjectDocument`](./ProjectDocument/) 目录。
@@ -96,4 +98,4 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 截至 2026-10-27，`TEST-001～TEST-006` 及阶段 3 测试底座已完成。共享 fixture、默认隔离和运行规范通过本地及 [远程 CI #40467792481](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40467792481) 验收；135 项单元/API 测试、单条 Chromium 流程、完整检查和全部远程门禁均通过，未调用真实 DeepSeek。本日生产依赖审计为 0，全量为 1 moderate、0 high/critical；依赖和锁文件无变更。上一轮安全更新及历史审计快照保留在 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-下一项是 AI-001 恢复真实 DeepSeek 服务，需单独核对余额、模型和三组真实请求结果。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+AI-001 也已完成：余额与模型只读查询通过，三组不同牌阵真实请求全部成功，牌名/方向/牌位匹配；服务端平均耗时约 4.43 秒，实际合计 2941 Token。详见 [AI-001 验收记录](./ProjectDocument/AI-001-真实DeepSeek服务验收记录-2026-10-27.md)。其中一组输出偏短，下一项 AI-002 将复核 Prompt 与输出结构。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
