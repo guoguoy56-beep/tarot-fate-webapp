@@ -94,6 +94,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-10-27，`TEST-001～TEST-005` 已完成，TEST-006 的共享 fixture、默认隔离和运行规范已通过本地验收，等待本次推送的远程 CI。135 项单元/API 测试、单条 Chromium 流程和完整检查均通过，未调用真实 DeepSeek。本日生产依赖审计为 0，全量为 1 moderate、0 high/critical；依赖和锁文件无变更。上一轮安全更新的 [远程 CI #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 证据和历史审计快照保留在 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
+截至 2026-10-27，`TEST-001～TEST-006` 及阶段 3 测试底座已完成。共享 fixture、默认隔离和运行规范通过本地及 [远程 CI #40467792481](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40467792481) 验收；135 项单元/API 测试、单条 Chromium 流程、完整检查和全部远程门禁均通过，未调用真实 DeepSeek。本日生产依赖审计为 0，全量为 1 moderate、0 high/critical；依赖和锁文件无变更。上一轮安全更新及历史审计快照保留在 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-本次远程验收后，下一项是 AI-001 恢复真实 DeepSeek 服务，需单独核对余额、模型和三组真实请求结果。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+下一项是 AI-001 恢复真实 DeepSeek 服务，需单独核对余额、模型和三组真实请求结果。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。

@@ -160,7 +160,7 @@ public/cards/rws/*.jpg
 - `BASE-003` 框架与工具链升级已完成：Next.js `16.3.4`、React / React DOM `19.2.8`、TypeScript `5.9.3`、ESLint `9.39.5`、eslint-config-next `16.3.4`。
 - `package-lock.json` 已使用 npm `11.19.1` 从干净状态重建，`package.json#packageManager` 固定为 `npm@11.19.1`；标准 `npm ci` 可复现安装，`npm ls --depth=0` 无缺失、无无效依赖、无多余顶层依赖。
 - `BASE-004` CI 基线已完成：`.github/workflows/ci.yml` 会在推送到 `main` 和面向 `main` 的 Pull Request 上，以 Node.js 24、npm `11.19.1` 执行 `npm ci`、Lint、类型检查和生产构建；首次 GitHub 托管运行 [#34424590039](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/34424590039) 全部通过。
-- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；统一 `npm test` 运行 10 个文件、135 项单元/API 测试。TEST-005 的一条 Chromium 冒烟已通过本地及远程 CI。TEST-006 已收拢共享 fixture，并为 Vitest 接入逐例默认拒绝 `fetch` 和屏蔽真实凭据的保护，本次远程验收待补记。
+- CI 的 npm 缓存仅用于加速包下载，`node_modules` 每次由锁文件重新安装；统一 `npm test` 运行 10 个文件、135 项单元/API 测试。TEST-005 的一条 Chromium 冒烟已通过本地及远程 CI。TEST-006 已收拢共享 fixture，并为 Vitest 接入逐例默认拒绝 `fetch` 和屏蔽真实凭据的保护，全部远程门禁已通过。
 - `BASE-005` 于 2026-10-26 完成兼容安全更新及远程验收，已解决 10 月 21 日的 high/critical 阻塞。CI 继续保留原审计阈值；`.npmrc` 严格限制安装脚本，只批准既有精确版本白名单。
 - 升级后 `npm run check` 与 `npm run build` 均通过；生产服务 HTTP 冒烟通过。Playwright 模拟成功响应已走通提问、洗牌、三次拖牌、逐张揭示和命运手记；模拟 503 已确认三张牌保留且手动重试可再次发起请求。成功路径浏览器控制台为 0 error / 0 warning。
 - 2026-10-26 安全更新后，全量审计为 `3` 项 moderate、0 high/critical，生产依赖为 `0`；达到原有 high/critical 门禁阈值。此前 2026-10-21 和 10-23 的阻塞数据保留为历史证据。
@@ -350,7 +350,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `BASE-002` 已完成：升级目标最终确定为 Next.js `16.3.4`、React / React DOM `19.2.8`、ESLint `9.39.5`、eslint-config-next `16.3.4`、TypeScript `5.9.3`；选择 ESLint 9 是为了同时满足 Next 16 及其规则插件的已声明 peer 范围。Tailwind 4 和 Motion 13 延后到新前端阶段。完整决策见 `ProjectDocument/BASE-002-框架升级决策记录-2026-09-09.md`。
 - `BASE-003` 已完成：框架和工具链已按最终组合升级；ESLint 已迁移到原生 Flat Config；旧自定义 `.next-dev` / `distDir` 已移除并采用 Next.js 16 默认 `.next/dev`；`package-lock.json` 已用 npm `11.19.1` 从干净状态重建。
 - `BASE-004` 已完成：GitHub Actions CI 已固化 Node/npm 版本，并自动执行干净安装、Lint、类型检查和生产构建；本地与首次远程质量门禁均通过。实施记录见 `ProjectDocument/BASE-004-CI基线实施记录-2026-09-10.md`。
-- `BASE-005` 历史验收于 2026-09-10 完成；2026-10-21 重新审计未通过，全量 14 项、生产依赖 3 项漏洞需专项修复。加入 Playwright 前的 `4a62b1c` 锁文件也报告相同全量结果。CI 仍阻断 high/critical，安装脚本白名单不变，详见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
+- `BASE-005` 历史验收于 2026-09-10 完成；2026-10-21 重新审计曾报告全量 14 项、生产依赖 3 项漏洞，加入 Playwright 前的 `4a62b1c` 锁文件也报告相同全量结果。这些 high/critical 阻塞已由 2026-10-26 安全更新解决；CI 阈值与安装脚本白名单不变，历史证据见 `ProjectDocument/BASE-005-依赖与供应链风险记录-2026-09-10.md`。
 - `KIT-001` 已完成：用户提供的“全栈开发专家”套件经评估为部分适用。原包是面向 Qoder 的 Java Spring Boot + Vue 3 套件，不能原样作为本项目 Codex 技能；原件保持不动，适用方法已重写为 `.agents/skills/` 下的 API、代码审查、测试策略、性能诊断和安全重构五个仓库技能。Vue、Java、数据库能力搁置，新前端技能等 `FE-GATE` 后再定。详见 `ProjectDocument/KIT-001-全栈开发专家套件评估与适配记录-2026-09-10.md`。
 - `API-001` 已完成：新增 `src/lib/reading-validation.ts` 共享校验，`ReadingCardPayload` 和旧前端请求增加 `cardId`；非法 JSON、缺字段、错误类型、错误牌数、非法/未知 ID、非法/重复牌位、非法方向和重复卡牌均返回稳定 400。生产 HTTP 矩阵 13/13 通过，合法请求通过本地模拟 DeepSeek 返回 200，未调用真实服务。详见 `ProjectDocument/API-001-共享领域校验实施记录-2026-09-10.md`。
 - `API-002` 已完成：公开请求类型已收敛为问题和三张牌的 `cardId`、牌位、方向；共享校验器按 ID 从 `tarotCardMap` 重建 `TrustedReadingRequest`，DeepSeek 适配层只接受该可信类型并按实际方向选择关键词。最小请求、伪造元数据和未知卡牌三项本地生产形态 HTTP/Prompt 验收全部通过，未调用真实服务。详见 `ProjectDocument/API-002-服务端可信牌义实施记录-2026-09-10.md`。
@@ -364,7 +364,7 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 - `TEST-003` 已完成（2026-10-21）：新增 `tests/unit/deepseek.test.ts` 的 24 项受控 Mock 测试，覆盖成功与正逆位关键词、人工熔断与缺 Key、响应格式、上游错误分类、Token 用量、请求/正文超时和网络异常。假 Key、环境变量隔离及假时钟保证常规测试不消耗真实额度；全量 9 个文件、103 项测试和 `npm run check` 通过，生产代码、依赖与 CI 无变更。详见 `ProjectDocument/TEST-003-DeepSeek适配器Mock测试实施记录-2026-10-21.md`。
 - `TEST-004` 已完成（2026-10-21）：新增 `tests/integration/reading-route.test.ts` 的 32 项 API 集成测试，直接调用真实 `POST(Request)`，验证合法三牌、问题规范化、可信牌义重建、字符/字节边界、全部请求错误码、DeepSeek 错误 HTTP 映射、未知异常兜底与响应/日志隐私。只替换 DeepSeek 调用边界，网络由失败替身阻断；Vitest 和 CI 已统一收集单元与集成测试。全量 10 个文件、135 项测试及 `npm run check` 通过，未修改生产代码或依赖，未调用真实服务。详见 `ProjectDocument/TEST-004-API集成测试实施记录-2026-10-21.md`。
 - `TEST-005` 已完成（2026-10-26）：Playwright Test `1.64.1` 的单条桌面流程在本地及远程 CI 通过，覆盖提问、洗牌、真实拖牌、模拟解读、手记、保存与刷新历史。独立生产服务禁用真实 AI，失败产物保留 7 天；旧的审计阻塞已由 BASE-005 安全更新解决。
-- `TEST-006` 本地验收完成（2026-10-27）：共享三牌、成功/错误响应工厂已供 Vitest/Playwright 复用；默认拒绝外部 `fetch`、屏蔽真实 Key，并保留分层专用 Mock。`tests/README.md` 明确常规测试与独立真实服务验证边界。135 项测试、1 条 Chromium 流程、`npm run check` 均通过，未调用真实服务；当日审计为全量 1 moderate、生产 0，本次远程 CI 待补记。
+- `TEST-006` 已完成（2026-10-27）：共享三牌、成功/错误响应工厂已供 Vitest/Playwright 复用；默认拒绝外部 `fetch`、屏蔽真实 Key，并保留分层专用 Mock。`tests/README.md` 明确常规测试与独立真实服务验证边界。135 项测试、1 条 Chromium 流程、`npm run check` 及远程三个作业均通过，未调用真实服务；当日审计为全量 1 moderate、生产 0。实施记录见 TEST-006 文档。
 - npm `11.6.2` 曾生成无效的 `@emnapi` / `wasi-threads` 锁文件；当前通过最低 npm 版本约束和 `packageManager: npm@11.19.1` 防止问题复现。
 - 框架升级验收已全部通过：真实 `npm ci`、`npm ls --depth=0`、`npm run check`、`npm run build`、生产服务 HTTP 冒烟、Playwright 模拟成功/503 的完整核心流程；成功路径浏览器控制台为 0 error / 0 warning。
 - 2026-10-21 的审计曾因 Next.js、sharp 和 source-map-js 的 high/critical 风险失败；该历史阻塞已由 2026-10-26 安全更新及远程 CI 解决。本日审计快照见 TEST-006 记录。
@@ -411,6 +411,6 @@ API Key 不得暴露在前端。当前接口使用非思考模式、严格 JSON 
 
 当前唯一下一项任务：
 
-1. 本次 TEST-006 远程验收后进入 `AI-001`：核对 DeepSeek 账户余额、服务地址与模型；按 `tests/README.md` 的独立真实验证规范完成至少三组不同牌组成功请求，并记录成功率、平均耗时和输入/输出一致性。Mock 通过不能代替真实服务验收。
+1. `AI-001`：核对 DeepSeek 账户余额、服务地址与模型；按 `tests/README.md` 的独立真实验证规范完成至少三组不同牌组成功请求，并记录成功率、平均耗时和输入/输出一致性。Mock 通过不能代替真实服务验收。
 
-2026-10-27：TEST-006 已完成实现及本地验收，本次未修改生产代码、依赖或 CI 工作流，真实 DeepSeek 请求数为 0。阶段 3 的最后一项等待本次推送 CI 复核；公网部署继续延期，前端重做仍受 FE-GATE 约束。2026-10-26 安全更新和 [远程运行 #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 的历史证据保留在 BASE-005 记录。
+2026-10-27：TEST-006 及阶段 3 已完成，实现提交 `846b3e3` 的 [远程运行 #40467792481](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40467792481) 三个作业全部成功。本次未修改生产代码、依赖或 CI 工作流，真实 DeepSeek 请求数为 0。公网部署继续延期，前端重做仍受 FE-GATE 约束；下一项为 AI-001。2026-10-26 安全更新的历史证据保留在 BASE-005 记录。
