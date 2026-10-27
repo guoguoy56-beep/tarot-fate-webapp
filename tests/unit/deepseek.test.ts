@@ -3,6 +3,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { DeepSeekReadingError, requestDeepSeekReading } from "@/lib/deepseek";
 import type { ReadingApiErrorCode, TrustedReadingRequest } from "@/types/reading";
 
+import { createReadingResponse } from "../fixtures/reading";
+
 const payload = {
   question: "我该如何面对接下来的变化？",
   cards: [
@@ -40,12 +42,7 @@ const payload = {
 } satisfies TrustedReadingRequest;
 
 const requestedModel = "deepseek-test-model";
-const reading = {
-  past: "过去解读",
-  present: "现在解读",
-  future: "未来解读",
-  summary: "总结箴言",
-};
+const reading = createReadingResponse();
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
 
 function jsonResponse(value: unknown, status = 200) {
@@ -96,10 +93,8 @@ test("returns a normalized reading and sends only orientation-specific keywords"
         {
           message: {
             content: JSON.stringify({
-              past: "  过去解读  ",
-              present: "现在解读",
-              future: "未来解读",
-              summary: "总结箴言",
+              ...reading,
+              past: `  ${reading.past}  `,
             }),
           },
         },
@@ -110,12 +105,7 @@ test("returns a normalized reading and sends only orientation-specific keywords"
   const result = await requestDeepSeekReading(payload);
 
   expect(result).toEqual({
-    reading: {
-      past: "过去解读",
-      present: "现在解读",
-      future: "未来解读",
-      summary: "总结箴言",
-    },
+    reading,
     usage: {
       promptTokens: 120,
       completionTokens: 80,

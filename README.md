@@ -62,6 +62,8 @@ GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执�
 
 开发时可运行 `npm run test:watch`。可单独运行 `npm run audit:all` 检查全部依赖、`npm run audit:prod` 检查生产依赖；`npm run audit:signatures` 用于人工核验注册表签名和来源证明，不作为每次提交的硬门禁。项目通过 `.npmrc` 和 `package.json#allowScripts` 管理安装脚本审批。
 
+三层测试共用 `tests/fixtures/reading.ts` 的合成请求、成功解读及公开错误结构。Vitest 每个用例默认屏蔽真实 Key、关闭在线解读并拒绝未显式 Mock 的 `fetch`；完整的数据、隔离和真实服务手动验证规范见 [tests/README.md](./tests/README.md)。
+
 浏览器冒烟首次运行需要安装匹配版本的 Chromium 无头组件：
 
 ```bash
@@ -92,6 +94,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 项目已完成第一版可运行 DEMO 的核心流程、DeepSeek API 接口加固、真实在线解读联调和完整 78 张 Rider-Waite-Smith 真实牌面接入。项目现处于重启建设阶段，按 `ProjectDocument/项目重启建设总计划-2026-09-09.md` 依优先级恢复工程、API、数据与测试基础。
 
-截至 2026-10-26，阶段 3 正在推进，`TEST-001～TEST-005` 已完成，BASE-005 本轮复核通过；[远程 CI #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 的审计、功能测试与汇总门禁全部成功。兼容安全更新后，生产依赖审计为 0，全量审计剩 3 项 moderate、0 high/critical，符合现有门禁；剩余项来自 Tailwind 3 的 PostCSS 开发依赖，继续记录在风险清单中。详见 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
+截至 2026-10-27，`TEST-001～TEST-005` 已完成，TEST-006 的共享 fixture、默认隔离和运行规范已通过本地验收，等待本次推送的远程 CI。135 项单元/API 测试、单条 Chromium 流程和完整检查均通过，未调用真实 DeepSeek。本日生产依赖审计为 0，全量为 1 moderate、0 high/critical；依赖和锁文件无变更。上一轮安全更新的 [远程 CI #40280112849](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40280112849) 证据和历史审计快照保留在 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-下一项是 TEST-006 共享 fixture/Mock 规范。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+本次远程验收后，下一项是 AI-001 恢复真实 DeepSeek 服务，需单独核对余额、模型和三组真实请求结果。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。

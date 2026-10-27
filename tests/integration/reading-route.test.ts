@@ -6,6 +6,8 @@ import { DeepSeekReadingError, requestDeepSeekReading } from "@/lib/deepseek";
 import { MAX_READING_REQUEST_BYTES } from "@/lib/reading-limits";
 import type { ReadingApiErrorCode, ReadingRequest, ReadingRequestErrorCode } from "@/types/reading";
 
+import { createReadingApiError, createReadingRequest, createReadingResponse } from "../fixtures/reading";
+
 vi.mock("@/lib/deepseek", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/deepseek")>()),
   requestDeepSeekReading: vi.fn(),
@@ -24,12 +26,9 @@ const privatePrompt = "TEST004_PRIVATE_PROMPT";
 const privateMarkers = [
   fakeApiKey, privateQuestion, privateReading, forgedMetadata, privateException, privateStack, privatePrompt,
 ];
-const reading = {
+const reading = createReadingResponse({
   past: `${privateReading}：过去解读`,
-  present: "现在解读",
-  future: "未来解读",
-  summary: "总结箴言",
-};
+});
 const usage = {
   promptTokens: 120,
   completionTokens: 80,
@@ -40,14 +39,7 @@ const usage = {
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
 
 function createPayload(): ReadingRequest {
-  return {
-    question: `  ${privateQuestion}\r\n请给我提示。  `,
-    cards: [
-      { cardId: "fool", position: "past", orientation: "upright" },
-      { cardId: "magician", position: "present", orientation: "reversed" },
-      { cardId: "high-priestess", position: "future", orientation: "upright" },
-    ],
-  };
+  return createReadingRequest(`  ${privateQuestion}\r\n请给我提示。  `);
 }
 
 function rawRequest(body: BodyInit | null, headers: Record<string, string> = {}) {
@@ -71,7 +63,8 @@ async function expectApiError(response: Response, status: number, code: ReadingA
   expect(response.status).toBe(status);
   expect(response.headers.get("content-type")).toContain("application/json");
   const body: unknown = await response.json();
-  expect(body).toEqual({ error: { code, message: expect.stringMatching(/\S/), retryable } });
+  const expected = createReadingApiError(code, retryable);
+  expect(body).toEqual({ error: { ...expected.error, message: expect.stringMatching(/\S/) } });
 
   const serialized = JSON.stringify(body);
   for (const marker of privateMarkers) {

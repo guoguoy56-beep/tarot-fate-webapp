@@ -4,17 +4,12 @@ import { tarotCardMap } from "@/data/tarotCards";
 import { validateReadingRequest } from "@/lib/reading-validation";
 import type { ReadingRequestErrorCode } from "@/types/reading";
 
-const validCards = [
-  { cardId: "fool", position: "past", orientation: "upright" },
-  { cardId: "magician", position: "present", orientation: "reversed" },
-  { cardId: "high-priestess", position: "future", orientation: "upright" },
-] as const;
+import { createReadingRequest } from "../fixtures/reading";
+
+const validCards = createReadingRequest().cards;
 
 function createValidRequest() {
-  return {
-    question: "  我该如何面对变化？\r\n请给我提示。  ",
-    cards: validCards.map((card) => ({ ...card })),
-  };
+  return createReadingRequest("  我该如何面对变化？\r\n请给我提示。  ");
 }
 
 test("valid requests are normalized and rebuilt from trusted card data", () => {

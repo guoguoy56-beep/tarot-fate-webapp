@@ -1,14 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import type { ReadingRecord, ReadingRequest, ReadingResponse } from "../../src/types/reading";
+import type { ReadingRecord, ReadingRequest } from "../../src/types/reading";
+import { createReadingRequest, createReadingResponse } from "../fixtures/reading";
 
-const question = "浏览器冒烟测试：我该如何面对接下来的变化？";
-const reading: ReadingResponse = {
-  past: "这是明确标注的测试解读：回顾过去，辨认你已经积累的经验。",
-  present: "这是明确标注的测试解读：关注现在，选择一项可以实践的小行动。",
-  future: "这是明确标注的测试解读：面向未来，保留调整方向的空间。",
-  summary: "本地模拟解读仅用于自动测试，不代表真实 AI 输出。",
-};
+const question = createReadingRequest().question;
+const reading = createReadingResponse();
 
 async function dragCardToPosition(page: Page, title: string, remaining: number) {
   const cards = page.locator(".cursor-grab");

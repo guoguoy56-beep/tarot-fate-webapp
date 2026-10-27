@@ -3,13 +3,12 @@ import { expect, test } from "vitest";
 import { getReadingApiError, isReadingResponse } from "@/lib/reading-response";
 import type { ReadingApiErrorCode } from "@/types/reading";
 
+import { createReadingApiError, createReadingResponse } from "../fixtures/reading";
+
 test("accepts a complete non-empty reading response", () => {
   expect(
     isReadingResponse({
-      past: "过去的解读",
-      present: "现在的解读",
-      future: "未来的解读",
-      summary: "总结",
+      ...createReadingResponse(),
       ignored: true,
     }),
   ).toBe(true);
@@ -49,9 +48,9 @@ const apiErrorCodes = [
 ] satisfies ReadingApiErrorCode[];
 
 test.each(apiErrorCodes)("accepts the known API error code %s", (code) => {
-  expect(getReadingApiError({ error: { code, message: "可读错误", retryable: true } })).toEqual({
+  expect(getReadingApiError(createReadingApiError(code, true))).toEqual({
     code,
-    message: "可读错误",
+    message: "这是明确标注的测试错误。",
     retryable: true,
   });
 });
