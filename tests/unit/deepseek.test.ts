@@ -146,6 +146,9 @@ test("returns a normalized reading and sends only orientation-specific keywords"
   expect(systemPrompt).toContain("预言式");
   expect(systemPrompt).toContain("不承诺结局");
   expect(systemPrompt).toContain("不固定句数");
+  expect(systemPrompt).toContain("牌面依据");
+  expect(systemPrompt).toContain("当前只收到文字卡牌资料，没有收到图片");
+  expect(systemPrompt).toContain("不要把示例的卡牌");
   expect(systemPrompt).not.toContain("仅供娱乐与自我反思，不是确定预言");
   expect(userPrompt).not.toContain("含娱乐与反思声明");
   expect(systemPrompt).toContain("120 至 180");
