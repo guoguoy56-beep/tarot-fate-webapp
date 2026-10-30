@@ -5,13 +5,95 @@ import type { ReadingApiErrorCode } from "@/types/reading";
 
 import { createReadingApiError, createReadingResponse } from "../fixtures/reading";
 
-test("accepts a complete non-empty reading response", () => {
-  expect(
-    isReadingResponse({
-      ...createReadingResponse(),
-      ignored: true,
-    }),
-  ).toBe(true);
+test("accepts a complete reading response within the content limits", () => {
+  expect(isReadingResponse(createReadingResponse())).toBe(true);
+});
+
+test("rejects extra fields even when the required fields are valid", () => {
+  expect(isReadingResponse({ ...createReadingResponse(), ignored: true })).toBe(false);
+});
+
+test("rejects required fields inherited from a prototype", () => {
+  const reading = createReadingResponse();
+  const value = Object.assign(Object.create({ summary: reading.summary }), {
+    past: reading.past,
+    present: reading.present,
+    future: reading.future,
+  });
+
+  expect(isReadingResponse(value)).toBe(false);
+});
+
+test.each([
+  ["past", 120],
+  ["past", 180],
+  ["present", 120],
+  ["present", 180],
+  ["future", 120],
+  ["future", 180],
+  ["summary", 60],
+  ["summary", 100],
+] as const)("accepts %s at its %i-character boundary", (field, length) => {
+  const reading = createReadingResponse({ [field]: "测".repeat(length) });
+
+  expect(isReadingResponse(reading)).toBe(true);
+});
+
+test.each([
+  ["past", 119],
+  ["past", 181],
+  ["present", 119],
+  ["present", 181],
+  ["future", 119],
+  ["future", 181],
+  ["summary", 59],
+  ["summary", 101],
+] as const)("rejects %s outside its %i-character boundary", (field, length) => {
+  const reading = createReadingResponse({ [field]: "测".repeat(length) });
+
+  expect(isReadingResponse(reading)).toBe(false);
+});
+
+test("accepts supplementary Unicode characters counted as code points", () => {
+  const reading = createReadingResponse({ summary: "🔮".repeat(60) });
+
+  expect(reading.summary).toHaveLength(120);
+  expect(isReadingResponse(reading)).toBe(true);
+});
+
+test("does not count a surrogate pair twice to meet the minimum", () => {
+  const reading = createReadingResponse({ past: "测".repeat(118) + "🔮" });
+
+  expect(reading.past).toHaveLength(120);
+  expect(isReadingResponse(reading)).toBe(false);
+});
+
+test("ignores surrounding whitespace when checking upper boundaries", () => {
+  const reading = createReadingResponse({
+    past: ` \t${"测".repeat(180)}\n`,
+    present: ` \t${"测".repeat(180)}\n`,
+    future: ` \t${"测".repeat(180)}\n`,
+    summary: ` \t${"测".repeat(100)}\n`,
+  });
+
+  expect(isReadingResponse(reading)).toBe(true);
+});
+
+test("does not use surrounding whitespace to reach a lower boundary", () => {
+  const reading = createReadingResponse({ past: ` ${"测".repeat(119)} ` });
+
+  expect(isReadingResponse(reading)).toBe(false);
+});
+
+test("rejects the short field lengths observed during AI-001", () => {
+  const reading = createReadingResponse({
+    past: "测".repeat(67),
+    present: "测".repeat(87),
+    future: "测".repeat(71),
+    summary: "测".repeat(59),
+  });
+
+  expect(isReadingResponse(reading)).toBe(false);
 });
 
 test.each([

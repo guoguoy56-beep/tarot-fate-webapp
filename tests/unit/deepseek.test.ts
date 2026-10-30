@@ -91,6 +91,7 @@ test("returns a normalized reading and sends only orientation-specific keywords"
       },
       choices: [
         {
+          finish_reason: "stop",
           message: {
             content: JSON.stringify({
               ...reading,
@@ -141,6 +142,22 @@ test("returns a normalized reading and sends only orientation-specific keywords"
   });
 
   const userPrompt = requestBody.messages.find((message) => message.role === "user")?.content ?? "";
+  const systemPrompt = requestBody.messages.find((message) => message.role === "system")?.content ?? "";
+  expect(systemPrompt).toContain("娱乐与自我反思");
+  expect(systemPrompt).toContain("120 至 180");
+  expect(systemPrompt).toContain("60 至 100");
+  expect(systemPrompt).toContain("Unicode 字符");
+  expect(systemPrompt).toContain("医疗、法律、财务");
+  expect(systemPrompt).toContain("当地紧急服务");
+  expect(systemPrompt).toContain("自行检查");
+  const example = JSON.parse(systemPrompt.slice(systemPrompt.lastIndexOf("\n") + 1)) as Record<string, string>;
+  expect(Object.keys(example).sort()).toEqual(["future", "past", "present", "summary"]);
+  for (const key of ["past", "present", "future"]) {
+    expect(Array.from(example[key]).length).toBeGreaterThanOrEqual(120);
+    expect(Array.from(example[key]).length).toBeLessThanOrEqual(180);
+  }
+  expect(Array.from(example.summary).length).toBeGreaterThanOrEqual(60);
+  expect(Array.from(example.summary).length).toBeLessThanOrEqual(100);
   expect(userPrompt).toContain("启程-正位专用");
   expect(userPrompt).toContain("失衡-逆位专用");
   expect(userPrompt).toContain("直觉-正位专用");
@@ -229,16 +246,19 @@ test("maps a non-JSON success response to an invalid-response error", async () =
 test.each([
   ["missing choices", {}],
   ["empty choices", { choices: [] }],
-  ["missing message", { choices: [{}] }],
-  ["non-JSON reading", { choices: [{ message: { content: "not-json" } }] }],
+  ["missing message", { choices: [{ finish_reason: "stop" }] }],
+  ["non-JSON reading", { choices: [{ finish_reason: "stop", message: { content: "not-json" } }] }],
   [
     "missing reading field",
     {
-      choices: [{ message: { content: JSON.stringify({ past: "过去", present: "现在", future: "未来" }) } }],
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ past: "过去", present: "现在", future: "未来" }) } }],
     },
   ],
-  ["blank reading field", { choices: [{ message: { content: JSON.stringify({ ...reading, summary: " \t" }) } }] }],
-  ["wrong reading field type", { choices: [{ message: { content: JSON.stringify({ ...reading, future: 42 }) } }] }],
+  ["blank reading field", { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ ...reading, summary: " \t" }) } }] }],
+  ["wrong reading field type", { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ ...reading, future: 42 }) } }] }],
+  ["too-short reading", { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ ...reading, past: "合成".repeat(33) + "短" }) } }] }],
+  ["too-long reading", { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ ...reading, future: "长".repeat(181) }) } }] }],
+  ["extra reading field", { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ ...reading, privateDetail: "must not leak" }) } }] }],
 ])("rejects a provider payload with %s", async (_name, responseBody) => {
   fetchMock.mockResolvedValueOnce(
     jsonResponse({
@@ -264,7 +284,31 @@ test.each([
     },
     model: "provider-model",
   });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+test.each(["length", "content_filter", "tool_calls", "insufficient_system_resource", null, undefined])(
+  "rejects a parseable reading when completion reason is %s",
+  async (finishReason) => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      model: "provider-model",
+      usage: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 },
+      choices: [{ finish_reason: finishReason, message: { content: JSON.stringify(reading) } }],
+    }));
+
+    const error = await captureDeepSeekError(requestDeepSeekReading(payload));
+
+    expect(error).toMatchObject({
+      code: "DEEPSEEK_INVALID_RESPONSE",
+      status: 502,
+      retryable: true,
+      model: "provider-model",
+      usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7 },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(error.message).not.toContain(reading.past);
+  },
+);
 
 test.each([
   ["missing usage", undefined, null],
@@ -276,7 +320,7 @@ test.each([
   ],
 ])("keeps successful readings usable with %s", async (_name, usage, expectedUsage) => {
   fetchMock.mockResolvedValueOnce(
-    jsonResponse({ usage, choices: [{ message: { content: JSON.stringify(reading) } }] }),
+    jsonResponse({ usage, choices: [{ finish_reason: "stop", message: { content: JSON.stringify(reading) } }] }),
   );
 
   await expect(requestDeepSeekReading(payload)).resolves.toEqual({

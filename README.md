@@ -58,11 +58,13 @@ npm run dev
 
 GitHub Actions 会在推送到 `main` 或向 `main` 发起 Pull Request 时执行质量门禁。`Dependency audit` 与 `Tests and browser smoke` 独立运行，各自固定 Node.js 24、npm `11.19.1` 并执行干净 `npm ci`；前者阻断 high/critical 全量依赖风险，后者执行 `npm test`、Lint、类型检查和 Chromium 浏览器冒烟。原名 `Quality gate` 的汇总检查要求两个作业全部成功。E2E 启动前自动构建生产应用；失败时上传 trace、截图和报告，保留 7 天。npm 缓存只加速下载，不替代锁文件安装。
 
-`npm test` 使用 Vitest 在 Node 环境运行 10 个文件、135 项测试，包含 79 项领域单元测试、24 项 DeepSeek 适配器 Mock 测试和 32 项 API 集成测试。覆盖 78 张生产卡牌和真实 JPG、Fisher–Yates 与正逆位、请求/响应校验、localStorage 结构与 20 条上限，以及 DeepSeek 成功、格式错误、上游错误、超时和网络异常。API 集成测试直接调用真实 `POST(Request)`，验证 500 字符/4096 字节边界、可信牌义重建、HTTP 错误契约及响应/日志隐私。适配器测试使用受控 `fetch` Mock，API 测试替换 DeepSeek 模块边界，均使用假 Key，不访问真实付费服务；超时用例使用假时钟。
+`npm test` 使用 Vitest 在 Node 环境运行 10 个文件、167 项测试，包含 102 项领域单元测试、33 项 DeepSeek 适配器 Mock 测试和 32 项 API 集成测试。覆盖 78 张生产卡牌和真实 JPG、Fisher–Yates 与正逆位、请求/响应校验、localStorage 结构与 20 条上限，以及 DeepSeek 成功、格式错误、上游错误、超时和网络异常。响应测试包含逐字段长度、额外字段、Unicode 边界和上游完成原因；API 集成测试直接调用真实 `POST(Request)`，验证 500 字符/4096 字节边界、可信牌义重建、HTTP 错误契约及响应/日志隐私。适配器测试使用受控 `fetch` Mock，API 测试替换 DeepSeek 模块边界，均使用假 Key，不访问真实付费服务；超时用例使用假时钟。
 
 开发时可运行 `npm run test:watch`。可单独运行 `npm run audit:all` 检查全部依赖、`npm run audit:prod` 检查生产依赖；`npm run audit:signatures` 用于人工核验注册表签名和来源证明，不作为每次提交的硬门禁。项目通过 `.npmrc` 和 `package.json#allowScripts` 管理安装脚本审批。
 
 三层测试共用 `tests/fixtures/reading.ts` 的合成请求、成功解读及公开错误结构。Vitest 每个用例默认屏蔽真实 Key、关闭在线解读并拒绝未显式 Mock 的 `fetch`；完整的数据、隔离和真实服务手动验证规范见 [tests/README.md](./tests/README.md)。
+
+当前解读契约要求恰好四个字符串字段：三段各 120～180、总结 60～100 个 Unicode 字符，去除首尾空白后计数。缺失、额外、空白、过短、过长或上游未正常完成时，返回原有 `DEEPSEEK_INVALID_RESPONSE`，不截断、不补字、不自动重试。服务端与浏览器共用校验，现有历史记录继续使用独立存储规则。
 
 浏览器冒烟首次运行需要安装匹配版本的 Chromium 无头组件：
 
@@ -98,4 +100,6 @@ API Key 仅由 Next.js 服务端接口读取，不应提交到 Git 仓库或暴�
 
 截至 2026-10-27，`TEST-001～TEST-006` 及阶段 3 测试底座已完成。共享 fixture、默认隔离和运行规范通过本地及 [远程 CI #40467792481](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/runs/40467792481) 验收；135 项单元/API 测试、单条 Chromium 流程、完整检查和全部远程门禁均通过，未调用真实 DeepSeek。本日生产依赖审计为 0，全量为 1 moderate、0 high/critical；依赖和锁文件无变更。上一轮安全更新及历史审计快照保留在 `ProjectDocument/BASE-005-兼容安全更新记录-2026-10-26.md`。
 
-AI-001 也已完成：余额与模型只读查询通过，三组不同牌阵真实请求全部成功，牌名/方向/牌位匹配；服务端平均耗时约 4.43 秒，实际合计 2941 Token。详见 [AI-001 验收记录](./ProjectDocument/AI-001-真实DeepSeek服务验收记录-2026-10-27.md)。其中一组输出偏短，下一项 AI-002 将复核 Prompt 与输出结构。公网部署和匿名限流继续延期；旧前端仍处于维护冻结期，整体前端重做保留在 `FE-GATE` 决策门之后。
+AI-001 已完成：三组不同牌阵真实请求成功，牌名/方向/牌位匹配；服务端平均约 4.43 秒，实际合计 2941 Token。详见 [AI-001 验收记录](./ProjectDocument/AI-001-真实DeepSeek服务验收记录-2026-10-27.md)。
+
+2026-10-30，AI-002 的 Prompt、固定字段、长度与上游完成状态校验已通过本地验收；普通、医疗、法律、财务与即时人身安全五类共 6 次真实请求均满足结构/长度要求，内容核对见 [AI-002 验收记录](./ProjectDocument/AI-002-Prompt与输出结构验收记录-2026-10-30.md)。服务端平均 3.79 秒、实际 9672 Token；167 项离线测试、完整检查和单条 Chromium 流程通过，待提交及远程 CI 收尾。随后进入 STORE-001 存储版本化；运行时校验不等同于全面语义过滤。公网部署和匿名限流继续延期，旧前端维护冻结及 `FE-GATE` 约束不变。

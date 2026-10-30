@@ -1,5 +1,12 @@
 import type { ReadingApiError, ReadingApiErrorCode, ReadingResponse } from "@/types/reading";
 
+export const READING_LENGTH_LIMITS = {
+  interpretation: { min: 120, max: 180 },
+  summary: { min: 60, max: 100 },
+} as const;
+
+const readingFields = ["past", "present", "future", "summary"] as const;
+
 const readingApiErrorCodes: ReadonlySet<string> = new Set<ReadingApiErrorCode>([
   "INVALID_REQUEST",
   "QUESTION_TOO_LONG",
@@ -35,7 +42,14 @@ export function isReadingResponse(value: unknown): value is ReadingResponse {
     return false;
   }
 
-  return ["past", "present", "future", "summary"].every((key) => isNonEmptyString(value[key]));
+  return Object.keys(value).length === readingFields.length && readingFields.every((key) => {
+    if (!Object.hasOwn(value, key) || typeof value[key] !== "string") {
+      return false;
+    }
+    const length = Array.from(value[key].trim()).length;
+    const limits = key === "summary" ? READING_LENGTH_LIMITS.summary : READING_LENGTH_LIMITS.interpretation;
+    return length >= limits.min && length <= limits.max;
+  });
 }
 
 export function getReadingApiError(value: unknown): ReadingApiError["error"] | null {

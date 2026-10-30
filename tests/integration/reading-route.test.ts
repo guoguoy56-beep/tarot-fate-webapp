@@ -27,7 +27,7 @@ const privateMarkers = [
   fakeApiKey, privateQuestion, privateReading, forgedMetadata, privateException, privateStack, privatePrompt,
 ];
 const reading = createReadingResponse({
-  past: `${privateReading}：过去解读`,
+  past: `${privateReading}：${createReadingResponse().past}`,
 });
 const usage = {
   promptTokens: 120,
