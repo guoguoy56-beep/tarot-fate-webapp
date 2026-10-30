@@ -143,7 +143,11 @@ test("returns a normalized reading and sends only orientation-specific keywords"
 
   const userPrompt = requestBody.messages.find((message) => message.role === "user")?.content ?? "";
   const systemPrompt = requestBody.messages.find((message) => message.role === "system")?.content ?? "";
-  expect(systemPrompt).toContain("娱乐与自我反思");
+  expect(systemPrompt).toContain("预言式");
+  expect(systemPrompt).toContain("不承诺结局");
+  expect(systemPrompt).toContain("不固定句数");
+  expect(systemPrompt).not.toContain("仅供娱乐与自我反思，不是确定预言");
+  expect(userPrompt).not.toContain("含娱乐与反思声明");
   expect(systemPrompt).toContain("120 至 180");
   expect(systemPrompt).toContain("60 至 100");
   expect(systemPrompt).toContain("Unicode 字符");
@@ -158,6 +162,7 @@ test("returns a normalized reading and sends only orientation-specific keywords"
   }
   expect(Array.from(example.summary).length).toBeGreaterThanOrEqual(60);
   expect(Array.from(example.summary).length).toBeLessThanOrEqual(100);
+  expect(Object.values(example).join("")).not.toMatch(/行动边界是|调整方式是|仅供娱乐/);
   expect(userPrompt).toContain("启程-正位专用");
   expect(userPrompt).toContain("失衡-逆位专用");
   expect(userPrompt).toContain("直觉-正位专用");
