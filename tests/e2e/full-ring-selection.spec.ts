@@ -48,7 +48,7 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
       const endAngle = -Math.PI / 2 + scenario.turn;
       await page.mouse.move(cx + rx * Math.cos(endAngle) + 1, cy + ry * Math.sin(endAngle));
       await page.mouse.up();
-      // A real click in the empty center stops inertia without selecting a card.
+      // In reduced-motion mode there is no release inertia; an empty-center click must not select a card.
       await page.mouse.click(cx, cy);
       await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(0);
       expect(Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"))).toBeCloseTo(1.4, 1);

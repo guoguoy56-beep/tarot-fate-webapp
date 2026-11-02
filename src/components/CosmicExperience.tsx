@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { cosmicSpreads, isRingDrag, nearestRotation, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, cosmicSpreads, isRingDrag, nearestRotation, orbitMotion, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -41,12 +41,13 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const rotation = useRef(-0.4);
   const ringProjection = useRef<RingProjection | null>(null);
   const camera = useRef({ ring: 0, reading: 0, summary: 0, travel: 0 });
-  const pointer = useRef<{ id: number; x: number; y: number; lastX: number; lastY: number; dragging: boolean } | null>(null);
+  const pointer = useRef<{ id: number; x: number; y: number; lastX: number; lastY: number; lastTime: number; directionDelta: number; dragging: boolean } | null>(null);
   const velocity = useRef(0);
+  const idleDirection = useRef(1);
+  const previousFrameTime = useRef<number | null>(null);
   const suppressClick = useRef(false);
   const sceneStart = useRef<number | null>(null);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
-  const hovering = useRef(false);
   const reducedMotion = useReducedMotion();
   const active = selected[current];
 
@@ -54,10 +55,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     const surface = root.current;
     if (!surface) return;
     let frame = 0;
-    let previous = 0;
     const render = (now: number) => {
-      const delta = Math.min(now - (previous || now), 40);
-      previous = now;
+      const delta = Math.min(now - (previousFrameTime.current ?? now), 100);
+      previousFrameTime.current = now;
       if (sceneStart.current === null) sceneStart.current = now;
       const elapsed = now - sceneStart.current;
       const w = surface.clientWidth;
@@ -72,16 +72,25 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       cam.summary += (Number(summary) - cam.summary) * ease;
       cam.travel += (Number(stage === "travel") - cam.travel) * ease;
       if (stage === "reading" && active) {
+        velocity.current = 0;
         const target = nearestRotation(rotation.current, active.anchor, deck.length);
         rotation.current += (target - rotation.current) * (reducedMotion ? 1 : 1 - Math.exp(-delta / 320));
-      } else if (stage === "shuffle" || stage === "travel") {
-        rotation.current += reducedMotion ? 0 : delta * (stage === "shuffle" ? 0.0018 : 0.0007);
-      } else if (stage === "draw" && !pointer.current && !paused) {
-        rotation.current += velocity.current * delta;
-        velocity.current *= Math.exp(-delta / 380);
-        if (!hovering.current && !reducedMotion) rotation.current += delta * 0.000025;
+      } else if (stage === "travel" || stage === "shuffle" || stage === "draw") {
+        if (stage !== "draw") idleDirection.current = 1;
+        if (paused || reducedMotion) {
+          velocity.current = 0;
+        } else if (!pointer.current?.dragging) {
+          const target = stage === "travel" ? orbitMotion.travelSpeed : stage === "shuffle" ? orbitMotion.shuffleSpeed : orbitMotion.idleSpeed * idleDirection.current;
+          const next = advanceOrbitMotion(velocity.current, target, delta);
+          velocity.current = next.speed;
+          rotation.current += next.angle;
+        }
+      } else {
+        velocity.current = 0;
+        if (stage === "home") idleDirection.current = 1;
       }
-      surface.dataset.rotation = rotation.current.toFixed(5);
+      surface.dataset.rotation = rotation.current.toFixed(8);
+      surface.dataset.rotationTime = now.toFixed(2);
       if (background.current) {
         background.current.style.transform = `translate3d(${-3 - cam.ring * 5 - cam.reading * 107}%, ${-3 - cam.reading * 80}%, 0) scale(${1.12 + cam.ring * 0.18 + cam.travel * 0.4 + cam.reading * 2 - cam.summary * 0.13}) rotate(${cam.reading * -3}deg)`;
       }
@@ -138,9 +147,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
 
   function down(event: PointerEvent<HTMLDivElement>) {
     if (stage !== "draw" || paused || event.button !== 0) return;
-    pointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, dragging: false };
+    pointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, lastTime: event.timeStamp, directionDelta: 0, dragging: false };
     suppressClick.current = false;
-    velocity.current = 0;
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     const p = pointer.current;
@@ -161,16 +169,23 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         projection,
       );
       rotation.current += change;
-      velocity.current = change / 16;
+      velocity.current = Math.max(-orbitMotion.maxReleaseSpeed, Math.min(orbitMotion.maxReleaseSpeed, change / Math.max(4, event.timeStamp - p.lastTime)));
+      p.directionDelta += change;
+      if (Math.abs(p.directionDelta) > 0.002) {
+        idleDirection.current = Math.sign(p.directionDelta);
+        p.directionDelta = 0;
+      }
     }
     p.lastX = event.clientX;
     p.lastY = event.clientY;
+    p.lastTime = event.timeStamp;
   }
   function up(event: PointerEvent<HTMLDivElement>) {
     const p = pointer.current;
     if (!p || p.id !== event.pointerId) return;
     if (p.dragging) {
       event.preventDefault();
+      if (reducedMotion || event.timeStamp - p.lastTime > 100) velocity.current = 0;
       if (root.current?.hasPointerCapture(event.pointerId)) root.current.releasePointerCapture(event.pointerId);
     }
     pointer.current = null;
@@ -180,7 +195,6 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   return <div className={`cosmic-scene ${stage === "draw" && !paused ? "can-draw" : ""}`} ref={root}
     data-testid="cosmic-scene" onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={() => { pointer.current = null; velocity.current = 0; root.current?.classList.remove("is-dragging"); }}
-    onPointerEnter={() => { hovering.current = true; }} onPointerLeave={() => { hovering.current = false; }}
     onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
     <div className="cosmic-panorama" ref={background} />
     <div className="cosmic-track" ref={track} aria-hidden="true" />

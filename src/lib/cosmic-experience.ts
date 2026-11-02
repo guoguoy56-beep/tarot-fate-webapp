@@ -51,3 +51,22 @@ export function ringDragDelta(
   if (Math.hypot(from.x + dx * closest, from.y + dy * closest) < 0.15) return 0;
   return Math.atan2(from.x * to.y - from.y * to.x, from.x * to.x + from.y * to.y);
 }
+
+// Angular speeds are radians per millisecond; one velocity is carried across scene phases.
+export const orbitMotion = {
+  travelSpeed: 0.00035,
+  shuffleSpeed: 0.00065,
+  idleSpeed: 0.00006,
+  settleMs: 650,
+  maxReleaseSpeed: 0.002,
+} as const;
+
+/** Integrate the easing curve exactly, so speed and angle stay continuous at any frame rate. */
+export function advanceOrbitMotion(speed: number, target: number, deltaMs: number) {
+  const duration = Math.max(0, deltaMs);
+  const blend = -Math.expm1(-duration / orbitMotion.settleMs);
+  return {
+    speed: speed + (target - speed) * blend,
+    angle: target * duration + (speed - target) * orbitMotion.settleMs * blend,
+  };
+}
