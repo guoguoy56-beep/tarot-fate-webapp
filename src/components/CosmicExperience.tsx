@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { cosmicSpreads, isRingDrag, nearestRotation, selectOrbitalCard, type CosmicSpread, type OrbitalSelection } from "@/lib/cosmic-experience";
+import { cosmicSpreads, isRingDrag, nearestRotation, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -39,6 +39,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const track = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLButtonElement | null)[]>([]);
   const rotation = useRef(-0.4);
+  const ringProjection = useRef<RingProjection | null>(null);
   const camera = useRef({ ring: 0, reading: 0, summary: 0, travel: 0 });
   const pointer = useRef<{ id: number; x: number; y: number; lastX: number; lastY: number; dragging: boolean } | null>(null);
   const velocity = useRef(0);
@@ -88,6 +89,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       const cy = h * (0.60 - cam.reading * 0.22 + cam.summary * 0.07);
       const rx = w * (0.405 - cam.reading * 0.065 - cam.summary * 0.08);
       const ry = h * (0.18 + cam.reading * 0.07 - cam.summary * 0.07);
+      ringProjection.current = { cx, cy, rx, ry };
       if (track.current) {
         track.current.style.transform = `translate3d(${cx}px, ${cy + 15}px, 0) translate(-50%, -50%) scale(1, ${ry / rx}) rotate(${rotation.current * 180 / Math.PI * 0.15}deg)`;
         track.current.style.width = `${rx * 2.55}px`;
@@ -145,9 +147,14 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     }
     if (p.dragging) {
       suppressClick.current = true;
-      const dx = event.clientX - p.lastX;
-      const dy = event.clientY - p.lastY;
-      const change = (dx + dy * 0.25) * 0.004;
+      const bounds = root.current?.getBoundingClientRect();
+      const projection = ringProjection.current;
+      if (!bounds || !projection) return;
+      const change = ringDragDelta(
+        { x: p.lastX - bounds.left, y: p.lastY - bounds.top },
+        { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+        projection,
+      );
       rotation.current += change;
       velocity.current = change / 16;
     }

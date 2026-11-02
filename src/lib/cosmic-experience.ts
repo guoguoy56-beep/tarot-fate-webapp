@@ -33,3 +33,21 @@ export function nearestRotation(rotation: number, anchor: number, count: number,
 export function isRingDrag(start: { x: number; y: number }, point: { x: number; y: number }): boolean {
   return Math.hypot(point.x - start.x, point.y - start.y) > 7;
 }
+
+export interface RingProjection { cx: number; cy: number; rx: number; ry: number }
+
+/** Follow the pointer around the projected ellipse, on either side of the ring. */
+export function ringDragDelta(
+  previous: { x: number; y: number }, next: { x: number; y: number }, ring: RingProjection,
+): number {
+  if (ring.rx <= 0 || ring.ry <= 0) return 0;
+  const from = { x: (previous.x - ring.cx) / ring.rx, y: (previous.y - ring.cy) / ring.ry };
+  const to = { x: (next.x - ring.cx) / ring.rx, y: (next.y - ring.cy) / ring.ry };
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const distanceSquared = dx * dx + dy * dy;
+  const closest = distanceSquared ? Math.max(0, Math.min(1, -(from.x * dx + from.y * dy) / distanceSquared)) : 0;
+  // Crossing the center has no defined angular direction; resume on the next valid segment.
+  if (Math.hypot(from.x + dx * closest, from.y + dy * closest) < 0.15) return 0;
+  return Math.atan2(from.x * to.y - from.y * to.x, from.x * to.x + from.y * to.y);
+}

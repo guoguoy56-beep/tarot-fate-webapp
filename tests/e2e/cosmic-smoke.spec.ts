@@ -39,14 +39,23 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
     anchor: card.getAttribute("data-anchor"), id: card.getAttribute("data-card-id"), orientation: card.getAttribute("data-orientation"), selected: card.getAttribute("data-selected"),
   })));
   const before = await snapshot();
-  const rotation = await page.getByTestId("cosmic-scene").getAttribute("data-rotation");
-  await page.mouse.move(800, 780);
-  await page.mouse.down();
-  await page.mouse.move(1400, 770, { steps: 20 });
-  await page.mouse.up();
-  await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(1);
-  expect(await snapshot()).toEqual(before);
-  expect(await page.getByTestId("cosmic-scene").getAttribute("data-rotation")).not.toBe(rotation);
+  // The same screen drag has opposite angular signs on the front/back or left/right of an ellipse.
+  for (const gesture of [
+    { from: [960, 842], to: [1200, 842], sign: -1 },
+    { from: [960, 454], to: [1200, 454], sign: 1 },
+    { from: [182, 648], to: [182, 758], sign: -1 },
+    { from: [1738, 648], to: [1738, 758], sign: 1 },
+  ]) {
+    await page.mouse.move(gesture.from[0], gesture.from[1]);
+    await page.mouse.down();
+    const rotation = Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"));
+    await page.mouse.move(gesture.to[0], gesture.to[1], { steps: 20 });
+    await page.mouse.up();
+    const after = Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"));
+    expect((after - rotation) * gesture.sign).toBeGreaterThan(0.01);
+    await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(1);
+    expect(await snapshot()).toEqual(before);
+  }
   await pickFrontCard(page);
   await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(2);
   await pickFrontCard(page);

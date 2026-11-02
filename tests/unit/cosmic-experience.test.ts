@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cosmicSpreads, isRingDrag, nearestRotation, selectOrbitalCard } from "@/lib/cosmic-experience";
+import { cosmicSpreads, isRingDrag, nearestRotation, ringDragDelta, selectOrbitalCard } from "@/lib/cosmic-experience";
 
 describe("cosmic spread and orbital selection", () => {
   it("supports all eight spreads with their semantic positions", () => {
@@ -32,5 +32,39 @@ describe("cosmic spread and orbital selection", () => {
     expect(isRingDrag({ x: 10, y: 10 }, { x: 13, y: 14 })).toBe(false);
     expect(isRingDrag({ x: 10, y: 10 }, { x: 18, y: 10 })).toBe(true);
     expect(isRingDrag({ x: 10, y: 10 }, { x: 10, y: 2 })).toBe(true);
+  });
+});
+
+describe("projected ring drag direction", () => {
+  const ring = { cx: 500, cy: 300, rx: 400, ry: 120 };
+  it.each([
+    { side: "front, rightward", from: { x: 500, y: 420 }, to: { x: 620, y: 420 }, sign: -1 },
+    { side: "back, rightward", from: { x: 500, y: 180 }, to: { x: 620, y: 180 }, sign: 1 },
+    { side: "left, downward", from: { x: 100, y: 300 }, to: { x: 100, y: 350 }, sign: -1 },
+    { side: "right, downward", from: { x: 900, y: 300 }, to: { x: 900, y: 350 }, sign: 1 },
+  ])("follows the pointer at $side", ({ from, to, sign }) => {
+    const delta = ringDragDelta(from, to, ring);
+    expect(delta * sign).toBeGreaterThan(0);
+    expect(ringDragDelta(to, from, ring)).toBeCloseTo(-delta);
+    // Rotating the original normalized radial vector must align it with the next pointer.
+    const angle = Math.atan2((from.y - ring.cy) / ring.ry, (from.x - ring.cx) / ring.rx) + delta;
+    const expected = Math.atan2((to.y - ring.cy) / ring.ry, (to.x - ring.cx) / ring.rx);
+    expect(Math.sin(angle)).toBeCloseTo(Math.sin(expected));
+    expect(Math.cos(angle)).toBeCloseTo(Math.cos(expected));
+  });
+  it("crosses the atan2 boundary without jumping almost a full turn", () => {
+    const delta = ringDragDelta({ x: 100, y: 301 }, { x: 100, y: 299 }, ring);
+    expect(delta).toBeGreaterThan(0);
+    expect(delta).toBeLessThan(0.02);
+  });
+  it("does not rotate for radial movement or a stationary pointer", () => {
+    expect(ringDragDelta({ x: 500, y: 420 }, { x: 500, y: 480 }, ring)).toBe(0);
+    expect(ringDragDelta({ x: 100, y: 300 }, { x: 100, y: 300 }, ring)).toBe(0);
+  });
+  it("ignores undefined motion through or inside the center", () => {
+    expect(ringDragDelta({ x: 500, y: 300 }, { x: 900, y: 300 }, ring)).toBe(0);
+    expect(ringDragDelta({ x: 100, y: 300 }, { x: 900, y: 300 }, ring)).toBe(0);
+    expect(ringDragDelta({ x: 500, y: 305 }, { x: 505, y: 300 }, ring)).toBe(0);
+    expect(ringDragDelta({ x: 500, y: 300 }, { x: 900, y: 300 }, { ...ring, rx: 0 })).toBe(0);
   });
 });
