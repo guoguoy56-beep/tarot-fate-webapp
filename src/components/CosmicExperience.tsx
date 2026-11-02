@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { advanceOrbitMotion, cosmicSpreads, isRingDrag, nearestRotation, orbitMotion, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -20,15 +20,6 @@ interface DemoJournal { id: number; question: string; spread: string; cards: Orb
 const motionEase = [0.22, 1, 0.36, 1] as const;
 const initialDeck: DeckCard[] = tarotCards.map((card) => ({ card, orientation: "upright" }));
 const cardData = (id: string) => tarotCardMap.get(id)!;
-// Staging coordinates for the opening ribbon; every card later joins its fixed ring anchor.
-const openingPoses = [
-  [.70, .23, .29, -9], [.75, .24, .33, 5], [.81, .27, .4, 12],
-  [.86, .32, .46, 16], [.82, .40, .65, -15], [.73, .36, .72, -10],
-  [.67, .40, .8, -13], [.63, .51, 1.15, -14], [.76, .49, .95, 17],
-  [.88, .51, .8, 24], [.93, .63, 1.45, -15], [.67, .66, 1.1, -24],
-  [.59, .81, 1.9, 20], [.79, .75, 3.65, 23], [.37, 1.09, 3.6, 60],
-  [.98, .94, 2.3, -17], [.55, .57, .67, -13], [.91, .36, .5, 24],
-];
 
 function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   stage: Stage; deck: DeckCard[]; selected: OrbitalSelection[]; current: number;
@@ -47,6 +38,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const previousFrameTime = useRef<number | null>(null);
   const suppressClick = useRef(false);
   const sceneStart = useRef<number | null>(null);
+  const homeElapsed = useRef(0);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
   const reducedMotion = useReducedMotion();
   const active = selected[current];
@@ -71,6 +63,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       cam.reading += (Number(reading) - cam.reading) * ease;
       cam.summary += (Number(summary) - cam.summary) * ease;
       cam.travel += (Number(stage === "travel") - cam.travel) * ease;
+      // Freeze the source poses while these same card elements gather into / return from the ring.
+      if (stage === "home" && cam.ring < 0.001 && !reducedMotion) homeElapsed.current += delta;
       if (stage === "reading" && active) {
         velocity.current = 0;
         const target = nearestRotation(rotation.current, active.anchor, deck.length);
@@ -105,7 +99,11 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         track.current.style.opacity = `${cam.ring * 0.85}`;
       }
       const depths = deck.map((_, index) => (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
-      const depthOrder = deck.map((_, index) => index).sort((a, b) => depths[a] - depths[b]);
+      const homePoses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, homeElapsed.current, w / h));
+      const homeSize = Math.min(w / 1440, h / 900);
+      const homeDepthWeight = cam.ring < 0.99 ? 1 - cam.ring : 0;
+      const displayDepths = depths.map((depth, index) => homePoses[index % homeCardStream.count].progress * homeDepthWeight + depth * (1 - homeDepthWeight));
+      const depthOrder = deck.map((_, index) => index).sort((a, b) => displayDepths[a] - displayDepths[b]);
       const zIndices = new Array<number>(deck.length);
       depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
       deck.forEach((_, index) => {
@@ -115,12 +113,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         const depth = depths[index];
         const selectedIndex = selected.findIndex((item) => item.anchor === index);
         const focused = stage === "reading" && active?.anchor === index;
-        const homeIndex = index % 18;
-        const pose = openingPoses[homeIndex];
-        const idle = reducedMotion ? 0 : Math.sin(elapsed / 2300 + index * 1.9);
-        const homeX = w * pose[0];
-        const homeY = h * pose[1] + idle * 9;
-        const homeScale = pose[2];
+        const pose = homePoses[index % homeCardStream.count];
+        const homeX = w * pose.x;
+        const homeY = h * pose.y;
+        const homeScale = pose.scale * homeSize;
         const ringX = cx + Math.cos(angle) * rx;
         const ringY = cy + Math.sin(angle) * ry;
         const perspective = (0.47 + depth * 0.7) * (1 - cam.summary * 0.2);
@@ -129,14 +125,14 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         const scale = homeScale * (1 - cam.ring) + perspective * focusScale * cam.ring;
         const x = homeX * (1 - cam.ring) + ringX * cam.ring;
         const y = homeY * (1 - cam.ring) + ringY * cam.ring;
-        const homeTilt = pose[3];
+        const homeTilt = pose.tilt;
         const tilt = homeTilt * (1 - cam.ring) + Math.cos(angle) * (focused ? 5 : 12) * cam.ring;
-        const intro = reducedMotion ? 1 : Math.min(1, Math.max(0, (elapsed - homeIndex * 45) / 1400));
+        const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);
         const introEase = 1 - Math.pow(1 - intro, 3);
-        element.style.transform = `translate3d(${x + (1 - introEase) * w * 0.65}px, ${y + (1 - introEase) * h * 0.4}px, 0) translate(-50%, -50%) perspective(900px) rotateY(${Math.cos(angle) * cam.ring * 20}deg) rotateZ(${tilt}deg) scale(${scale})`;
+        element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(900px) rotateY(${Math.cos(angle) * cam.ring * 20}deg) rotateZ(${tilt}deg) scale(${scale})`;
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
-        element.style.opacity = String((index < 18 ? 1 : cam.ring) * introEase);
+        element.style.opacity = String((index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = stage === "draw" && !paused ? "auto" : "none";
       });
       frame = requestAnimationFrame(render);

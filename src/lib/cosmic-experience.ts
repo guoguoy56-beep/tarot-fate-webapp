@@ -70,3 +70,38 @@ export function advanceOrbitMotion(speed: number, target: number, deltaMs: numbe
     angle: target * duration + (speed - target) * orbitMotion.settleMs * blend,
   };
 }
+
+export const homeCardStream = { count: 18, durationMs: 30_000 } as const;
+
+// Follow the user's red-line guide: left from the vortex, right, then left into the foreground.
+// Adjacent cubic segments share their end tangent; the last segment continues below the screen.
+const homeStreamPath = [
+  [[0.845, 0.155], [0.85, 0.205], [0.65, 0.155], [0.647, 0.285]],
+  [[0.647, 0.285], [0.644, 0.415], [0.884, 0.315], [0.884, 0.475]],
+  [[0.884, 0.475], [0.884, 0.635], [0.56, 0.665], [0.56, 0.87]],
+  [[0.56, 0.87], [0.56, 1.075], [0.56, 1.40], [0.56, 1.90]],
+] as const;
+
+/** Normalized screen position; the loop resets only after the card has left the bottom. */
+export function homeStreamPose(index: number, elapsedMs: number, aspectRatio = 1920 / 910) {
+  const progress = (index / homeCardStream.count + elapsedMs / homeCardStream.durationMs) % 1;
+  const segment = Math.min(3, Math.floor(progress * 4));
+  const t = progress * 4 - segment;
+  const u = 1 - t;
+  const points = homeStreamPath[segment];
+  const coordinate = (axis: 0 | 1) => u ** 3 * points[0][axis] + 3 * u ** 2 * t * points[1][axis]
+    + 3 * u * t ** 2 * points[2][axis] + t ** 3 * points[3][axis];
+  // Keep the source on the existing cover-cropped panorama when desktop aspect ratios differ.
+  const panoramaAspect = 1672 / 941;
+  const sourceX = 0.308 * 1.2544 * (Math.max(1, panoramaAspect / aspectRatio) - 1);
+  const sourceY = 0.224 * 1.2544 * (Math.max(1, (1920 / 910) / panoramaAspect) - Math.max(1, aspectRatio / panoramaAspect));
+  const sourceWeight = (1 - progress) ** 3;
+  return {
+    progress,
+    x: coordinate(0) + sourceX * sourceWeight,
+    y: coordinate(1) + sourceY * sourceWeight,
+    scale: 0.12 + 8.8 * progress ** 3.2,
+    tilt: -6 + 12 * Math.sin(progress * Math.PI * 2),
+    opacity: Math.min(1, progress / 0.045),
+  };
+}
