@@ -71,7 +71,7 @@ export function advanceOrbitMotion(speed: number, target: number, deltaMs: numbe
   };
 }
 
-export const homeCardStream = { count: 18, durationMs: 30_000 } as const;
+export const homeCardStream = { count: 36, durationMs: 105_000 } as const;
 
 // Follow the user's red-line guide: left from the vortex, right, then left into the foreground.
 // Adjacent cubic segments share their end tangent; the last segment continues below the screen.
@@ -79,12 +79,14 @@ const homeStreamPath = [
   [[0.845, 0.155], [0.85, 0.205], [0.65, 0.155], [0.647, 0.285]],
   [[0.647, 0.285], [0.644, 0.415], [0.884, 0.315], [0.884, 0.475]],
   [[0.884, 0.475], [0.884, 0.635], [0.56, 0.665], [0.56, 0.87]],
-  [[0.56, 0.87], [0.56, 1.075], [0.56, 1.40], [0.56, 1.90]],
+  [[0.56, 0.87], [0.56, 1.075], [0.90, 1.40], [0.99, 1.90]],
 ] as const;
 
 /** Normalized screen position; the loop resets only after the card has left the bottom. */
 export function homeStreamPose(index: number, elapsedMs: number, aspectRatio = 1920 / 910) {
-  const progress = (index / homeCardStream.count + elapsedMs / homeCardStream.durationMs) % 1;
+  const phase = (index / homeCardStream.count + elapsedMs / homeCardStream.durationMs) % 1;
+  // Spend more time in the distance, then open the spacing gradually toward the viewer.
+  const progress = 0.2 * phase + 0.8 * phase ** 4;
   const segment = Math.min(3, Math.floor(progress * 4));
   const t = progress * 4 - segment;
   const u = 1 - t;
@@ -96,12 +98,14 @@ export function homeStreamPose(index: number, elapsedMs: number, aspectRatio = 1
   const sourceX = 0.308 * 1.2544 * (Math.max(1, panoramaAspect / aspectRatio) - 1);
   const sourceY = 0.224 * 1.2544 * (Math.max(1, (1920 / 910) / panoramaAspect) - Math.max(1, aspectRatio / panoramaAspect));
   const sourceWeight = (1 - progress) ** 3;
+  const turn = Math.max(0, (progress - 0.55) / 0.45);
+  const clockwise = 64 * turn ** 2 * (3 - 2 * turn);
   return {
     progress,
     x: coordinate(0) + sourceX * sourceWeight,
     y: coordinate(1) + sourceY * sourceWeight,
     scale: 0.12 + 8.8 * progress ** 3.2,
-    tilt: -6 + 12 * Math.sin(progress * Math.PI * 2),
-    opacity: Math.min(1, progress / 0.045),
+    tilt: -6 + 12 * Math.sin(progress * Math.PI * 2) + clockwise,
+    opacity: Math.min(1, phase / 0.025),
   };
 }

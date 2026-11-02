@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { homeCardStream, homeStreamPose } from "@/lib/cosmic-experience";
 
 describe("homepage continuous card stream", () => {
-  const at = (progress: number) => homeStreamPose(0, progress * homeCardStream.durationMs);
+  const at = (progress: number) => {
+    if (progress === 1) return homeStreamPose(0, homeCardStream.durationMs);
+    let low = 0;
+    let high: number = homeCardStream.durationMs;
+    for (let step = 0; step < 45; step++) {
+      const middle = (low + high) / 2;
+      if (homeStreamPose(0, middle).progress < progress) low = middle;
+      else high = middle;
+    }
+    return homeStreamPose(0, low);
+  };
 
   it("emerges small and transparent from the distant vortex", () => {
     expect(at(0)).toMatchObject({ x: 0.845, y: 0.155, opacity: 0, scale: 0.12 });
@@ -23,7 +33,7 @@ describe("homepage continuous card stream", () => {
       expect(source.y).toBeGreaterThan(0.05);
       expect(source.y).toBeLessThan(0.25);
       const end = homeStreamPose(0, homeCardStream.durationMs - 0.01, aspect);
-      expect(end.x).toBeCloseTo(0.56, 5);
+      expect(end.x).toBeCloseTo(0.99, 5);
       expect(end.y).toBeCloseTo(1.9, 5);
     }
   });
@@ -78,5 +88,34 @@ describe("homepage continuous card stream", () => {
       expect(advanced.x).toBeCloseTo(following.x);
       expect(advanced.y).toBeCloseTo(following.y);
     }
+  });
+
+  it("keeps many visible distant cards and fewer, separated foreground cards throughout the loop", () => {
+    for (let step = 0; step < 40; step++) {
+      const time = homeCardStream.durationMs * step / 40;
+      const poses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, time));
+      expect(poses.filter((pose) => pose.progress < 0.5 && pose.opacity > 0.9).length).toBeGreaterThanOrEqual(26);
+      expect(poses.filter((pose) => pose.progress >= 0.1 && pose.progress < 0.5).length).toBeGreaterThanOrEqual(13);
+      expect(poses.filter((pose) => pose.progress >= 0.65 && pose.progress < 0.9).length).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it("bends toward the right again as the large foreground card leaves below", () => {
+    expect(at(0.9).x - at(0.75).x).toBeGreaterThan(0.2);
+    expect(at(0.8).x).toBeGreaterThan(at(0.75).x);
+    expect(at(0.9).tilt).toBeGreaterThan(30);
+  });
+
+  it("turns clockwise gently through the foreground and is still turning when it exits", () => {
+    let previous = homeStreamPose(0, 0);
+    const interval = homeCardStream.durationMs / 4000;
+    for (let step = 1; step < 4000; step++) {
+      const next = homeStreamPose(0, step * interval);
+      const degreesPerSecond = (next.tilt - previous.tilt) / (interval / 1000);
+      expect(Math.abs(degreesPerSecond)).toBeLessThan(8);
+      if (previous.progress >= 0.62) expect(degreesPerSecond).toBeGreaterThan(0);
+      previous = next;
+    }
+    expect(previous.tilt).toBeGreaterThan(50);
   });
 });
