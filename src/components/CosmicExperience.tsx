@@ -296,12 +296,12 @@ export function CosmicExperience() {
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} />
     <header className="cosmic-header">
       <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></button>
-      <nav aria-label="主导航">
+      {stage === "home" && <nav aria-label="主导航">
         <button onClick={() => openPanel("encyclopedia")}><BookOpen size={15} />塔罗百科</button>
         <button onClick={() => openPanel("history")}><History size={15} />历史记录</button>
         <span className="nav-divider" />
         <button onClick={() => openPanel("login")}><UserRound size={15} />{visitor || "登录"}</button>
-      </nav>
+      </nav>}
     </header>
     <AnimatePresence mode="wait">
       {stage === "home" && <motion.section className="cosmic-hero" key="home" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -60 }} transition={{ duration: 1.1, delay: reducedMotion ? 0 : 0.7, ease: motionEase }}>

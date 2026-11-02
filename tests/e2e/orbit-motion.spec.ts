@@ -34,7 +34,7 @@ test("shuffle eases into continuous idle without pausing on hover", async ({ pag
     requestAnimationFrame(frame);
   }));
   await page.getByRole("button", { name: "开启星轨", exact: true }).click();
-  // Keep the pointer on the ring for the transition, then compare with the navigation region.
+  // Keep the pointer on the ring for the transition, then compare with the empty upper corner.
   await page.mouse.move(960, 820);
   const frames = await framesPromise;
   const shuffle = frames.filter((frame) => frame.stage === "shuffle");
