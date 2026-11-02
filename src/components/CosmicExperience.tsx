@@ -95,11 +95,15 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         track.current.style.width = `${rx * 2.55}px`;
         track.current.style.opacity = `${cam.ring * 0.85}`;
       }
+      const depths = deck.map((_, index) => (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
+      const depthOrder = deck.map((_, index) => index).sort((a, b) => depths[a] - depths[b]);
+      const zIndices = new Array<number>(deck.length);
+      depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
       deck.forEach((_, index) => {
         const element = cards.current[index];
         if (!element) return;
         const angle = index / deck.length * Math.PI * 2 + rotation.current;
-        const depth = (Math.sin(angle) + 1) / 2;
+        const depth = depths[index];
         const selectedIndex = selected.findIndex((item) => item.anchor === index);
         const focused = stage === "reading" && active?.anchor === index;
         const homeIndex = index % 18;
@@ -121,9 +125,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         const intro = reducedMotion ? 1 : Math.min(1, Math.max(0, (elapsed - homeIndex * 45) / 1400));
         const introEase = 1 - Math.pow(1 - intro, 3);
         element.style.transform = `translate3d(${x + (1 - introEase) * w * 0.65}px, ${y + (1 - introEase) * h * 0.4}px, 0) translate(-50%, -50%) perspective(900px) rotateY(${Math.cos(angle) * cam.ring * 20}deg) rotateZ(${tilt}deg) scale(${scale})`;
-        element.style.zIndex = String(focused ? 160 : Math.round(depth * 78) + (selectedIndex >= 0 ? 2 : 0));
+        // Keep real depth order: raising selected cards can completely cover a neighbor.
+        element.style.zIndex = String(focused ? 160 : zIndices[index]);
         element.style.opacity = String((index < 18 ? 1 : cam.ring) * introEase);
-        element.style.pointerEvents = stage === "draw" && !paused && depth > 0.27 ? "auto" : "none";
+        element.style.pointerEvents = stage === "draw" && !paused ? "auto" : "none";
       });
       frame = requestAnimationFrame(render);
     };
