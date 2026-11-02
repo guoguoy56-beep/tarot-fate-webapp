@@ -15,9 +15,10 @@ describe("homepage continuous card stream", () => {
   };
 
   it("emerges small and transparent from the distant vortex", () => {
-    expect(at(0)).toMatchObject({ x: 0.845, y: 0.155, opacity: 0, scale: 0.12 });
+    expect(at(0)).toMatchObject({ x: 0.845, y: 0.155, opacity: 0 });
+    expect(at(0).scale * 116).toBeCloseTo(1);
     expect(at(0.05).opacity).toBe(1);
-    expect(at(0.05).scale).toBeLessThan(0.15);
+    expect(at(0.05).scale * 116).toBeLessThan(5);
   });
 
   it("follows the cover-cropped vortex across desktop aspect ratios without moving the exit", () => {

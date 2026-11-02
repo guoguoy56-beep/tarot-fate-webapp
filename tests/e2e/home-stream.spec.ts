@@ -42,7 +42,7 @@ function checkContinuousStream(frames: Awaited<ReturnType<typeof sampleStream>>,
         check(before.top > height, frame, index, "wrap before the entire card exits");
         check(after.opacity < 0.1, frame, index, "visible wrap at source");
         check(after.x / width > 0.8 && after.y / height > 0.15 && after.y / height < 0.25, frame, index, "source misses vortex");
-        check(after.scale < 0.3, frame, index, "card reappears too large");
+        check(after.scale * 116 < 2, frame, index, "card does not emerge at pixel size");
         resets.add(index);
       } else {
         check(after.y >= before.y - 0.01, frame, index, "backward vertical movement");

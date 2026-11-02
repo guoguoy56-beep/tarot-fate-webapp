@@ -100,11 +100,14 @@ export function homeStreamPose(index: number, elapsedMs: number, aspectRatio = 1
   const sourceWeight = (1 - progress) ** 3;
   const turn = Math.max(0, (progress - 0.55) / 0.45);
   const clockwise = 64 * turn ** 2 * (3 - 2 * turn);
+  // Start with a one-pixel long edge, then smoothly restore the existing foreground scale.
+  const emergence = Math.min(1, progress / 0.5);
+  const minimumScale = 1 / 116 + (0.12 - 1 / 116) * emergence * (2 - emergence);
   return {
     progress,
     x: coordinate(0) + sourceX * sourceWeight,
     y: coordinate(1) + sourceY * sourceWeight,
-    scale: 0.12 + 8.8 * progress ** 3.2,
+    scale: minimumScale + 8.8 * progress ** 3.2,
     tilt: -6 + 12 * Math.sin(progress * Math.PI * 2) + clockwise,
     opacity: Math.min(1, phase / 0.025),
   };
