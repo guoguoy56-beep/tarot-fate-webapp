@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readingIdleMotion } from "../../src/lib/cosmic-experience";
 
 async function pickFrontCard(page: Page) {
   const findTarget = () => page.locator('.cosmic-card:not([disabled])').evaluateAll((cards) => {
@@ -48,7 +49,7 @@ async function samplePresentation(page: Page, duration: number, previousAnchor: 
           frames.push({ time: now - first, x: rect.x, y: rect.y, width: rect.width, height: rect.height,
             flip: Math.atan2(flip.m31, flip.m11) * 180 / Math.PI,
             yaw: Math.atan2(tilt.m31, tilt.m11) * 180 / Math.PI,
-            pitch: Math.atan2(-tilt.m32, tilt.m22) * 180 / Math.PI,
+            pitch: Math.atan2(tilt.m23, tilt.m22) * 180 / Math.PI,
             rotation: Number(document.querySelector<HTMLElement>('[data-testid="cosmic-scene"]')!.dataset.rotation),
             topBottom: edge(0, 1) / edge(3, 2), leftRight: edge(0, 3) / edge(1, 2) });
         }
@@ -132,25 +133,38 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
     && Math.hypot(frame.x - settled.x, frame.y - settled.y, frame.width - settled.width) > 5)).toBe(true);
   expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
   expectEaseOutArrival(arrival);
-  const idle = await samplePresentation(page, 10_200);
+  const cycleMs = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
+  const idle = await samplePresentation(page, cycleMs + 100);
   expect(idle.length).toBeGreaterThan(100);
   for (const dimension of ["x", "y", "width", "height"] as const) {
     expect(Math.max(...idle.map((frame) => frame[dimension])) - Math.min(...idle.map((frame) => frame[dimension]))).toBeLessThan(0.1);
   }
   expect(Math.min(...idle.map((frame) => frame.yaw))).toBeLessThan(-20);
   expect(Math.max(...idle.map((frame) => frame.yaw))).toBeGreaterThan(20);
-  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(23);
-  const facing = idle.filter((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(19);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeLessThanOrEqual(20.01);
+  const facing = idle.filter((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01 && Math.abs(frame.yaw) <= 25);
   // Projected edges must change in the actual viewport, not just in an internal rotation matrix.
   expect(Math.min(...facing.map((frame) => frame.topBottom))).toBeLessThan(0.94);
   expect(Math.min(...facing.map((frame) => frame.leftRight))).toBeLessThan(0.98);
   expect(Math.max(...facing.map((frame) => frame.leftRight))).toBeGreaterThan(1.02);
   let fullTurn = 0;
-  for (let index = 1; index < idle.length; index++) {
-    const delta = (idle[index].flip - idle[index - 1].flip) * Math.PI / 180;
-    fullTurn += Math.atan2(Math.sin(delta), Math.cos(delta)) * 180 / Math.PI;
+  const speeds: Array<{ angle: number; rate: number }> = [];
+  for (let index = 1; index < idle.length && idle[index].time <= cycleMs; index++) {
+    const before = idle[index - 1], after = idle[index];
+    const delta = (after.flip + after.yaw - before.flip - before.yaw) * Math.PI / 180;
+    const step = Math.atan2(Math.sin(delta), Math.cos(delta)) * 180 / Math.PI;
+    speeds.push({ angle: idle[0].flip + idle[0].yaw + fullTurn + step / 2, rate: step / (after.time - before.time) * 1000 });
+    fullTurn += step;
   }
   expect(fullTurn).toBeCloseTo(360, 0);
+  expect(Math.min(...speeds.map((item) => item.rate))).toBeGreaterThan(2);
+  expect(Math.max(...speeds.map((item) => item.rate))).toBeGreaterThan(300);
+  for (const seam of [204, 516]) {
+    const crossing = speeds.filter((item) => Math.abs(item.angle - seam) < 4);
+    expect(crossing.length).toBeGreaterThan(0);
+    expect(Math.min(...crossing.map((item) => item.rate))).toBeGreaterThan(12);
+  }
   expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
   await expect(page.locator(".cosmic-card.is-face-up img")).toBeVisible();
   await expect(page.getByText("示例解读", { exact: true })).toBeVisible();
@@ -185,6 +199,46 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(page.getByRole("heading", { name: "如何为接下来的学习找到方向？", exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("tarot_reading_records"))).toBeNull();
   expect(apiCalls).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("reading card long-press drag follows four directions and resumes from the released pose", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await page.getByRole("button", { name: "开始占卜", exact: true }).click();
+  await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").fill("如何更好地理解此刻的自己？");
+  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await pickFrontCard(page);
+  await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
+  const card = page.locator(".cosmic-card.is-face-up");
+  const identity = await card.evaluate((el) => ({ anchor: el.dataset.anchor, card: el.dataset.cardId, orientation: el.dataset.orientation }));
+  const rect = (await card.boundingBox())!;
+  const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  await page.mouse.move(x - 200, y, { steps: 12 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeCloseTo(-12, 1);
+  await page.mouse.move(x - 200, y - 200, { steps: 12 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeCloseTo(12, 1);
+  await page.mouse.move(x + 200, y - 200, { steps: 12 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeCloseTo(12, 1);
+  await page.mouse.move(x + 200, y + 200, { steps: 12 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeCloseTo(-10, 1);
+  await page.mouse.up();
+  const resumed = await samplePresentation(page, 800);
+  expect(resumed[0].yaw).toBeCloseTo(12, 0);
+  expect(resumed[0].pitch).toBeCloseTo(-10, 0);
+  expect(resumed.every((frame) => frame.yaw < 24 && Math.abs(Math.abs(frame.flip) - 180) < 0.01)).toBe(true);
+  expect(resumed.at(-1)!.yaw).toBeGreaterThan(resumed[0].yaw + 1);
+  expect(resumed.at(-1)!.pitch).toBeGreaterThan(resumed[0].pitch);
+  expect(await card.evaluate((el) => ({ anchor: el.dataset.anchor, card: el.dataset.cardId, orientation: el.dataset.orientation }))).toEqual(identity);
+  await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(1);
+  await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

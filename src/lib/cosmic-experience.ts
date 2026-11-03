@@ -71,6 +71,62 @@ export function advanceOrbitMotion(speed: number, target: number, deltaMs: numbe
   };
 }
 
+export const readingIdleMotion = { swayMs: 6000, turnMs: 1000, holdMs: 180 } as const;
+export const readingDragLimits = { left: 12, right: 12, up: 12, down: 10 } as const;
+
+const smootherStep = (value: number) => value ** 3 * (10 - 15 * value + 6 * value ** 2);
+
+/** One continuous Y rotation: slow front arc, acceleration into the turn, then deceleration out. */
+export function readingIdlePose(elapsedMs: number) {
+  const sway = readingIdleMotion.swayMs / 1000;
+  const turn = readingIdleMotion.turnMs / 1000;
+  const time = Math.max(0, elapsedMs) / 1000 % (sway + turn);
+  const edge = 0.5, slowSpeed = 6, extraSpeed = 24;
+  let yaw: number;
+  if (time < edge) {
+    yaw = -24 + 18 * time + extraSpeed * edge / (2 * Math.PI) * Math.sin(Math.PI * time / edge);
+  } else if (time < sway - edge) {
+    yaw = -15 + slowSpeed * (time - edge);
+  } else if (time < sway) {
+    const tail = time - (sway - edge);
+    yaw = 15 + 18 * tail - extraSpeed * edge / (2 * Math.PI) * Math.sin(Math.PI * tail / edge);
+  } else {
+    const progress = (time - sway) / turn;
+    // Enter and leave the turn at 30 deg/s, matching the front arc on both sides.
+    yaw = 24 + 30 * turn * progress + (312 - 30 * turn) * smootherStep(progress);
+  }
+  return { yaw, pitch: time < sway ? 20 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
+}
+
+export function clampReadingDrag(yaw: number, pitch: number) {
+  return {
+    yaw: Math.max(-readingDragLimits.left, Math.min(readingDragLimits.right, yaw)),
+    pitch: Math.max(-readingDragLimits.down, Math.min(readingDragLimits.up, pitch)),
+  };
+}
+
+/** Find the matching point on the front arc; manual limits leave room before the next turn. */
+export function readingIdlePhaseForYaw(yaw: number) {
+  const target = Math.max(-24, Math.min(24, yaw));
+  let low = 0;
+  let high: number = readingIdleMotion.swayMs;
+  for (let index = 0; index < 20; index++) {
+    const middle = (low + high) / 2;
+    if (readingIdlePose(middle).yaw < target) low = middle;
+    else high = middle;
+  }
+  return (low + high) / 2;
+}
+
+/** Preserve the released pose and gently pick up automatic speed, blending the pitch back in. */
+export function resumeReadingPose(elapsedMs: number, phaseMs: number, pitchOffset: number) {
+  const elapsed = Math.max(0, elapsedMs);
+  const advance = elapsed - 250 * (1 - Math.exp(-elapsed / 250));
+  const pose = readingIdlePose(phaseMs + advance);
+  const blend = 1 - smootherStep(Math.min(1, elapsed / 800));
+  return { ...pose, pitch: pose.pitch + pitchOffset * blend };
+}
+
 export const homeCardStream = { count: 36, durationMs: 105_000 } as const;
 
 // Follow the user's red-line guide: left from the vortex, right, then left into the foreground.

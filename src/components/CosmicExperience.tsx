@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { advanceOrbitMotion, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, clampReadingDrag, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingIdleMotion, readingIdlePhaseForYaw, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -16,6 +16,11 @@ type Stage = "home" | "travel" | "shuffle" | "draw" | "reading" | "summarizing" 
 type Panel = "prepare" | "encyclopedia" | "history" | "login" | null;
 interface DeckCard { card: TarotCardData; orientation: CardOrientation }
 interface DemoJournal { id: number; question: string; spread: string; cards: OrbitalSelection[] }
+interface ReadingPoseState {
+  yaw: number; pitch: number; ready: boolean;
+  resume: { at: number; phaseMs: number; pitchOffset: number } | null;
+  hold: { id: number; anchor: number; x: number; y: number; lastX: number; lastY: number; since: number; capturedAt: number | null; fromYaw: number; fromPitch: number } | null;
+}
 
 const motionEase = [0.22, 1, 0.36, 1] as const;
 const readingArrivalMs = 1600;
@@ -41,6 +46,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const sceneStart = useRef<number | null>(null);
   const homeElapsed = useRef(0);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
+  const readingPose = useRef<ReadingPoseState>({ yaw: 0, pitch: 0, ready: false, resume: null, hold: null });
   const reducedMotion = useReducedMotion();
   const active = selected[current];
 
@@ -49,6 +55,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     if (!surface) return;
     let frame = 0;
     const arrivalStart = performance.now();
+    const readingButton = stage === "reading" && active ? cards.current[active.anchor] : null;
+    const poseNode = readingButton?.querySelector<HTMLElement>(".cosmic-card-pose");
+    if (readingButton) readingPose.current = { yaw: reducedMotion ? 0 : -24, pitch: 0, ready: false, resume: null, hold: null };
     const revealClock = stage === "reading" && active
       ? cards.current[active.anchor]?.querySelector(".cosmic-card-flipper")?.getAnimations().find((animation) => animation instanceof CSSTransition && animation.transitionProperty === "transform")
       : undefined;
@@ -72,6 +81,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       const arrivalElapsed = typeof revealClock?.currentTime === "number" ? revealClock.currentTime : now - arrivalStart;
       const arrival = reducedMotion ? 1 : Math.min(1, Math.max(0, arrivalElapsed) / readingArrivalMs);
       const approach = 1 - (1 - arrival) ** 3;
+      const readingElapsed = now - (typeof revealClock?.startTime === "number" ? revealClock.startTime : arrivalStart);
       if (stage === "reading") {
         // Camera, ring and enlargement arrive together with the card's CSS reveal.
         cam.ring = fromCamera.ring + (1 - fromCamera.ring) * approach;
@@ -156,12 +166,51 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
         // A partially transparent parent flattens its 3D children during the reveal.
         element.style.opacity = focused ? "1" : String((index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
-        element.style.pointerEvents = stage === "draw" && !paused ? "auto" : "none";
+        element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
       });
+      if (poseNode && arrival >= 1) {
+        const state = readingPose.current;
+        state.ready = true;
+        let pose = reducedMotion ? { yaw: state.yaw, pitch: state.pitch, turning: false }
+          : state.resume ? resumeReadingPose(now - state.resume.at, state.resume.phaseMs, state.resume.pitchOffset)
+          : readingIdlePose(readingElapsed - readingArrivalMs);
+        const hold = state.hold;
+        if (hold && hold.capturedAt === null && !pose.turning && now - hold.since >= readingIdleMotion.holdMs) {
+          hold.capturedAt = now;
+          hold.fromYaw = pose.yaw; hold.fromPitch = pose.pitch;
+          hold.lastX = hold.x; hold.lastY = hold.y;
+        }
+        if (hold && hold.capturedAt !== null) {
+          const capture = Math.min(1, (now - hold.capturedAt) / readingIdleMotion.holdMs);
+          if (capture < 1) {
+            const target = clampReadingDrag(hold.fromYaw, hold.fromPitch);
+            const blend = 1 - (1 - capture) ** 3;
+            pose = { yaw: hold.fromYaw + (target.yaw - hold.fromYaw) * blend, pitch: hold.fromPitch + (target.pitch - hold.fromPitch) * blend, turning: false };
+          } else {
+            pose = { ...clampReadingDrag(state.yaw + (hold.x - hold.lastX) * 0.18, state.pitch - (hold.y - hold.lastY) * 0.18), turning: false };
+          }
+          hold.lastX = hold.x; hold.lastY = hold.y;
+        }
+        state.yaw = pose.yaw; state.pitch = pose.pitch;
+        // One Y angle drives the sway and the full turn; there is no reset between them.
+        poseNode.style.transition = "none";
+        poseNode.style.transform = `rotateX(${pose.pitch}deg) rotateY(${pose.yaw}deg)`;
+      }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (readingButton) {
+        const hold = readingPose.current.hold;
+        readingPose.current.hold = null;
+        readingPose.current.ready = false;
+        if (hold && readingButton.hasPointerCapture(hold.id)) readingButton.releasePointerCapture(hold.id);
+        readingButton.classList.remove("is-card-held");
+        poseNode?.style.removeProperty("transition");
+        poseNode?.style.removeProperty("transform");
+      }
+    };
   }, [stage, deck, selected, active, paused, reducedMotion]);
 
   function down(event: PointerEvent<HTMLDivElement>) {
@@ -211,6 +260,32 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     root.current?.classList.remove("is-dragging");
   }
 
+  function startCardDrag(event: PointerEvent<HTMLButtonElement>, anchor: number) {
+    if (stage !== "reading" || active?.anchor !== anchor || paused || event.button !== 0 || !readingPose.current.ready) return;
+    event.preventDefault(); event.stopPropagation();
+    readingPose.current.hold = { id: event.pointerId, anchor, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, since: event.timeStamp, capturedAt: null, fromYaw: 0, fromPitch: 0 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add("is-card-held");
+  }
+  function moveCardDrag(event: PointerEvent<HTMLButtonElement>) {
+    const hold = readingPose.current.hold;
+    if (!hold || hold.id !== event.pointerId) return;
+    event.preventDefault(); event.stopPropagation();
+    hold.x = event.clientX; hold.y = event.clientY;
+  }
+  function endCardDrag(event: PointerEvent<HTMLButtonElement>) {
+    const state = readingPose.current, hold = state.hold;
+    if (!hold || hold.id !== event.pointerId || String(hold.anchor) !== event.currentTarget.dataset.anchor) return;
+    event.stopPropagation();
+    if (hold.capturedAt !== null && !reducedMotion) {
+      const phaseMs = readingIdlePhaseForYaw(state.yaw);
+      state.resume = { at: event.timeStamp, phaseMs, pitchOffset: state.pitch - readingIdlePose(phaseMs).pitch };
+    }
+    state.hold = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    event.currentTarget.classList.remove("is-card-held");
+  }
+
   return <div className={`cosmic-scene ${stage === "draw" && !paused ? "can-draw" : ""}`} ref={root}
     data-testid="cosmic-scene" onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={() => { pointer.current = null; velocity.current = 0; root.current?.classList.remove("is-dragging"); }}
@@ -224,9 +299,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         return <button key={index} ref={(node) => { cards.current[index] = node; }} type="button"
           className={`cosmic-card ${chosen >= 0 ? "is-selected" : ""} ${faceUp ? "is-face-up" : ""}`}
           data-testid={`orbit-card-${index}`} data-anchor={index} data-card-id={card.id} data-orientation={orientation}
-          data-selected={chosen >= 0} aria-label={`选择第 ${index + 1} 张牌${chosen >= 0 ? `，已选为第 ${chosen + 1} 张` : ""}`}
-          aria-pressed={chosen >= 0} disabled={stage !== "draw" || chosen >= 0 || paused}
+          data-selected={chosen >= 0} aria-label={faceUp ? `${card.nameCn}牌面，按住可转动` : `选择第 ${index + 1} 张牌${chosen >= 0 ? `，已选为第 ${chosen + 1} 张` : ""}`}
+          aria-pressed={chosen >= 0} disabled={paused || (!faceUp && (stage !== "draw" || chosen >= 0))}
           tabIndex={stage === "draw" && chosen < 0 && !paused ? 0 : -1}
+          onPointerDown={(event) => startCardDrag(event, index)} onPointerMove={moveCardDrag} onPointerUp={endCardDrag} onPointerCancel={endCardDrag} onLostPointerCapture={endCardDrag}
           onClick={() => { if (!pointer.current?.dragging) onSelect(index); }}>
           {chosen >= 0 && <span className="cosmic-card-marker">{chosen + 1}</span>}
           <span className="cosmic-card-pose"><span className="cosmic-card-flipper">

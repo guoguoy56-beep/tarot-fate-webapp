@@ -1,5 +1,55 @@
 import { describe, expect, it } from "vitest";
-import { cosmicSpreads, isRingDrag, nearestRotation, ringDragDelta, selectOrbitalCard } from "@/lib/cosmic-experience";
+import { clampReadingDrag, cosmicSpreads, isRingDrag, nearestRotation, readingDragLimits, readingIdleMotion, readingIdlePhaseForYaw, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard } from "@/lib/cosmic-experience";
+
+describe("reading idle motion and drag", () => {
+  const cycle = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
+  const delta = (from: number, to: number) => Math.atan2(Math.sin((to - from) * Math.PI / 180), Math.cos((to - from) * Math.PI / 180)) * 180 / Math.PI;
+  const speed = (at: number) => delta(readingIdlePose(at - 0.1).yaw, readingIdlePose(at + 0.1).yaw) / 0.0002;
+  it("uses a faster cycle with a 20-degree midpoint pitch", () => {
+    expect(cycle).toBeLessThan(9700);
+    expect(readingIdlePose(0)).toEqual({ yaw: -24, pitch: 0, turning: false });
+    expect(readingIdlePose(readingIdleMotion.swayMs / 2).pitch).toBeCloseTo(20);
+    expect(readingIdlePose(readingIdleMotion.swayMs).yaw).toBeCloseTo(24);
+    expect(readingIdlePose(cycle)).toEqual(readingIdlePose(0));
+  });
+  it("accelerates into the turn without a stop or a velocity jump at either seam", () => {
+    expect(speed(5800)).toBeGreaterThan(speed(3000) * 3);
+    expect(speed(6500)).toBeGreaterThan(400);
+    for (const seam of [readingIdleMotion.swayMs, cycle]) {
+      expect(speed(seam - 0.2)).toBeCloseTo(30, 2);
+      expect(speed(seam + 0.2)).toBeCloseTo(30, 2);
+    }
+  });
+  it("keeps the entire cycle moving forward, with no angular snap at the wrap", () => {
+    let total = 0;
+    for (let at = 10; at <= cycle; at += 10) {
+      const step = delta(readingIdlePose(at - 10).yaw, readingIdlePose(at).yaw);
+      expect(step).toBeGreaterThan(0);
+      expect(readingIdlePose(at).pitch).toBeLessThanOrEqual(20);
+      total += step;
+    }
+    expect(total).toBeCloseTo(360);
+  });
+  it("clamps manual movement below all automatic angle limits", () => {
+    expect(clampReadingDrag(-90, 90)).toEqual({ yaw: -12, pitch: 12 });
+    expect(clampReadingDrag(90, -90)).toEqual({ yaw: 12, pitch: -10 });
+    expect(clampReadingDrag(5, -4)).toEqual({ yaw: 5, pitch: -4 });
+    expect(Math.max(readingDragLimits.left, readingDragLimits.right)).toBeLessThan(24);
+    expect(Math.max(readingDragLimits.up, readingDragLimits.down)).toBeLessThan(20);
+  });
+  it("resumes from the released yaw and pitch without immediately starting a turn", () => {
+    for (const yaw of [-12, 0, 12]) {
+      const phase = readingIdlePhaseForYaw(yaw);
+      const base = readingIdlePose(phase);
+      const offset = -10 - base.pitch;
+      expect(base.yaw).toBeCloseTo(yaw, 3);
+      expect(resumeReadingPose(0, phase, offset).pitch).toBeCloseTo(-10);
+      expect(resumeReadingPose(1, phase, offset).yaw).toBeCloseTo(yaw, 3);
+      expect(resumeReadingPose(800, phase, offset).turning).toBe(false);
+      expect(resumeReadingPose(800, phase, offset).yaw).toBeLessThan(24);
+    }
+  });
+});
 
 describe("cosmic spread and orbital selection", () => {
   it("supports all eight spreads with their semantic positions", () => {
