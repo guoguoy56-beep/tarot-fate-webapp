@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -23,7 +23,7 @@ interface ReadingPoseState {
 }
 
 const motionEase = [0.22, 1, 0.36, 1] as const;
-const readingArrivalMs = 1600;
+const readingArrivalMs = readingPresentationMotion.arrivalMs;
 const initialDeck: DeckCard[] = tarotCards.map((card) => ({ card, orientation: "upright" }));
 const cardData = (id: string) => tarotCardMap.get(id)!;
 
@@ -57,7 +57,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     const arrivalStart = performance.now();
     const readingButton = stage === "reading" && active ? cards.current[active.anchor] : null;
     const poseNode = readingButton?.querySelector<HTMLElement>(".cosmic-card-pose");
-    if (readingButton) readingPose.current = { yaw: reducedMotion ? 0 : -24, pitch: 0, ready: false, idleOrigin: arrivalStart + readingArrivalMs, resume: null, hold: null };
+    if (readingButton) readingPose.current = { yaw: 0, pitch: 0, ready: false, idleOrigin: arrivalStart + readingArrivalMs - readingPresentationMotion.idleLeadMs, resume: null, hold: null };
     const revealClock = stage === "reading" && active
       ? cards.current[active.anchor]?.querySelector(".cosmic-card-flipper")?.getAnimations().find((animation) => animation instanceof CSSTransition && animation.transitionProperty === "transform")
       : undefined;
@@ -168,13 +168,14 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         element.style.opacity = focused ? "1" : String((index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
       });
-      if (poseNode && arrival >= 1) {
+      if (poseNode) {
         const state = readingPose.current;
-        state.ready = true;
-        const idleElapsed = Math.max(0, readingElapsed - readingArrivalMs);
+        state.ready = arrival >= 1;
+        const idleElapsed = Math.max(0, readingElapsed - readingArrivalMs + readingPresentationMotion.idleLeadMs);
         state.idleOrigin = now - idleElapsed;
         if (state.resume && now - state.resume.at >= readingIdleMotion.returnMs) state.resume = null;
         let pose = reducedMotion ? { yaw: state.yaw, pitch: state.pitch, turning: false }
+          : arrival < 1 ? readingArrivalPose(readingElapsed)
           : state.resume ? resumeReadingPose(now - state.resume.at, state.resume.timelineMs, state.resume.fromYaw, state.resume.fromPitch)
           : readingIdlePose(idleElapsed);
         const hold = state.hold;
@@ -386,7 +387,7 @@ export function CosmicExperience() {
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
-  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms` } as CSSProperties}>
+  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} />
     <header className="cosmic-header">
       <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></button>

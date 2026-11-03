@@ -34,8 +34,7 @@
 .cosmic-card-back { background: #100f16 url("/assets/tarot-card-back.webp") center / 100% 100% no-repeat; }
 .cosmic-card-front { transform: rotateY(180deg); background: #e8d7b4; }
 .cosmic-card-front img { width: 100%; height: 100%; object-fit: fill; }
-.cosmic-card.is-face-up .cosmic-card-pose { transform: rotateX(0deg) rotateY(-24deg); }
-.cosmic-card.is-face-up .cosmic-card-flipper { transform: rotateY(180deg); }
+.cosmic-card.is-face-up .cosmic-card-flipper { transform: rotateY(180deg); transition-delay: var(--cosmic-reading-flip-delay); transition-duration: var(--cosmic-reading-flip-duration); transition-timing-function: ease-in-out; }
 .cosmic-card.is-selected .cosmic-card-back, .cosmic-card.is-selected .cosmic-card-front { border-color: #f5d698; box-shadow: 0 0 3px 1px #ffe8be, 0 0 17px #e7b76788; }
 .cosmic-card-marker { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); border: 1px solid #dfbf7e; background: #14111ddd; color: #ffe4ab; border-radius: 50%; width: 18px; height: 18px; font-family: Georgia, serif; font-size: 11px; display: grid; place-items: center; }
 .can-draw { cursor: grab; }

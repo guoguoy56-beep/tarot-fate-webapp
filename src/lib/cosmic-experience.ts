@@ -71,6 +71,7 @@ export function advanceOrbitMotion(speed: number, target: number, deltaMs: numbe
   };
 }
 
+export const readingPresentationMotion = { arrivalMs: 1600, flipDelayMs: 300, idleLeadMs: 400 } as const;
 export const readingIdleMotion = { swayMs: 6000 / 1.3, turnMs: 1000, holdMs: 180, returnMs: 800 } as const;
 export const readingDragThresholds = { left: 25, right: 25, up: 25, down: 25 } as const;
 export const readingDragSensitivity = 0.18 * 1.6;
@@ -99,6 +100,18 @@ export function readingIdlePose(elapsedMs: number) {
     yaw = 24 + 39 * turn * progress + (312 - 39 * turn) * smootherStep(progress);
   }
   return { yaw, pitch: time < sway ? 15 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
+}
+
+/** Blend into the moving idle arc before arrival, matching both pose and velocity at the join. */
+export function readingArrivalPose(elapsedMs: number) {
+  const time = Math.max(0, elapsedMs);
+  const { arrivalMs, idleLeadMs } = readingPresentationMotion;
+  const approach = 1 - (1 - Math.min(time / arrivalMs, 1)) ** 3;
+  const idleStart = arrivalMs - idleLeadMs;
+  const idle = readingIdlePose(Math.max(0, time - idleStart));
+  const blend = smootherStep(Math.max(0, Math.min(1, (time - idleStart) / idleLeadMs)));
+  const incomingYaw = -24 * approach;
+  return { ...idle, yaw: incomingYaw + (idle.yaw - incomingYaw) * blend, pitch: idle.pitch * blend };
 }
 
 function resistedAngle(value: number, threshold: number) {

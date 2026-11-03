@@ -63,16 +63,25 @@ async function samplePresentation(page: Page, duration: number, previousAnchor: 
   }, { ms: duration, previous: previousAnchor });
 }
 
-function expectEaseOutArrival(frames: Awaited<ReturnType<typeof samplePresentation>>) {
+function expectArrivalSequence(frames: Awaited<ReturnType<typeof samplePresentation>>) {
   const at = (time: number) => frames.reduce((closest, frame) => Math.abs(frame.time - time) < Math.abs(closest.time - time) ? frame : closest);
   const first = frames[0], last = frames.at(-1)!;
   const progress = (frame: typeof first) => (frame.rotation - first.rotation) / (last.rotation - first.rotation);
-  // Both the ring and the flip cover most of their travel early, then settle slowly together.
+  // The approach starts first; the delayed flip remains visible late in the same transition.
   expect(progress(at(400))).toBeGreaterThan(0.5);
-  expect(Math.abs(at(400).flip) / 180).toBeGreaterThan(0.5);
   expect(progress(at(600)) - progress(at(200))).toBeGreaterThan((progress(at(1400)) - progress(at(1000))) * 3);
-  for (const frame of frames.filter((item) => item.time >= 200 && item.time <= 1400)) {
-    expect(Math.abs(progress(frame) - Math.abs(frame.flip) / 180)).toBeLessThan(0.08);
+  expect(Math.abs(at(200).flip)).toBeLessThan(2);
+  expect(Math.abs(at(400).flip)).toBeLessThan(30);
+  expect(Math.abs(at(900).flip)).toBeGreaterThan(45);
+  expect(Math.abs(at(900).flip)).toBeLessThan(135);
+  expect(Math.abs(at(1300).flip)).toBeGreaterThan(120);
+  expect(Math.abs(at(1300).flip)).toBeLessThan(178);
+  // Turning is already under way before arrival and continues across the handoff.
+  expect(at(1500).yaw).toBeGreaterThan(at(1300).yaw + 2);
+  expect(at(1800).yaw).toBeGreaterThan(at(1500).yaw + 1);
+  const join = frames.filter((frame) => frame.time >= 1500 && frame.time <= 1900);
+  for (let index = 1; index < join.length; index++) {
+    expect(join[index].yaw).toBeGreaterThan(join[index - 1].yaw);
   }
 }
 
@@ -132,7 +141,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(arrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
     && Math.hypot(frame.x - settled.x, frame.y - settled.y, frame.width - settled.width) > 5)).toBe(true);
   expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
-  expectEaseOutArrival(arrival);
+  expectArrivalSequence(arrival);
   const cycleMs = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
   const idle = await samplePresentation(page, cycleMs * 2 + 100);
   expect(idle.length).toBeGreaterThan(100);
@@ -184,7 +193,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(nextArrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
     && Math.hypot(frame.x - nextSettled.x, frame.y - nextSettled.y, frame.width - nextSettled.width) > 5)).toBe(true);
   expect(Math.abs(nextSettled.flip)).toBeCloseTo(180, 1);
-  expectEaseOutArrival(nextArrival);
+  expectArrivalSequence(nextArrival);
   await expect(page.getByText("现在 · 第 2 / 3 张", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "上一张", exact: true }).click();
   await expect(page.getByText("过去 · 第 1 / 3 张", { exact: true })).toBeVisible();

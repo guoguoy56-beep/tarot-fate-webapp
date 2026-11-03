@@ -1,10 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { applyReadingDragResistance, cosmicSpreads, isRingDrag, nearestRotation, readingDragInputForPose, readingDragSensitivity, readingDragThresholds, readingIdleMotion, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard } from "@/lib/cosmic-experience";
+import { applyReadingDragResistance, cosmicSpreads, isRingDrag, nearestRotation, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingDragThresholds, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, ringDragDelta, selectOrbitalCard } from "@/lib/cosmic-experience";
 
 describe("reading idle motion and drag", () => {
   const cycle = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
   const delta = (from: number, to: number) => Math.atan2(Math.sin((to - from) * Math.PI / 180), Math.cos((to - from) * Math.PI / 180)) * 180 / Math.PI;
   const speed = (at: number) => delta(readingIdlePose(at - 0.1).yaw, readingIdlePose(at + 0.1).yaw) / 0.0002;
+  it("starts turning before arrival and joins the existing moving idle pose", () => {
+    const { arrivalMs, idleLeadMs } = readingPresentationMotion;
+    expect(readingArrivalPose(0).yaw).toBeCloseTo(0);
+    expect(readingArrivalPose(0).pitch).toBe(0);
+    expect(readingArrivalPose(arrivalMs - 100).yaw).toBeGreaterThan(readingArrivalPose(arrivalMs - 300).yaw + 2);
+    for (const after of [0, 100]) {
+      const incoming = readingArrivalPose(arrivalMs + after), idle = readingIdlePose(idleLeadMs + after);
+      expect(incoming.yaw).toBeCloseTo(idle.yaw, 8);
+      expect(incoming.pitch).toBeCloseTo(idle.pitch, 8);
+    }
+  });
+  it("keeps yaw and pitch velocity continuous as arrival hands over to idle", () => {
+    const { arrivalMs, idleLeadMs } = readingPresentationMotion;
+    for (const axis of ["yaw", "pitch"] as const) {
+      const before = (readingArrivalPose(arrivalMs)[axis] - readingArrivalPose(arrivalMs - 0.1)[axis]) / 0.0001;
+      const after = (readingIdlePose(idleLeadMs + 0.1)[axis] - readingIdlePose(idleLeadMs)[axis]) / 0.0001;
+      expect(before).toBeGreaterThan(0);
+      expect(before).toBeCloseTo(after, 2);
+    }
+  });
   it("speeds up the display by 30 percent with a 15-degree midpoint pitch", () => {
     expect(readingIdleMotion.swayMs * 1.3).toBeCloseTo(6000);
     expect(readingIdleMotion.turnMs).toBe(1000);
