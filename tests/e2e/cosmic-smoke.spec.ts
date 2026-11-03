@@ -19,6 +19,35 @@ async function pickFrontCard(page: Page) {
   return target.anchor;
 }
 
+async function samplePresentation(page: Page, duration: number, previousAnchor: string | null = null) {
+  return page.evaluate(async ({ ms, previous }) => {
+    const frames: Array<{ time: number; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number }> = [];
+    const start = performance.now();
+    let first = 0;
+    await new Promise<void>((resolve) => {
+      const record = (now: number) => {
+        const card = document.querySelector<HTMLElement>('.cosmic-card.is-face-up');
+        if (card && card.dataset.anchor !== previous && (!frames.length || now - first - frames.at(-1)!.time >= 30)) {
+          if (!frames.length) first = now;
+          const rect = card.getBoundingClientRect();
+          const flipper = card.querySelector('.cosmic-card-flipper')!;
+          const pose = card.querySelector('.cosmic-card-pose');
+          const flip = new DOMMatrixReadOnly(getComputedStyle(flipper).transform);
+          const tilt = pose ? new DOMMatrixReadOnly(getComputedStyle(pose).transform) : new DOMMatrixReadOnly();
+          frames.push({ time: now - first, x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+            flip: Math.atan2(flip.m31, flip.m11) * 180 / Math.PI,
+            yaw: Math.atan2(tilt.m31, tilt.m11) * 180 / Math.PI,
+            pitch: Math.atan2(-tilt.m32, tilt.m22) * 180 / Math.PI });
+        }
+        if (now - start >= ms) resolve();
+        else requestAnimationFrame(record);
+      };
+      requestAnimationFrame(record);
+    });
+    return frames;
+  }, { ms: duration, previous: previousAnchor });
+}
+
 test("cosmic ring preserves shuffled anchors through drag, reading and summary", async ({ page }) => {
   const errors: string[] = [];
   const apiCalls: string[] = [];
@@ -67,13 +96,40 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   }
   await pickFrontCard(page);
   await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(2);
-  await pickFrontCard(page);
+  const [arrival] = await Promise.all([samplePresentation(page, 2300), pickFrontCard(page)]);
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");
   await expect(navigation).toHaveCount(0);
   const chosen = (await snapshot()).filter((card) => card.selected === "true");
+  const settled = arrival.at(-1)!;
+  expect(arrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
+    && Math.hypot(frame.x - settled.x, frame.y - settled.y, frame.width - settled.width) > 5)).toBe(true);
+  expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
+  const idle = await samplePresentation(page, 10_200);
+  expect(idle.length).toBeGreaterThan(100);
+  for (const dimension of ["x", "y", "width", "height"] as const) {
+    expect(Math.max(...idle.map((frame) => frame[dimension])) - Math.min(...idle.map((frame) => frame[dimension]))).toBeLessThan(0.1);
+  }
+  expect(Math.min(...idle.map((frame) => frame.yaw))).toBeLessThan(-7);
+  expect(Math.max(...idle.map((frame) => frame.yaw))).toBeGreaterThan(7);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(7);
+  let fullTurn = 0;
+  for (let index = 1; index < idle.length; index++) {
+    const delta = (idle[index].flip - idle[index - 1].flip) * Math.PI / 180;
+    fullTurn += Math.atan2(Math.sin(delta), Math.cos(delta)) * 180 / Math.PI;
+  }
+  expect(fullTurn).toBeCloseTo(360, 0);
+  expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
   await expect(page.locator(".cosmic-card.is-face-up img")).toBeVisible();
   await expect(page.getByText("示例解读", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "下一张", exact: true }).click();
+  const previousAnchor = await page.locator('.cosmic-card.is-face-up').getAttribute("data-anchor");
+  const [nextArrival] = await Promise.all([
+    samplePresentation(page, 2300, previousAnchor),
+    page.getByRole("button", { name: "下一张", exact: true }).click(),
+  ]);
+  const nextSettled = nextArrival.at(-1)!;
+  expect(nextArrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
+    && Math.hypot(frame.x - nextSettled.x, frame.y - nextSettled.y, frame.width - nextSettled.width) > 5)).toBe(true);
+  expect(Math.abs(nextSettled.flip)).toBeCloseTo(180, 1);
   await expect(page.getByText("现在 · 第 2 / 3 张", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "上一张", exact: true }).click();
   await expect(page.getByText("过去 · 第 1 / 3 张", { exact: true })).toBeVisible();
@@ -113,6 +169,11 @@ for (const [name, count] of [["单牌", 1], ["是非牌", 1], ["三牌阵", 3], 
     }
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");
     await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(count);
+    if (name === "单牌") {
+      const still = await samplePresentation(page, 300);
+      expect(still.length).toBeGreaterThan(1);
+      expect(still.every((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01 && Math.abs(frame.yaw) < 0.01 && Math.abs(frame.pitch) < 0.01)).toBe(true);
+    }
     for (let index = 1; index < count; index++) await page.getByRole("button", { name: "下一张", exact: true }).click();
     await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
     await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
