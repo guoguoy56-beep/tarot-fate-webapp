@@ -21,7 +21,7 @@ async function pickFrontCard(page: Page) {
 
 async function samplePresentation(page: Page, duration: number, previousAnchor: string | null = null) {
   return page.evaluate(async ({ ms, previous }) => {
-    const frames: Array<{ time: number; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number }> = [];
+    const frames: Array<{ time: number; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number; rotation: number; topBottom: number; leftRight: number }> = [];
     const start = performance.now();
     let first = 0;
     await new Promise<void>((resolve) => {
@@ -34,18 +34,45 @@ async function samplePresentation(page: Page, duration: number, previousAnchor: 
           const pose = card.querySelector('.cosmic-card-pose');
           const flip = new DOMMatrixReadOnly(getComputedStyle(flipper).transform);
           const tilt = pose ? new DOMMatrixReadOnly(getComputedStyle(pose).transform) : new DOMMatrixReadOnly();
+          const front = card.querySelector<HTMLElement>('.cosmic-card-front')!;
+          if (!front.querySelector('[data-corner]')) {
+            for (const [left, top] of [[0, 0], [100, 0], [100, 100], [0, 100]]) {
+              const point = document.createElement('span');
+              point.dataset.corner = '';
+              point.style.cssText = `position:absolute;left:${left}%;top:${top}%;width:0;height:0;pointer-events:none`;
+              front.append(point);
+            }
+          }
+          const corners = Array.from(front.querySelectorAll('[data-corner]'), (point) => point.getBoundingClientRect());
+          const edge = (a: number, b: number) => Math.hypot(corners[a].x - corners[b].x, corners[a].y - corners[b].y);
           frames.push({ time: now - first, x: rect.x, y: rect.y, width: rect.width, height: rect.height,
             flip: Math.atan2(flip.m31, flip.m11) * 180 / Math.PI,
             yaw: Math.atan2(tilt.m31, tilt.m11) * 180 / Math.PI,
-            pitch: Math.atan2(-tilt.m32, tilt.m22) * 180 / Math.PI });
+            pitch: Math.atan2(-tilt.m32, tilt.m22) * 180 / Math.PI,
+            rotation: Number(document.querySelector<HTMLElement>('[data-testid="cosmic-scene"]')!.dataset.rotation),
+            topBottom: edge(0, 1) / edge(3, 2), leftRight: edge(0, 3) / edge(1, 2) });
         }
         if (now - start >= ms) resolve();
-        else requestAnimationFrame(record);
+        else requestAnimationFrame((time) => setTimeout(() => record(time), 0));
       };
-      requestAnimationFrame(record);
+      // Read after the scene's RAF writes, so we observe the frame actually presented by the browser.
+      requestAnimationFrame((time) => setTimeout(() => record(time), 0));
     });
     return frames;
   }, { ms: duration, previous: previousAnchor });
+}
+
+function expectEaseOutArrival(frames: Awaited<ReturnType<typeof samplePresentation>>) {
+  const at = (time: number) => frames.reduce((closest, frame) => Math.abs(frame.time - time) < Math.abs(closest.time - time) ? frame : closest);
+  const first = frames[0], last = frames.at(-1)!;
+  const progress = (frame: typeof first) => (frame.rotation - first.rotation) / (last.rotation - first.rotation);
+  // Both the ring and the flip cover most of their travel early, then settle slowly together.
+  expect(progress(at(400))).toBeGreaterThan(0.5);
+  expect(Math.abs(at(400).flip) / 180).toBeGreaterThan(0.5);
+  expect(progress(at(600)) - progress(at(200))).toBeGreaterThan((progress(at(1400)) - progress(at(1000))) * 3);
+  for (const frame of frames.filter((item) => item.time >= 200 && item.time <= 1400)) {
+    expect(Math.abs(progress(frame) - Math.abs(frame.flip) / 180)).toBeLessThan(0.08);
+  }
 }
 
 test("cosmic ring preserves shuffled anchors through drag, reading and summary", async ({ page }) => {
@@ -104,14 +131,20 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(arrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
     && Math.hypot(frame.x - settled.x, frame.y - settled.y, frame.width - settled.width) > 5)).toBe(true);
   expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
+  expectEaseOutArrival(arrival);
   const idle = await samplePresentation(page, 10_200);
   expect(idle.length).toBeGreaterThan(100);
   for (const dimension of ["x", "y", "width", "height"] as const) {
     expect(Math.max(...idle.map((frame) => frame[dimension])) - Math.min(...idle.map((frame) => frame[dimension]))).toBeLessThan(0.1);
   }
-  expect(Math.min(...idle.map((frame) => frame.yaw))).toBeLessThan(-7);
-  expect(Math.max(...idle.map((frame) => frame.yaw))).toBeGreaterThan(7);
-  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(7);
+  expect(Math.min(...idle.map((frame) => frame.yaw))).toBeLessThan(-20);
+  expect(Math.max(...idle.map((frame) => frame.yaw))).toBeGreaterThan(20);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(23);
+  const facing = idle.filter((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01);
+  // Projected edges must change in the actual viewport, not just in an internal rotation matrix.
+  expect(Math.min(...facing.map((frame) => frame.topBottom))).toBeLessThan(0.94);
+  expect(Math.min(...facing.map((frame) => frame.leftRight))).toBeLessThan(0.98);
+  expect(Math.max(...facing.map((frame) => frame.leftRight))).toBeGreaterThan(1.02);
   let fullTurn = 0;
   for (let index = 1; index < idle.length; index++) {
     const delta = (idle[index].flip - idle[index - 1].flip) * Math.PI / 180;
@@ -130,6 +163,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(nextArrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175
     && Math.hypot(frame.x - nextSettled.x, frame.y - nextSettled.y, frame.width - nextSettled.width) > 5)).toBe(true);
   expect(Math.abs(nextSettled.flip)).toBeCloseTo(180, 1);
+  expectEaseOutArrival(nextArrival);
   await expect(page.getByText("现在 · 第 2 / 3 张", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "上一张", exact: true }).click();
   await expect(page.getByText("过去 · 第 1 / 3 张", { exact: true })).toBeVisible();

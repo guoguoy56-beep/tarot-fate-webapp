@@ -48,7 +48,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     const surface = root.current;
     if (!surface) return;
     let frame = 0;
-    let arrivalStart: number | null = null;
+    const arrivalStart = performance.now();
+    const revealClock = stage === "reading" && active
+      ? cards.current[active.anchor]?.querySelector(".cosmic-card-flipper")?.getAnimations().find((animation) => animation instanceof CSSTransition && animation.transitionProperty === "transform")
+      : undefined;
     const fromCamera = { ...camera.current };
     const fromFocus = [...focusWeights.current];
     const fromRotation = rotation.current;
@@ -65,9 +68,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       const summary = stage === "summarizing" || stage === "summary";
       const cam = camera.current;
       const ease = reducedMotion ? 1 : 1 - Math.exp(-delta / 650);
-      if (arrivalStart === null) arrivalStart = now;
-      const arrival = reducedMotion ? 1 : Math.min(1, (now - arrivalStart) / readingArrivalMs);
-      const approach = arrival * arrival * (3 - 2 * arrival);
+      // Use the flip transition's clock so a late RAF cannot desynchronize the approach.
+      const arrivalElapsed = typeof revealClock?.currentTime === "number" ? revealClock.currentTime : now - arrivalStart;
+      const arrival = reducedMotion ? 1 : Math.min(1, Math.max(0, arrivalElapsed) / readingArrivalMs);
+      const approach = 1 - (1 - arrival) ** 3;
       if (stage === "reading") {
         // Camera, ring and enlargement arrive together with the card's CSS reveal.
         cam.ring = fromCamera.ring + (1 - fromCamera.ring) * approach;
@@ -147,10 +151,11 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         const tilt = homeTilt * (1 - cam.ring) + Math.cos(angle) * (12 - focusWeights.current[index] * 7) * cam.ring;
         const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);
         const introEase = 1 - Math.pow(1 - intro, 3);
-        element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(900px) rotateY(${Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index])}deg) rotateZ(${tilt}deg) scale(${scale})`;
+        element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(${900 - focusWeights.current[index] * 520}px) rotateY(${Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index])}deg) rotateZ(${tilt}deg) scale(${scale})`;
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
-        element.style.opacity = String((index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
+        // A partially transparent parent flattens its 3D children during the reveal.
+        element.style.opacity = focused ? "1" : String((index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = stage === "draw" && !paused ? "auto" : "none";
       });
       frame = requestAnimationFrame(render);
