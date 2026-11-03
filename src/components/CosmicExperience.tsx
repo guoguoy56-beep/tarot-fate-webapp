@@ -319,8 +319,8 @@ export function CosmicExperience() {
         <ol className="cosmic-slots">{spread.slots.map((slot, index) => <li key={slot} className={index < selected.length ? "is-filled" : ""}><span>{index < selected.length ? <Check size={12} /> : index + 1}</span>{slot}</li>)}</ol>
         <p className="cosmic-next-slot" aria-live="polite">下一张 · {spread.slots[selected.length]}</p>
       </motion.section>}
-      {stage === "reading" && card && active && <motion.section className="cosmic-reading" key="reading" initial={{ opacity: 0, x: 35 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 25 }} transition={{ duration: 0.85, delay: reducedMotion ? 0 : 0.55 }} aria-label="逐牌解读">
-        <AnimatePresence mode="wait"><motion.div key={active.cardId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.35 }}>
+      {stage === "reading" && card && active && <motion.section className="cosmic-reading" key="reading" initial={reducedMotion ? false : { x: "100%" }} animate={{ x: 0 }} exit={{ x: reducedMotion ? 0 : "100%", transition: { duration: reducedMotion ? 0 : 0.35, delay: 0 } }} transition={{ duration: reducedMotion ? 0 : 1.1, delay: reducedMotion ? 0 : 0.35, ease: motionEase }} aria-label="逐牌解读">
+        <AnimatePresence mode="wait"><motion.div className="cosmic-reading-copy" key={active.cardId} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1, transition: { duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.25 } }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.18 } }}>
           <p className="cosmic-eyebrow">{spread.slots[current]} · 第 {current + 1} / {selected.length} 张</p>
           <h2>{card.nameCn}<span>· {active.orientation === "upright" ? "正位" : "逆位"}</span></h2>
           <p className="cosmic-card-english">{card.nameEn}</p>
