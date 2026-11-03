@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { homeCardStream } from "../../src/lib/cosmic-experience";
 
 async function sampleStream(page: Page, duration: number) {
+  // Hydration can finish after the load event; sample projected cards, not the unpositioned SSR nodes.
+  await page.waitForFunction(() => document.querySelector<HTMLElement>('[data-testid="cosmic-scene"]')?.dataset.rotationTime !== undefined);
   return page.evaluate(async (ms) => {
     const frames: Array<{ time: number; cards: Array<{ x: number; y: number; top: number; scale: number; opacity: number; tilt: number }> }> = [];
     const start = performance.now();
