@@ -264,7 +264,12 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   function startCardDrag(event: PointerEvent<HTMLButtonElement>, anchor: number) {
     if (stage !== "reading" || active?.anchor !== anchor || paused || event.button !== 0 || !readingPose.current.ready) return;
     event.preventDefault(); event.stopPropagation();
-    readingPose.current.hold = { id: event.pointerId, anchor, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, since: event.timeStamp, capturedAt: null, rawYaw: 0, rawPitch: 0 };
+    const state = readingPose.current;
+    const recapture = state.resume !== null;
+    const input = recapture ? readingDragInputForPose(state.yaw, state.pitch) : { yaw: 0, pitch: 0 };
+    // A return is interruptible: grab the currently displayed pose without waiting or resetting its clock.
+    if (recapture) state.resume = null;
+    state.hold = { id: event.pointerId, anchor, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, since: event.timeStamp, capturedAt: recapture ? event.timeStamp : null, rawYaw: input.yaw, rawPitch: input.pitch };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.classList.add("is-card-held");
   }

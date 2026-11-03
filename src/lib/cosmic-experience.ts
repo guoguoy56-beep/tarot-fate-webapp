@@ -99,7 +99,7 @@ export function readingIdlePose(elapsedMs: number) {
     // Keep the one-second turn, joining the faster front arc at 39 deg/s on both sides.
     yaw = 24 + 39 * turn * progress + (312 - 39 * turn) * smootherStep(progress);
   }
-  return { yaw, pitch: time < sway ? 15 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
+  return { yaw, pitch: time < sway ? 10 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
 }
 
 /** Blend into the moving idle arc before arrival, matching both pose and velocity at the join. */

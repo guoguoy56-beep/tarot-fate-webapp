@@ -25,11 +25,11 @@ describe("reading idle motion and drag", () => {
       expect(before).toBeCloseTo(after, 2);
     }
   });
-  it("speeds up the display by 30 percent with a 15-degree midpoint pitch", () => {
+  it("speeds up the display by 30 percent with a 10-degree midpoint pitch", () => {
     expect(readingIdleMotion.swayMs * 1.3).toBeCloseTo(6000);
     expect(readingIdleMotion.turnMs).toBe(1000);
     expect(readingIdlePose(0)).toEqual({ yaw: -24, pitch: 0, turning: false });
-    expect(readingIdlePose(readingIdleMotion.swayMs / 2).pitch).toBeCloseTo(15);
+    expect(readingIdlePose(readingIdleMotion.swayMs / 2).pitch).toBeCloseTo(10);
     expect(readingIdlePose(readingIdleMotion.swayMs).yaw).toBeCloseTo(24);
     expect(readingIdlePose(cycle)).toEqual(readingIdlePose(0));
   });
@@ -46,7 +46,7 @@ describe("reading idle motion and drag", () => {
     for (let index = 1; index <= 700; index++) {
       const step = delta(readingIdlePose((index - 1) * cycle / 700).yaw, readingIdlePose(index * cycle / 700).yaw);
       expect(step).toBeGreaterThan(0);
-      expect(readingIdlePose(index * cycle / 700).pitch).toBeLessThanOrEqual(15);
+      expect(readingIdlePose(index * cycle / 700).pitch).toBeLessThanOrEqual(10);
       total += step;
     }
     expect(total).toBeCloseTo(360);
