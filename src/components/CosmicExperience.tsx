@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { advanceOrbitMotion, clampReadingDrag, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingIdleMotion, readingIdlePhaseForYaw, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -17,9 +17,9 @@ type Panel = "prepare" | "encyclopedia" | "history" | "login" | null;
 interface DeckCard { card: TarotCardData; orientation: CardOrientation }
 interface DemoJournal { id: number; question: string; spread: string; cards: OrbitalSelection[] }
 interface ReadingPoseState {
-  yaw: number; pitch: number; ready: boolean;
-  resume: { at: number; phaseMs: number; pitchOffset: number } | null;
-  hold: { id: number; anchor: number; x: number; y: number; lastX: number; lastY: number; since: number; capturedAt: number | null; fromYaw: number; fromPitch: number } | null;
+  yaw: number; pitch: number; ready: boolean; idleOrigin: number;
+  resume: { at: number; timelineMs: number; fromYaw: number; fromPitch: number } | null;
+  hold: { id: number; anchor: number; x: number; y: number; lastX: number; lastY: number; since: number; capturedAt: number | null; rawYaw: number; rawPitch: number } | null;
 }
 
 const motionEase = [0.22, 1, 0.36, 1] as const;
@@ -46,7 +46,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const sceneStart = useRef<number | null>(null);
   const homeElapsed = useRef(0);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
-  const readingPose = useRef<ReadingPoseState>({ yaw: 0, pitch: 0, ready: false, resume: null, hold: null });
+  const readingPose = useRef<ReadingPoseState>({ yaw: 0, pitch: 0, ready: false, idleOrigin: 0, resume: null, hold: null });
   const reducedMotion = useReducedMotion();
   const active = selected[current];
 
@@ -57,7 +57,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     const arrivalStart = performance.now();
     const readingButton = stage === "reading" && active ? cards.current[active.anchor] : null;
     const poseNode = readingButton?.querySelector<HTMLElement>(".cosmic-card-pose");
-    if (readingButton) readingPose.current = { yaw: reducedMotion ? 0 : -24, pitch: 0, ready: false, resume: null, hold: null };
+    if (readingButton) readingPose.current = { yaw: reducedMotion ? 0 : -24, pitch: 0, ready: false, idleOrigin: arrivalStart + readingArrivalMs, resume: null, hold: null };
     const revealClock = stage === "reading" && active
       ? cards.current[active.anchor]?.querySelector(".cosmic-card-flipper")?.getAnimations().find((animation) => animation instanceof CSSTransition && animation.transitionProperty === "transform")
       : undefined;
@@ -171,24 +171,24 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       if (poseNode && arrival >= 1) {
         const state = readingPose.current;
         state.ready = true;
+        const idleElapsed = Math.max(0, readingElapsed - readingArrivalMs);
+        state.idleOrigin = now - idleElapsed;
+        if (state.resume && now - state.resume.at >= readingIdleMotion.returnMs) state.resume = null;
         let pose = reducedMotion ? { yaw: state.yaw, pitch: state.pitch, turning: false }
-          : state.resume ? resumeReadingPose(now - state.resume.at, state.resume.phaseMs, state.resume.pitchOffset)
-          : readingIdlePose(readingElapsed - readingArrivalMs);
+          : state.resume ? resumeReadingPose(now - state.resume.at, state.resume.timelineMs, state.resume.fromYaw, state.resume.fromPitch)
+          : readingIdlePose(idleElapsed);
         const hold = state.hold;
-        if (hold && hold.capturedAt === null && !pose.turning && now - hold.since >= readingIdleMotion.holdMs) {
+        if (hold && hold.capturedAt === null && !state.resume && !pose.turning && now - hold.since >= readingIdleMotion.holdMs) {
           hold.capturedAt = now;
-          hold.fromYaw = pose.yaw; hold.fromPitch = pose.pitch;
+          state.yaw = pose.yaw; state.pitch = pose.pitch;
+          const input = readingDragInputForPose(pose.yaw, pose.pitch);
+          hold.rawYaw = input.yaw; hold.rawPitch = input.pitch;
           hold.lastX = hold.x; hold.lastY = hold.y;
         }
         if (hold && hold.capturedAt !== null) {
-          const capture = Math.min(1, (now - hold.capturedAt) / readingIdleMotion.holdMs);
-          if (capture < 1) {
-            const target = clampReadingDrag(hold.fromYaw, hold.fromPitch);
-            const blend = 1 - (1 - capture) ** 3;
-            pose = { yaw: hold.fromYaw + (target.yaw - hold.fromYaw) * blend, pitch: hold.fromPitch + (target.pitch - hold.fromPitch) * blend, turning: false };
-          } else {
-            pose = { ...clampReadingDrag(state.yaw + (hold.x - hold.lastX) * 0.18, state.pitch - (hold.y - hold.lastY) * 0.18), turning: false };
-          }
+          hold.rawYaw += (hold.x - hold.lastX) * readingDragSensitivity;
+          hold.rawPitch -= (hold.y - hold.lastY) * readingDragSensitivity;
+          pose = { ...applyReadingDragResistance(hold.rawYaw, hold.rawPitch), turning: false };
           hold.lastX = hold.x; hold.lastY = hold.y;
         }
         state.yaw = pose.yaw; state.pitch = pose.pitch;
@@ -263,7 +263,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   function startCardDrag(event: PointerEvent<HTMLButtonElement>, anchor: number) {
     if (stage !== "reading" || active?.anchor !== anchor || paused || event.button !== 0 || !readingPose.current.ready) return;
     event.preventDefault(); event.stopPropagation();
-    readingPose.current.hold = { id: event.pointerId, anchor, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, since: event.timeStamp, capturedAt: null, fromYaw: 0, fromPitch: 0 };
+    readingPose.current.hold = { id: event.pointerId, anchor, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, since: event.timeStamp, capturedAt: null, rawYaw: 0, rawPitch: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.classList.add("is-card-held");
   }
@@ -278,8 +278,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     if (!hold || hold.id !== event.pointerId || String(hold.anchor) !== event.currentTarget.dataset.anchor) return;
     event.stopPropagation();
     if (hold.capturedAt !== null && !reducedMotion) {
-      const phaseMs = readingIdlePhaseForYaw(state.yaw);
-      state.resume = { at: event.timeStamp, phaseMs, pitchOffset: state.pitch - readingIdlePose(phaseMs).pitch };
+      state.resume = { at: event.timeStamp, timelineMs: Math.max(0, event.timeStamp - state.idleOrigin), fromYaw: state.yaw, fromPitch: state.pitch };
     }
     state.hold = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);

@@ -71,8 +71,10 @@ export function advanceOrbitMotion(speed: number, target: number, deltaMs: numbe
   };
 }
 
-export const readingIdleMotion = { swayMs: 6000, turnMs: 1000, holdMs: 180 } as const;
-export const readingDragLimits = { left: 12, right: 12, up: 12, down: 10 } as const;
+export const readingIdleMotion = { swayMs: 6000 / 1.3, turnMs: 1000, holdMs: 180, returnMs: 800 } as const;
+export const readingDragThresholds = { left: 25, right: 25, up: 25, down: 25 } as const;
+export const readingDragSensitivity = 0.18 * 1.6;
+const readingDragElasticity = 3;
 
 const smootherStep = (value: number) => value ** 3 * (10 - 15 * value + 6 * value ** 2);
 
@@ -80,51 +82,61 @@ const smootherStep = (value: number) => value ** 3 * (10 - 15 * value + 6 * valu
 export function readingIdlePose(elapsedMs: number) {
   const sway = readingIdleMotion.swayMs / 1000;
   const turn = readingIdleMotion.turnMs / 1000;
-  const time = Math.max(0, elapsedMs) / 1000 % (sway + turn);
+  const time = (Math.max(0, elapsedMs) % (readingIdleMotion.swayMs + readingIdleMotion.turnMs)) / 1000;
+  const displayTime = time * 1.3;
   const edge = 0.5, slowSpeed = 6, extraSpeed = 24;
   let yaw: number;
-  if (time < edge) {
-    yaw = -24 + 18 * time + extraSpeed * edge / (2 * Math.PI) * Math.sin(Math.PI * time / edge);
-  } else if (time < sway - edge) {
-    yaw = -15 + slowSpeed * (time - edge);
+  if (time < sway && displayTime < edge) {
+    yaw = -24 + 18 * displayTime + extraSpeed * edge / (2 * Math.PI) * Math.sin(Math.PI * displayTime / edge);
+  } else if (time < sway && displayTime < 6 - edge) {
+    yaw = -15 + slowSpeed * (displayTime - edge);
   } else if (time < sway) {
-    const tail = time - (sway - edge);
+    const tail = displayTime - (6 - edge);
     yaw = 15 + 18 * tail - extraSpeed * edge / (2 * Math.PI) * Math.sin(Math.PI * tail / edge);
   } else {
     const progress = (time - sway) / turn;
-    // Enter and leave the turn at 30 deg/s, matching the front arc on both sides.
-    yaw = 24 + 30 * turn * progress + (312 - 30 * turn) * smootherStep(progress);
+    // Keep the one-second turn, joining the faster front arc at 39 deg/s on both sides.
+    yaw = 24 + 39 * turn * progress + (312 - 39 * turn) * smootherStep(progress);
   }
-  return { yaw, pitch: time < sway ? 20 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
+  return { yaw, pitch: time < sway ? 15 * Math.sin(Math.PI * time / sway) ** 2 : 0, turning: time >= sway };
 }
 
-export function clampReadingDrag(yaw: number, pitch: number) {
+function resistedAngle(value: number, threshold: number) {
+  const excess = Math.abs(value) - threshold;
+  return excess <= 0 ? value : Math.sign(value) * (threshold + readingDragElasticity * Math.log1p(excess / readingDragElasticity));
+}
+
+function rawDragAngle(value: number, threshold: number) {
+  const excess = Math.abs(value) - threshold;
+  return excess <= 0 ? value : Math.sign(value) * (threshold + readingDragElasticity * Math.expm1(excess / readingDragElasticity));
+}
+
+/** A soft threshold with increasing resistance and no finite angle cap. */
+export function applyReadingDragResistance(yaw: number, pitch: number) {
   return {
-    yaw: Math.max(-readingDragLimits.left, Math.min(readingDragLimits.right, yaw)),
-    pitch: Math.max(-readingDragLimits.down, Math.min(readingDragLimits.up, pitch)),
+    yaw: resistedAngle(yaw, yaw < 0 ? readingDragThresholds.left : readingDragThresholds.right),
+    pitch: resistedAngle(pitch, pitch < 0 ? readingDragThresholds.down : readingDragThresholds.up),
   };
 }
 
-/** Find the matching point on the front arc; manual limits leave room before the next turn. */
-export function readingIdlePhaseForYaw(yaw: number) {
-  const target = Math.max(-24, Math.min(24, yaw));
-  let low = 0;
-  let high: number = readingIdleMotion.swayMs;
-  for (let index = 0; index < 20; index++) {
-    const middle = (low + high) / 2;
-    if (readingIdlePose(middle).yaw < target) low = middle;
-    else high = middle;
-  }
-  return (low + high) / 2;
+/** Recover the original input when grabbing a pose that is already beyond a soft threshold. */
+export function readingDragInputForPose(yaw: number, pitch: number) {
+  return {
+    yaw: rawDragAngle(yaw, yaw < 0 ? readingDragThresholds.left : readingDragThresholds.right),
+    pitch: rawDragAngle(pitch, pitch < 0 ? readingDragThresholds.down : readingDragThresholds.up),
+  };
 }
 
-/** Preserve the released pose and gently pick up automatic speed, blending the pitch back in. */
-export function resumeReadingPose(elapsedMs: number, phaseMs: number, pitchOffset: number) {
+/** Rejoin the original moving timeline without resetting its phase or snapping across a turn. */
+export function resumeReadingPose(elapsedMs: number, timelineMs: number, fromYaw: number, fromPitch: number) {
   const elapsed = Math.max(0, elapsedMs);
-  const advance = elapsed - 250 * (1 - Math.exp(-elapsed / 250));
-  const pose = readingIdlePose(phaseMs + advance);
-  const blend = 1 - smootherStep(Math.min(1, elapsed / 800));
-  return { ...pose, pitch: pose.pitch + pitchOffset * blend };
+  const cycle = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
+  const first = readingIdlePose(timelineMs), pose = readingIdlePose(timelineMs + elapsed);
+  const turns = Math.floor((timelineMs + elapsed) / cycle) - Math.floor(timelineMs / cycle);
+  const gap = (first.yaw - fromYaw) * Math.PI / 180;
+  const targetYaw = fromYaw + Math.atan2(Math.sin(gap), Math.cos(gap)) * 180 / Math.PI + pose.yaw - first.yaw + turns * 360;
+  const blend = smootherStep(Math.min(1, elapsed / readingIdleMotion.returnMs));
+  return { ...pose, yaw: fromYaw + (targetYaw - fromYaw) * blend, pitch: fromPitch + (pose.pitch - fromPitch) * blend };
 }
 
 export const homeCardStream = { count: 36, durationMs: 105_000 } as const;

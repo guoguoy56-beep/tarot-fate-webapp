@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { readingIdleMotion } from "../../src/lib/cosmic-experience";
+import { readingIdleMotion, readingIdlePose } from "../../src/lib/cosmic-experience";
 
 async function pickFrontCard(page: Page) {
   const findTarget = () => page.locator('.cosmic-card:not([disabled])').evaluateAll((cards) => {
@@ -22,13 +22,13 @@ async function pickFrontCard(page: Page) {
 
 async function samplePresentation(page: Page, duration: number, previousAnchor: string | null = null) {
   return page.evaluate(async ({ ms, previous }) => {
-    const frames: Array<{ time: number; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number; rotation: number; topBottom: number; leftRight: number }> = [];
+    const frames: Array<{ time: number; clock: number; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number; rotation: number; topBottom: number; leftRight: number }> = [];
     const start = performance.now();
     let first = 0;
     await new Promise<void>((resolve) => {
       const record = (now: number) => {
         const card = document.querySelector<HTMLElement>('.cosmic-card.is-face-up');
-        if (card && card.dataset.anchor !== previous && (!frames.length || now - first - frames.at(-1)!.time >= 30)) {
+        if (card && card.dataset.anchor !== previous) {
           if (!frames.length) first = now;
           const rect = card.getBoundingClientRect();
           const flipper = card.querySelector('.cosmic-card-flipper')!;
@@ -46,7 +46,7 @@ async function samplePresentation(page: Page, duration: number, previousAnchor: 
           }
           const corners = Array.from(front.querySelectorAll('[data-corner]'), (point) => point.getBoundingClientRect());
           const edge = (a: number, b: number) => Math.hypot(corners[a].x - corners[b].x, corners[a].y - corners[b].y);
-          frames.push({ time: now - first, x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+          frames.push({ time: now - first, clock: now, x: rect.x, y: rect.y, width: rect.width, height: rect.height,
             flip: Math.atan2(flip.m31, flip.m11) * 180 / Math.PI,
             yaw: Math.atan2(tilt.m31, tilt.m11) * 180 / Math.PI,
             pitch: Math.atan2(tilt.m23, tilt.m22) * 180 / Math.PI,
@@ -134,33 +134,40 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
   expectEaseOutArrival(arrival);
   const cycleMs = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
-  const idle = await samplePresentation(page, cycleMs + 100);
+  const idle = await samplePresentation(page, cycleMs * 2 + 100);
   expect(idle.length).toBeGreaterThan(100);
   for (const dimension of ["x", "y", "width", "height"] as const) {
     expect(Math.max(...idle.map((frame) => frame[dimension])) - Math.min(...idle.map((frame) => frame[dimension]))).toBeLessThan(0.1);
   }
   expect(Math.min(...idle.map((frame) => frame.yaw))).toBeLessThan(-20);
   expect(Math.max(...idle.map((frame) => frame.yaw))).toBeGreaterThan(20);
-  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(19);
-  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeLessThanOrEqual(20.01);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeGreaterThan(14);
+  expect(Math.max(...idle.map((frame) => frame.pitch))).toBeLessThanOrEqual(15.01);
   const facing = idle.filter((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01 && Math.abs(frame.yaw) <= 25);
   // Projected edges must change in the actual viewport, not just in an internal rotation matrix.
   expect(Math.min(...facing.map((frame) => frame.topBottom))).toBeLessThan(0.94);
   expect(Math.min(...facing.map((frame) => frame.leftRight))).toBeLessThan(0.98);
   expect(Math.max(...facing.map((frame) => frame.leftRight))).toBeGreaterThan(1.02);
   let fullTurn = 0;
+  const completedTurns: number[] = [];
   const speeds: Array<{ angle: number; rate: number }> = [];
-  for (let index = 1; index < idle.length && idle[index].time <= cycleMs; index++) {
+  for (let index = 1; index < idle.length; index++) {
     const before = idle[index - 1], after = idle[index];
     const delta = (after.flip + after.yaw - before.flip - before.yaw) * Math.PI / 180;
     const step = Math.atan2(Math.sin(delta), Math.cos(delta)) * 180 / Math.PI;
     speeds.push({ angle: idle[0].flip + idle[0].yaw + fullTurn + step / 2, rate: step / (after.time - before.time) * 1000 });
+    for (const boundary of [cycleMs, cycleMs * 2]) {
+      if (before.time < boundary && after.time >= boundary) {
+        completedTurns.push(fullTurn + step * (boundary - before.time) / (after.time - before.time));
+      }
+    }
     fullTurn += step;
   }
-  expect(fullTurn).toBeCloseTo(360, 0);
+  expect(completedTurns).toHaveLength(2);
+  completedTurns.forEach((turn, index) => expect(turn).toBeCloseTo(360 * (index + 1), 0));
   expect(Math.min(...speeds.map((item) => item.rate))).toBeGreaterThan(2);
   expect(Math.max(...speeds.map((item) => item.rate))).toBeGreaterThan(300);
-  for (const seam of [204, 516]) {
+  for (const seam of [204, 516, 564, 876]) {
     const crossing = speeds.filter((item) => Math.abs(item.angle - seam) < 4);
     expect(crossing.length).toBeGreaterThan(0);
     expect(Math.min(...crossing.map((item) => item.rate))).toBeGreaterThan(12);
@@ -202,7 +209,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   expect(errors).toEqual([]);
 });
 
-test("reading card long-press drag follows four directions and resumes from the released pose", async ({ page }) => {
+test("reading card drag is stronger, has soft thresholds and returns to the uninterrupted timeline", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -215,26 +222,64 @@ test("reading card long-press drag follows four directions and resumes from the 
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
   const card = page.locator(".cosmic-card.is-face-up");
   const identity = await card.evaluate((el) => ({ anchor: el.dataset.anchor, card: el.dataset.cardId, orientation: el.dataset.orientation }));
+  const reference = (await samplePresentation(page, 120)).at(-1)!;
+  let low = 0, high = readingIdleMotion.swayMs;
+  for (let index = 0; index < 24; index++) {
+    const middle = (low + high) / 2;
+    if (readingIdlePose(middle).yaw < reference.yaw) low = middle;
+    else high = middle;
+  }
+  const referencePhase = (low + high) / 2;
   const rect = (await card.boundingBox())!;
   const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.waitForTimeout(450);
+  const grabbed = (await samplePresentation(page, 70)).at(-1)!;
+  const direction = grabbed.yaw > 0 ? -1 : 1;
+  await page.mouse.move(x + direction * 40, y, { steps: 6 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw - grabbed.yaw).toBeCloseTo(direction * 11.52, 1);
   await page.mouse.move(x - 200, y, { steps: 12 });
-  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeCloseTo(-12, 1);
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeLessThan(-25);
+  const leftEdge = (await samplePresentation(page, 70)).at(-1)!.yaw;
   await page.mouse.move(x - 200, y - 200, { steps: 12 });
-  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeCloseTo(12, 1);
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeGreaterThan(25);
   await page.mouse.move(x + 200, y - 200, { steps: 12 });
-  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeCloseTo(12, 1);
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeGreaterThan(25);
+  const edge0 = (await samplePresentation(page, 70)).at(-1)!.yaw;
+  await page.mouse.move(x + 300, y - 200, { steps: 8 });
+  const edge1 = (await samplePresentation(page, 100)).at(-1)!.yaw;
+  await page.mouse.move(x + 400, y - 200, { steps: 8 });
+  const edge2 = (await samplePresentation(page, 100)).at(-1)!.yaw;
+  expect(edge1).toBeGreaterThan(edge0);
+  expect(edge2).toBeGreaterThan(edge1);
+  expect(edge2 - edge1).toBeLessThan(edge1 - edge0);
+  const heldStill = await samplePresentation(page, 150);
+  expect(heldStill.at(-1)!.yaw).toBeCloseTo(heldStill[0].yaw, 2);
+  await page.mouse.move(x - 200, y - 200, { steps: 12 });
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.yaw).toBeCloseTo(leftEdge, 1);
+  await page.mouse.move(x + 200, y - 200, { steps: 12 });
   await page.mouse.move(x + 200, y + 200, { steps: 12 });
-  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeCloseTo(-10, 1);
+  await expect.poll(async () => (await samplePresentation(page, 70)).at(-1)!.pitch).toBeLessThan(-25);
+  const released = (await samplePresentation(page, 70)).at(-1)!;
+  // Hold through an entire cycle, then release while the original timeline is on its front arc.
+  const cycleMs = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
+  const now = await page.evaluate(() => performance.now());
+  const releaseAt = reference.clock + Math.ceil((now - reference.clock + 100) / cycleMs) * cycleMs + 300;
+  await page.waitForTimeout(Math.max(0, releaseAt - now));
   await page.mouse.up();
-  const resumed = await samplePresentation(page, 800);
-  expect(resumed[0].yaw).toBeCloseTo(12, 0);
-  expect(resumed[0].pitch).toBeCloseTo(-10, 0);
-  expect(resumed.every((frame) => frame.yaw < 24 && Math.abs(Math.abs(frame.flip) - 180) < 0.01)).toBe(true);
-  expect(resumed.at(-1)!.yaw).toBeGreaterThan(resumed[0].yaw + 1);
-  expect(resumed.at(-1)!.pitch).toBeGreaterThan(resumed[0].pitch);
+  const resumed = await samplePresentation(page, 1000);
+  expect(resumed[0].yaw).toBeCloseTo(released.yaw, 0);
+  expect(resumed[0].pitch).toBeCloseTo(released.pitch, 0);
+  const caughtUp = resumed.filter((frame) => frame.time >= readingIdleMotion.returnMs + 30);
+  expect(caughtUp.length).toBeGreaterThan(1);
+  for (const frame of caughtUp) {
+    const scheduled = readingIdlePose(referencePhase + frame.clock - reference.clock);
+    const difference = (frame.yaw - scheduled.yaw) * Math.PI / 180;
+    expect(Math.abs(Math.atan2(Math.sin(difference), Math.cos(difference)) * 180 / Math.PI)).toBeLessThan(0.5);
+    expect(Math.abs(frame.pitch - scheduled.pitch)).toBeLessThan(0.5);
+  }
+  expect(resumed.every((frame) => Math.abs(Math.abs(frame.flip) - 180) < 0.01)).toBe(true);
   expect(await card.evaluate((el) => ({ anchor: el.dataset.anchor, card: el.dataset.cardId, orientation: el.dataset.orientation }))).toEqual(identity);
   await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(1);
   await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
