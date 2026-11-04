@@ -10,6 +10,7 @@ import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
+import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
 import "./cosmic-fonts.css";
 import "./cosmic-experience.css";
 
@@ -48,8 +49,20 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
   const homeElapsed = useRef(0);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
   const readingPose = useRef<ReadingPoseState>({ yaw: 0, pitch: 0, ready: false, idleOrigin: 0, resume: null, hold: null });
+  const spaceHost = useRef<HTMLDivElement>(null);
+  const space = useRef<CosmicBackdrop | null>(null);
   const reducedMotion = useReducedMotion();
   const active = selected[current];
+
+  useEffect(() => {
+    const host = spaceHost.current;
+    if (!host) return;
+    let cancelled = false;
+    import("@/lib/cosmic-three-backdrop").then(({ createCosmicBackdrop }) => {
+      if (!cancelled) space.current = createCosmicBackdrop(host);
+    }).catch(() => { if (!cancelled) host.dataset.renderer = "fallback"; });
+    return () => { cancelled = true; space.current?.dispose(); space.current = null; };
+  }, []);
 
   useEffect(() => {
     const surface = root.current;
@@ -119,6 +132,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       if (background.current) {
         background.current.style.transform = `translate3d(${-3 - cam.ring * 5 - cam.reading * 107}%, ${-3 - cam.reading * 80}%, 0) scale(${1.12 + cam.ring * 0.18 + cam.travel * 0.4 + cam.reading * 2 - cam.summary * 0.13}) rotate(${cam.reading * -3}deg)`;
       }
+      space.current?.render(cam, w, h);
       const cx = w * (0.5 - cam.reading * 0.16 + cam.summary * 0.16);
       const cy = h * (0.60 - cam.reading * 0.22 + cam.summary * 0.07);
       const rx = w * (0.405 - cam.reading * 0.065 - cam.summary * 0.08);
@@ -297,6 +311,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
     onPointerCancel={() => { pointer.current = null; velocity.current = 0; root.current?.classList.remove("is-dragging"); }}
     onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
     <div className="cosmic-panorama" ref={background} />
+    <div className="cosmic-space" ref={spaceHost} data-testid="cosmic-space" aria-hidden="true" />
     <div className="cosmic-track" ref={track} aria-hidden="true" />
     <div className="cosmic-deck" aria-label="星空中的塔罗牌">
       {deck.map(({ card, orientation }, index) => {
