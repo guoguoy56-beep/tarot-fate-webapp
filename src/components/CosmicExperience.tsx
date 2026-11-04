@@ -133,17 +133,20 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         background.current.style.transform = `translate3d(${-3 - cam.ring * 5 - cam.reading * 107}%, ${-3 - cam.reading * 80}%, 0) scale(${1.12 + cam.ring * 0.18 + cam.travel * 0.4 + cam.reading * 2 - cam.summary * 0.13}) rotate(${cam.reading * -3}deg)`;
       }
       space.current?.render(cam, w, h);
+      const spatialCards = space.current?.ring.layout(cam, w, h, rotation.current);
+      surface.dataset.ringSpace = spatialCards ? "world" : "loading";
       const cx = w * (0.5 - cam.reading * 0.16 + cam.summary * 0.16);
       const cy = h * (0.60 - cam.reading * 0.22 + cam.summary * 0.07);
       const rx = w * (0.405 - cam.reading * 0.065 - cam.summary * 0.08);
       const ry = h * (0.18 + cam.reading * 0.07 - cam.summary * 0.07);
       ringProjection.current = { cx, cy, rx, ry };
       if (track.current) {
-        track.current.style.transform = `translate3d(${cx}px, ${cy + 15}px, 0) translate(-50%, -50%) scale(1, ${ry / rx}) rotate(${rotation.current * 180 / Math.PI * 0.15}deg)`;
-        track.current.style.width = `${rx * 2.55}px`;
+        track.current.style.transform = spatialCards ? space.current!.ring.trackTransform(rotation.current) : `translate3d(${cx}px, ${cy + 15}px, 0) translate(-50%, -50%) scale(1, ${ry / rx}) rotate(${rotation.current * 180 / Math.PI * 0.15}deg)`;
+        track.current.style.transformOrigin = spatialCards ? "0 0" : "center";
+        track.current.style.width = spatialCards ? "1000px" : `${rx * 2.55}px`;
         track.current.style.opacity = `${cam.ring * 0.85}`;
       }
-      const depths = deck.map((_, index) => (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
+      const depths = deck.map((_, index) => spatialCards?.[index].depth ?? (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
       const homePoses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, homeElapsed.current, w / h));
       const homeSize = Math.min(w / 1440, h / 900);
       const homeDepthWeight = cam.ring < 0.99 ? 1 - cam.ring : 0;
@@ -162,9 +165,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         const homeX = w * pose.x;
         const homeY = h * pose.y;
         const homeScale = pose.scale * homeSize;
-        const ringX = cx + Math.cos(angle) * rx;
-        const ringY = cy + Math.sin(angle) * ry;
-        const perspective = (0.47 + depth * 0.7) * (1 - cam.summary * 0.2);
+        const ringX = spatialCards?.[index].x ?? cx + Math.cos(angle) * rx;
+        const ringY = spatialCards?.[index].y ?? cy + Math.sin(angle) * ry;
+        const perspective = spatialCards?.[index].scale ?? (0.47 + depth * 0.7) * (1 - cam.summary * 0.2);
         focusWeights.current[index] = stage === "reading"
           ? fromFocus[index] + (Number(focused) - fromFocus[index]) * approach
           : focusWeights.current[index] + (Number(focused) - focusWeights.current[index]) * ease;
@@ -247,9 +250,11 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
       const bounds = root.current?.getBoundingClientRect();
       const projection = ringProjection.current;
       if (!bounds || !projection) return;
-      const change = ringDragDelta(
-        { x: p.lastX - bounds.left, y: p.lastY - bounds.top },
-        { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+      const dragPrevious = { x: p.lastX - bounds.left, y: p.lastY - bounds.top };
+      const dragNext = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+      const change = space.current ? space.current.ring.dragDelta(dragPrevious, dragNext) : ringDragDelta(
+        dragPrevious,
+        dragNext,
         projection,
       );
       rotation.current += change;

@@ -114,6 +114,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "选择与你共鸣的牌" })).toBeVisible();
+  await page.screenshot({ path: "output/ring-3d-2026-11-04/01-draw.png" });
   await pickFrontCard(page);
   await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(1);
   const snapshot = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => ({
@@ -149,6 +150,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
     && Math.hypot(frame.x - settled.x, frame.y - settled.y, frame.width - settled.width) > 5)).toBe(true);
   expect(Math.abs(settled.flip)).toBeCloseTo(180, 1);
   expectArrivalSequence(arrival);
+  await page.screenshot({ path: "output/ring-3d-2026-11-04/02-reading.png" });
   const cycleMs = readingIdleMotion.swayMs + readingIdleMotion.turnMs;
   const idle = await samplePresentation(page, cycleMs * 2 + 100);
   expect(idle.length).toBeGreaterThan(100);
@@ -219,12 +221,15 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeFocused();
   await summaryBody.press("End");
   await expect.poll(() => summaryBody.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  // End scrolls asynchronously: record the final position, not the last few pixels of motion.
+  await expect.poll(() => summaryBody.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(1);
   const rememberedScroll = await summaryBody.evaluate((element) => element.scrollTop);
   await page.locator(".cosmic-summary-cards button").first().click();
   await expect(page.getByText("过去 · 第 1 / 3 张", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "返回整体解读", exact: true }).click();
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeFocused();
   await expect.poll(async () => Math.abs(await summaryBody.evaluate((element) => element.scrollTop) - rememberedScroll)).toBeLessThan(2);
+  await page.screenshot({ path: "output/ring-3d-2026-11-04/03-summary.png" });
   expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
   await page.getByRole("button", { name: "保存示例手记", exact: true }).click();
   await page.getByRole("button", { name: "命运回廊，返回首页", exact: true }).click();

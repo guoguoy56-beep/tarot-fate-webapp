@@ -1,23 +1,36 @@
 import { AdditiveBlending, BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, Scene, SRGBColorSpace, TextureLoader, WebGLRenderer } from "three";
 import { cosmicPanoramaFrame, cosmicSpaceCamera, type SpaceCameraBlend } from "@/lib/cosmic-space-camera";
+import { CosmicRingSpace } from "@/lib/cosmic-ring-space";
 
 export interface CosmicBackdrop {
+  ring: CosmicRingSpace;
   render(blend: SpaceCameraBlend, width: number, height: number): void;
   dispose(): void;
 }
 
-/** Keep the interactive CSS cards; migrate the background and camera as a separate first step. */
-export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop | null {
+/** One camera drives WebGL scenery and the projected native CSS3D card surfaces. */
+export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
+  const scene = new Scene();
+  const camera = new PerspectiveCamera(50, 1, 0.1, 300);
+  const ring = new CosmicRingSpace(camera, scene);
+  const updateCamera = (blend: SpaceCameraBlend, width: number, height: number) => {
+    const pose = cosmicSpaceCamera(blend);
+    camera.aspect = width / height;
+    camera.position.set(...pose.position); camera.lookAt(...pose.target);
+    camera.fov = pose.fov; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    return pose;
+  };
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("webgl2", { alpha: false, antialias: false });
-  if (!context) { host.dataset.renderer = "fallback"; return null; }
+  if (!context) {
+    host.dataset.renderer = "fallback";
+    return { ring, render: updateCamera, dispose: () => ring.dispose() };
+  }
   const renderer = new WebGLRenderer({ canvas, context, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setClearColor(0x060916);
   renderer.outputColorSpace = SRGBColorSpace;
   host.appendChild(canvas);
-  const scene = new Scene();
-  const camera = new PerspectiveCamera(50, 1, 0.1, 300);
   const planeGeometry = new PlaneGeometry(1, 1);
   const planeMaterial = new MeshBasicMaterial({ toneMapped: false });
   const panorama = new Mesh(planeGeometry, planeMaterial);
@@ -60,24 +73,21 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop | nul
   canvas.addEventListener("webglcontextlost", onLost);
   canvas.addEventListener("webglcontextrestored", onRestored);
   return {
+    ring,
     render(blend, nextWidth, nextHeight) {
-      if (disposed || !ready || lost || !nextWidth || !nextHeight) return;
-      const pose = cosmicSpaceCamera(blend);
+      if (disposed || !nextWidth || !nextHeight) return;
+      const pose = updateCamera(blend, nextWidth, nextHeight);
+      if (!ready || lost) return;
       const key = [...pose.position, ...pose.target, pose.fov, nextWidth, nextHeight].map((value) => value.toFixed(4)).join(":");
       if (key === lastKey && !dirty) return;
       if (width !== nextWidth || height !== nextHeight) {
         width = nextWidth; height = nextHeight;
         renderer.setSize(width, height, false);
-        camera.aspect = width / height;
         // Match the existing home cover-crop so the stream still starts inside the vortex.
         const image = cosmicPanoramaFrame(camera.aspect);
         panorama.scale.set(image.width, image.height, 1);
         panorama.position.set(image.x, image.y, image.z);
       }
-      camera.position.set(...pose.position);
-      camera.lookAt(...pose.target);
-      camera.fov = pose.fov;
-      camera.updateProjectionMatrix();
       renderer.render(scene, camera);
       host.dataset.renderer = "webgl";
       host.dataset.cameraX = pose.position[0].toFixed(5);
@@ -95,6 +105,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop | nul
       stars.forEach((points) => { points.geometry.dispose(); points.material.dispose(); });
       dotTexture.dispose(); texture.dispose(); planeGeometry.dispose(); planeMaterial.dispose();
       renderer.dispose();
+      ring.dispose();
       canvas.remove();
       host.dataset.renderer = "fallback";
     },

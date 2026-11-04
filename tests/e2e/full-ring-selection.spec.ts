@@ -36,17 +36,18 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
     if (scenario.turn) {
       const cx = viewport.width * 0.5;
       const cy = viewport.height * 0.6;
-      const rx = viewport.width * 0.405;
-      const ry = viewport.height * 0.18;
-      await page.mouse.move(cx, cy - ry);
+      // Follow actual projected anchors: a perspective orbit's screen angle is not its world angle.
+      const orbit = await page.locator('.cosmic-card').evaluateAll((cards) => cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }));
+      await page.mouse.move(orbit[0].x, orbit[0].y);
       await page.mouse.down();
-      for (let step = 1; step <= 18; step++) {
-        const angle = -Math.PI / 2 + scenario.turn * step / 18;
-        await page.mouse.move(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
+      for (let step = 1; step <= 22; step++) {
+        await page.mouse.move(orbit[step].x, orbit[step].y);
       }
       // Finish with a slow final pixel so a frame between release and the center click cannot fling the ring.
-      const endAngle = -Math.PI / 2 + scenario.turn;
-      await page.mouse.move(cx + rx * Math.cos(endAngle) + 1, cy + ry * Math.sin(endAngle));
+      await page.mouse.move(orbit[22].x + 1, orbit[22].y);
       await page.mouse.up();
       // In reduced-motion mode there is no release inertia; an empty-center click must not select a card.
       await page.mouse.click(cx, cy);
