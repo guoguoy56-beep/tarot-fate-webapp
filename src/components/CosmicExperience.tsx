@@ -10,6 +10,7 @@ import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
+import "./cosmic-fonts.css";
 import "./cosmic-experience.css";
 
 type Stage = "home" | "travel" | "shuffle" | "draw" | "reading" | "summarizing" | "summary";
