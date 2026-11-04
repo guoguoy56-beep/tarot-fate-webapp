@@ -90,7 +90,7 @@
 .cosmic-reading-controls button { flex: 1; font-size: 16px; padding: 14px 8px; gap: 9px; }
 .cosmic-footer { position: absolute; bottom: 25px; left: 4%; right: 4%; display: flex; justify-content: space-between; color: #a699ad; font-size: 10px; letter-spacing: .15em; pointer-events: none; }
 .cosmic-footer > span:first-child { font-family: Georgia, serif; }
-.cosmic-summary-shade { position: absolute; inset: 0; z-index: 170; pointer-events: none; background: linear-gradient(90deg, #04061138 0%, #04061118 30%, #040611c9 51%, #040611f5 74%, #040611fa 100%); }
+.cosmic-summary-shade { position: absolute; inset: 0; z-index: 170; pointer-events: none; background: #04061185; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .cosmic-summary { position: absolute; top: 12%; bottom: 10%; left: 6%; right: 6%; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 6vw; min-height: 0; z-index: 180; }
 .cosmic-summary-overview { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 10px 8px; scrollbar-width: thin; scrollbar-color: #957643 transparent; }
 .cosmic-summary-overview-title { text-align: center; margin-top: auto; }
