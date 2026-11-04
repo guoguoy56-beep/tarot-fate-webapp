@@ -215,6 +215,17 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
   await expect(navigation).toHaveCount(0);
+  const summaryBody = page.getByRole("region", { name: "整体分析正文", exact: true });
+  await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeFocused();
+  await summaryBody.press("End");
+  await expect.poll(() => summaryBody.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  const rememberedScroll = await summaryBody.evaluate((element) => element.scrollTop);
+  await page.locator(".cosmic-summary-cards button").first().click();
+  await expect(page.getByText("过去 · 第 1 / 3 张", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "返回整体解读", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeFocused();
+  await expect.poll(async () => Math.abs(await summaryBody.evaluate((element) => element.scrollTop) - rememberedScroll)).toBeLessThan(2);
+  expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
   await page.getByRole("button", { name: "保存示例手记", exact: true }).click();
   await page.getByRole("button", { name: "命运回廊，返回首页", exact: true }).click();
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "home");
@@ -366,11 +377,13 @@ test("reading card accepts repeated grabs during its return to the original idle
 
 for (const [name, count] of [["单牌", 1], ["是非牌", 1], ["三牌阵", 3], ["十字牌阵", 5], ["恋人十字牌阵", 5], ["暗恋牌阵", 4], ["心之声", 4]] as const) {
   test(`${name} completes at ${count} cards with manual review`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await page.getByRole("button", { name: "开始占卜", exact: true }).click();
     await page.getByRole("button", { name: `${name} ${count} 张`, exact: true }).click();
-    await page.getByLabel("你想问星空什么？").fill("我该如何理解此刻的感受？");
+    const question = name === "十字牌阵" ? "如何在接下来的学习中平衡自己的期待与实际安排？".repeat(20).slice(0, 500) : "我该如何理解此刻的感受？";
+    await page.getByLabel("你想问星空什么？").fill(question);
     await page.getByRole("button", { name: "开启星轨", exact: true }).click();
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
     for (let index = 0; index < count; index++) {
@@ -388,5 +401,33 @@ for (const [name, count] of [["单牌", 1], ["是非牌", 1], ["三牌阵", 3], 
     await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
     await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
     await expect(page.locator(".cosmic-summary-cards button")).toHaveCount(count);
+    await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeFocused();
+    const controls = page.locator(".cosmic-summary-actions");
+    const originalControls = (await controls.boundingBox())!;
+    expect(originalControls.y).toBeGreaterThan(0);
+    expect(originalControls.y + originalControls.height).toBeLessThan(720);
+    const thumbnails = await page.locator(".cosmic-summary-cards button").evaluateAll((buttons) => buttons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      return { x: rect.x, top: rect.top, right: rect.right, bottom: rect.bottom,
+        hit: button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+    }));
+    for (const thumbnail of thumbnails) {
+      expect(thumbnail.x).toBeGreaterThan(0);
+      expect(thumbnail.top).toBeGreaterThan(0);
+      expect(thumbnail.right).toBeLessThan(1280);
+      expect(thumbnail.bottom).toBeLessThan(720);
+      expect(thumbnail.hit).toBe(true);
+    }
+    const body = page.getByRole("region", { name: "整体分析正文", exact: true });
+    await expect(body).toContainText(question);
+    await body.press("End");
+    await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    const scrolledControls = (await controls.boundingBox())!;
+    expect(scrolledControls.y).toBeCloseTo(originalControls.y, 0);
+    if (count === 5) {
+      await page.setViewportSize({ width: 1159, height: 668 });
+      const overflow = await page.locator(".cosmic-summary-overview").evaluate((element) => element.scrollHeight - element.clientHeight);
+      expect(overflow).toBeLessThanOrEqual(1);
+    }
   });
 }

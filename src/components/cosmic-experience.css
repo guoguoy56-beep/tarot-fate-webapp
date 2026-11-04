@@ -90,21 +90,52 @@
 .cosmic-reading-controls button { flex: 1; font-size: 16px; padding: 14px 8px; gap: 9px; }
 .cosmic-footer { position: absolute; bottom: 25px; left: 4%; right: 4%; display: flex; justify-content: space-between; color: #a699ad; font-size: 10px; letter-spacing: .15em; pointer-events: none; }
 .cosmic-footer > span:first-child { font-family: Georgia, serif; }
-.cosmic-summary { position: absolute; top: 13%; bottom: 9%; left: 20%; width: 60%; padding: 33px 45px; background: #080b18ee; border: 1px solid var(--cosmic-line); overflow-y: auto; z-index: 180; scrollbar-width: thin; }
-.cosmic-summary-title { text-align: center; }
-.cosmic-summary h2 { margin: 5px 0; font-size: 42px; letter-spacing: .16em; }
-.cosmic-summary-title > p:last-child { color: #c3b5c9; margin-top: 20px; line-height: 1.8; }
-.cosmic-summary-cards { display: flex; justify-content: center; gap: 30px; margin: 30px 0; }
-.cosmic-summary-cards button { color: #d1b98f; border: 0; background: none; display: flex; flex-direction: column; align-items: center; font-size: 12px; min-width: 0; }
-.cosmic-summary-cards img { width: 85px; height: 145px; border: 1px solid #cfb079; border-radius: 3px; margin-bottom: 14px; }
-.cosmic-summary-cards span { color: #a89aaf; margin-bottom: 6px; }
-.cosmic-summary-cards strong { font-weight: 400; }
-.cosmic-summary-prose { border-top: 1px solid var(--cosmic-line); padding-top: 25px; }
-.cosmic-summary-prose h3 { font-size: 23px; margin: 0 0 15px; }
-.cosmic-summary-prose p { color: #c5b9cd; line-height: 2; font-size: 13px; margin: 10px 0; }
-.cosmic-summary-actions { display: flex; justify-content: center; gap: 20px; margin-top: 25px; }
+.cosmic-summary-shade { position: absolute; inset: 0; z-index: 170; pointer-events: none; background: linear-gradient(90deg, #04061138 0%, #04061118 30%, #040611c9 51%, #040611f5 74%, #040611fa 100%); }
+.cosmic-summary { position: absolute; top: 12%; bottom: 10%; left: 6%; right: 6%; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 6vw; min-height: 0; z-index: 180; }
+.cosmic-summary-overview { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 10px 8px; scrollbar-width: thin; scrollbar-color: #957643 transparent; }
+.cosmic-summary-overview-title { text-align: center; margin-top: auto; }
+.cosmic-summary-overview-title .cosmic-eyebrow { margin-bottom: 12px; }
+.cosmic-summary-overview-title h3 { margin: 0; font-size: 25px; letter-spacing: .12em; text-shadow: 0 2px 15px #000; }
+.cosmic-summary-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px 12px; margin: 26px 0 16px; }
+.cosmic-summary-cards button { grid-column: span 2; color: #eed6ac; border: 1px solid transparent; border-radius: 5px; padding: 9px 3px; background: none; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; min-width: 0; text-shadow: 0 2px 8px #000; transition: border-color .25s, background-color .25s; }
+.cosmic-summary-cards button:hover { border-color: #d9b77c70; background: #080b184d; }
+.cosmic-summary-cards img { width: auto; max-width: 100%; height: clamp(104px, 16vh, 170px); border: 1px solid #cfb079; border-radius: 4px; box-shadow: 0 8px 25px #0008; }
+.cosmic-summary-cards[data-count="1"] button { grid-column: 2 / span 4; }
+.cosmic-summary-cards[data-count="1"] img { height: clamp(200px, 38vh, 360px); }
+.cosmic-summary-cards[data-count="3"] img { height: clamp(140px, 24vh, 240px); }
+.cosmic-summary-cards[data-count="4"] button { grid-column: span 3; }
+.cosmic-summary-cards[data-count="5"] button:nth-child(4) { grid-column: 2 / span 2; }
+.cosmic-summary-cards[data-count="5"] button:nth-child(5) { grid-column: 4 / span 2; }
+.cosmic-summary-cards .cosmic-summary-position { color: #d4c5d9; font-size: 12px; line-height: 1.5; }
+.cosmic-summary-cards strong { font-weight: 400; line-height: 1.5; }
+.cosmic-summary-cards small { color: #bba9bf; font-size: 12px; }
+.cosmic-summary-review-hint { color: #c9b9ca; text-align: center; font-size: 12px; line-height: 1.8; margin: 0 0 auto; text-shadow: 0 2px 8px #000; }
+.cosmic-summary-reading { min-height: 0; display: flex; flex-direction: column; }
+.cosmic-summary-title { padding: 4px 12px 22px 0; border-bottom: 1px solid var(--cosmic-line); flex-shrink: 0; }
+.cosmic-summary-title .cosmic-eyebrow { margin-bottom: 12px; }
+.cosmic-summary-title > div { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; }
+.cosmic-summary h2 { margin: 0; font-size: clamp(34px, 3vw, 48px); letter-spacing: .14em; line-height: 1.4; }
+.cosmic-summary h2:focus { outline: none; }
+.cosmic-summary-body { min-height: 0; flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #957643 transparent; padding: 24px 16px 20px 2px; }
+.cosmic-summary-body:focus-visible { outline: 1px solid #d9b77c80; outline-offset: 3px; }
+.cosmic-summary-question > span { color: #b6a7ba; font-size: 12px; letter-spacing: .12em; }
+.cosmic-summary-question p { color: #f0dfc1; font-size: 19px; line-height: 1.8; overflow-wrap: anywhere; margin: 10px 0 28px; }
+.cosmic-summary-prose + .cosmic-summary-prose { border-top: 1px solid #ba96572b; padding-top: 25px; margin-top: 25px; }
+.cosmic-summary-prose h3 { font-size: 22px; letter-spacing: .06em; margin: 0 0 14px; }
+.cosmic-summary-prose p, .cosmic-summary-prose li { color: #ded3e2; line-height: 1.95; font-size: 18px; overflow-wrap: anywhere; }
+.cosmic-summary-prose p { margin: 0; }
+.cosmic-summary-prose ol { padding-left: 24px; margin: 0; }
+.cosmic-summary-prose li + li { margin-top: 10px; }
+.cosmic-summary-prose li::marker { color: var(--cosmic-gold); }
+.cosmic-summary-themes { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 18px; }
+.cosmic-summary-themes > span { color: #ad9db4; font-size: 12px; line-height: 1.9; }
+.cosmic-summary-themes strong { color: #e3c596; font-weight: 400; font-size: 14px; margin-left: 8px; }
+.cosmic-summary-reflection { border-left: 1px solid #ba965780; padding-left: 18px; color: #dbc6a6; font-size: 17px; line-height: 1.9; margin: 28px 0 4px; }
+.cosmic-summary-footer { border-top: 1px solid var(--cosmic-line); padding-top: 18px; flex-shrink: 0; }
+.cosmic-summary-actions { display: flex; gap: 16px; }
+.cosmic-summary-actions button { flex: 1; font-size: 15px; padding: 14px 10px; gap: 9px; }
 .cosmic-small-note { font-size: 11px; color: #a396ae; line-height: 1.9; margin-top: 20px; }
-.cosmic-summary > .cosmic-small-note { text-align: center; }
+.cosmic-summary-footer .cosmic-small-note { margin: 12px 0 0; }
 .cosmic-dialog { position: fixed; margin: auto; width: min(720px, 86vw); max-width: none; max-height: 87vh; padding: 0; border: 1px solid #b999635c; border-radius: 5px; color: var(--cosmic-cream); background: #0b0e1bf5; box-shadow: 0 25px 100px #0009; scrollbar-width: thin; scrollbar-color: #957643 #0c0c1a; }
 .cosmic-dialog::backdrop { background: #05061273; backdrop-filter: blur(5px); }
 .cosmic-dialog.is-wide { width: min(1000px, 90vw); }
@@ -162,10 +193,16 @@
   .cosmic-hero { top: 20%; }
   .cosmic-hero-copy { margin-bottom: 27px; }
   .cosmic-dialog-content { padding-top: 30px; }
+  .cosmic-summary-title { padding-bottom: 15px; }
+  .cosmic-summary-overview { padding-top: 3px; padding-bottom: 3px; }
+  .cosmic-summary-body { padding-top: 18px; }
+  .cosmic-summary-footer { padding-top: 14px; }
+  .cosmic-summary-cards { margin: 16px 0 12px; gap: 10px 8px; }
+  .cosmic-summary-cards button { gap: 4px; padding-top: 6px; padding-bottom: 6px; }
 }
 @media (max-width: 1200px) {
   .cosmic-header nav { gap: 23px; }
-  .cosmic-summary { left: 12%; width: 76%; }
+  .cosmic-summary { left: 5%; right: 5%; gap: 4vw; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cosmic-primary, .cosmic-secondary { transition-duration: .01ms !important; transition-delay: 0ms !important; }
