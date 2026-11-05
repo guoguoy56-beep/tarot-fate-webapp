@@ -1,12 +1,12 @@
-import { BoxGeometry, Group, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
-import { createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
+import { BufferGeometry, Group, MeshBasicMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { createCardEdgeGeometry, createCardFaceGeometry, createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import type { PerspectiveCamera, Scene } from "three";
 
 export class CosmicStreamMeshes {
   readonly group = new Group();
   readonly cards: Group[] = [];
-  readonly geometry = new PlaneGeometry(1, 116 / 68);
-  readonly edgeGeometry = new BoxGeometry(1.012, 116 / 68 + 0.012, 0.02);
+  readonly geometry = createCardFaceGeometry();
+  readonly edgeGeometry = createCardEdgeGeometry();
   private readonly back = new MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
   private readonly edge = new MeshBasicMaterial({ color: 0x96774b, toneMapped: false });
   private readonly faces = new Map<string, MeshBasicMaterial>();
@@ -17,6 +17,7 @@ export class CosmicStreamMeshes {
   private failed = false;
   private readonly point = new Vector3();
   private readonly direction = new Vector3();
+  private readonly normal = new Vector3();
 
   constructor(scene: Scene, private readonly anisotropy: number, private readonly changed: () => void) {
     this.group.name = "continuous-tarot-stream";
@@ -46,7 +47,7 @@ export class CosmicStreamMeshes {
       }
       const node = this.cards[index] ?? createDoubleSidedCard(this.geometry, this.edgeGeometry, this.back, material, this.edge);
       if (!this.cards[index]) { this.cards[index] = node; this.group.add(node); }
-      const front = node.children[2] as import("three").Mesh<PlaneGeometry, MeshBasicMaterial>;
+      const front = node.children[2] as import("three").Mesh<BufferGeometry, MeshBasicMaterial>;
       front.material = material;
       front.rotation.z = orientation === "reversed" ? Math.PI : 0;
       node.userData = { anchor: index, cardId: card.id, orientation };
@@ -65,11 +66,13 @@ export class CosmicStreamMeshes {
     let fronts = 0, backs = 0;
     this.cards.forEach((node, index) => {
       const pose = spatialStreamPose(index, elapsed, width, height);
-      node.position.copy(pose.position); node.scale.setScalar(pose.size); node.rotation.z = pose.tilt;
+      node.position.copy(pose.position); node.scale.setScalar(pose.size); node.rotation.set(pose.pitch, 0, pose.tilt);
       this.point.copy(pose.position).project(camera);
       this.direction.copy(pose.position).applyMatrix4(camera.matrixWorldInverse);
       if (this.direction.z < 0 && Math.abs(this.point.x) < 1 && Math.abs(this.point.y) < 1) {
-        if (camera.position.z < pose.position.z) fronts++; else backs++;
+        this.normal.set(0, 0, -1).applyQuaternion(node.quaternion);
+        this.direction.copy(camera.position).sub(pose.position);
+        if (this.normal.dot(this.direction) > 0) fronts++; else backs++;
       }
     });
     return { fronts, backs };

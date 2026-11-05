@@ -29,7 +29,7 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
     await page.getByRole("button", { name: "开始占卜", exact: true }).click();
     await page.getByRole("button", { name: "十字牌阵 5 张", exact: true }).click();
     await page.getByLabel("你想问星空什么？").fill("接下来我应该关注什么？");
-    await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+    await page.getByLabel("你想问星空什么？").press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
     // Each card needs an actually exposed hit point, rather than just an enabled DOM button.
     await expect.poll(async () => (await exposedCards(page)).length).toBe(78);

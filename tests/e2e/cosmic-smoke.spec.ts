@@ -120,7 +120,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(page.getByRole("region", { name: "占卜准备", exact: true })).toBeVisible();
   await expect(page.locator(".cosmic-header nav")).toHaveCount(0);
   await page.getByLabel("你想问星空什么？").fill("如何为接下来的学习找到方向？");
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "travel");
   await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("button", { name: "命运回廊，返回首页", exact: true })).toBeVisible();
@@ -265,7 +265,7 @@ test("reading card drag is stronger, has soft thresholds and returns to the unin
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
   await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("如何更好地理解此刻的自己？");
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   await pickFrontCard(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
@@ -343,7 +343,7 @@ test("reading card accepts repeated grabs during its return to the original idle
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
   await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("如何理解反复出现的想法？");
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   await pickFrontCard(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
@@ -404,7 +404,7 @@ for (const [name, count] of [["单牌", 1], ["是非牌", 1], ["三牌阵", 3], 
     await page.getByRole("button", { name: `${name} ${count} 张`, exact: true }).click();
     const question = name === "十字牌阵" ? "如何在接下来的学习中平衡自己的期待与实际安排？".repeat(20).slice(0, 500) : "我该如何理解此刻的感受？";
     await page.getByLabel("你想问星空什么？").fill(question);
-    await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+    await page.getByLabel("你想问星空什么？").press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
     for (let index = 0; index < count; index++) {
       await pickFrontCard(page);

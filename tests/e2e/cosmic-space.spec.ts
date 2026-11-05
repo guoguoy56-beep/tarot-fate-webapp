@@ -32,14 +32,16 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
     const start = performance.now();
     await new Promise<void>((resolve) => {
       const frame = (time: number) => {
-        frames.push({ time, x: Number(element.getAttribute("data-camera-x")), y: Number(element.getAttribute("data-camera-y")), z: Number(element.getAttribute("data-camera-z")) });
+        // Match the pose to the RAF that rendered it; an observer can run on either side of that RAF.
+        const rendered = (element.closest(".cosmic-scene") as HTMLElement).dataset.rotationTime;
+        frames.push({ time: Number(rendered), x: Number(element.getAttribute("data-camera-x")), y: Number(element.getAttribute("data-camera-y")), z: Number(element.getAttribute("data-camera-z")) });
         if (time - start > 8500) resolve(); else requestAnimationFrame(frame);
       };
       requestAnimationFrame(frame);
     });
     return frames;
   });
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   const drawZ = Number(await space(page).getAttribute("data-camera-z"));
   await choose(page);
@@ -62,7 +64,8 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
     const a = frames[index - 1], b = frames[index];
     const distance = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     expect(Number.isFinite(distance)).toBe(true);
-    expect(distance).toBeLessThan(120 * (b.time - a.time) / 1000 + 0.05);
+    // The approved doorway station starts the 650ms ring approach at |(-79, 11, 48)| / .65 ≈ 143 units/s.
+    expect(distance).toBeLessThan(150 * (b.time - a.time) / 1000 + 0.05);
   }
   expect(Number(await space(page).getAttribute("data-camera-z"))).toBeGreaterThan(readingZ + 5);
   await page.getByRole("button", { name: "命运回廊，返回首页", exact: true }).click();
@@ -85,7 +88,7 @@ test("reduced motion uses a static WebGL view instead of continuously rendering"
   expect(Number(questionFrame)).toBeGreaterThan(Number(before));
   await page.waitForTimeout(300);
   expect(await space(page).getAttribute("data-frames")).toBe(questionFrame);
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await choose(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
   const settled = await space(page).getAttribute("data-frames");
@@ -108,7 +111,7 @@ test("the full reading flow works when WebGL2 is unavailable", async ({ page }) 
   await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
   await expect(page.locator(".cosmic-panorama")).toBeVisible();
   await prepare(page);
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   await choose(page);
   await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
@@ -136,7 +139,7 @@ for (const missing of ["/assets/cosmic/cosmic-panorama-v1.png", "/cards/rws/majo
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await prepare(page);
-    await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+    await page.getByLabel("你想问星空什么？").press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
     await page.locator('.cosmic-card[data-card-id="magician"]').press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");

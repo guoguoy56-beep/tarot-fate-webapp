@@ -33,16 +33,28 @@
 .cosmic-space[data-renderer="webgl"] { opacity: 1; }
 .cosmic-space[data-renderer="fallback"] { transition: none; }
 .cosmic-space canvas { display: block; width: 100%; height: 100%; }
-/* Step 1 camera preview: keep the established form usable while leaving the stream in view. */
-.cosmic-prepare-preview { position: absolute; top: 28%; right: 4%; width: min(440px, 38vw); max-height: 65%; overflow: auto; padding: 22px; background: #080b16e8; border-radius: 12px; scrollbar-width: thin; }
-.cosmic-prepare-preview h2 { font-size: 25px; line-height: 1.6; margin: 12px 0; }
-.cosmic-prepare-preview textarea { display: block; width: 100%; padding: 12px; color: var(--cosmic-cream); background: #0b0c1680; border: 1px solid var(--cosmic-line); border-radius: 8px; resize: vertical; }
-.cosmic-prepare-preview .cosmic-spread-options { grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.cosmic-prepare-preview .cosmic-spread-options button { padding: 8px 2px; font-size: 12px; }
-.cosmic-prepare-preview .cosmic-eyebrow, .cosmic-prepare-preview .cosmic-dialog-intro, .cosmic-prepare-preview .cosmic-spread-detail { display: none; }
+.cosmic-prepare { --cosmic-question-height: 66px; position: absolute; top: calc(50% - var(--cosmic-question-height) / 2); left: 50%; width: min(940px, calc(100% - 120px)); transform: translateX(-50%); text-align: center; }
+.cosmic-prepare h2 { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 clamp(80px, 12vh, 130px); color: #f2dfbd; font-size: clamp(30px, 2.3vw, 40px); line-height: 1.55; letter-spacing: .1em; text-shadow: 0 2px 5px #000, 0 3px 24px #000; }
+.cosmic-question-frame { position: relative; width: min(760px, 100%); height: var(--cosmic-question-height); margin: 0 auto; }
+.cosmic-question-capsule { position: relative; height: 100%; border: 1px solid #caa66dc4; border-radius: 999px; background: #0b0c17b3; box-shadow: inset 0 0 22px #d6ac6010, 0 0 28px #d6ac6010; }
+.cosmic-question-capsule:focus-within { border-color: #eac889; box-shadow: inset 0 0 20px #d6ac6014, 0 0 28px #d6ac601c; }
+.cosmic-experience .cosmic-question-capsule input { display: block; width: 100%; height: 100%; padding: 0 112px 0 30px; border: 0; border-radius: inherit; outline: 0; color: #f2dfbd; background: none; font-size: 18px; letter-spacing: .035em; caret-color: #f5db9f; }
+.cosmic-question-capsule input::placeholder { color: #a5a1ac; opacity: 1; }
+.cosmic-experience .cosmic-question-capsule input:focus-visible { outline: 0; }
+.cosmic-question-capsule:has(input:focus-visible) { outline: 1px solid #f0d19765; outline-offset: 4px; }
+.cosmic-question-meta { position: absolute; top: 0; right: 27px; height: 100%; display: flex; align-items: center; pointer-events: none; }
+.cosmic-question-meta kbd { display: flex; align-items: center; gap: 7px; padding-left: 18px; border-left: 1px solid #b6985e42; color: #d5be98; font: 12px var(--cosmic-font-ui); }
+.cosmic-question-sparks { position: absolute; top: -76px; left: -76px; width: calc(100% + 152px); height: calc(100% + 152px); pointer-events: none; }
+.cosmic-spread-options { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px clamp(8px, 1.2vw, 20px); padding: 0; margin: 19px 0 0; border: 0; min-width: 0; }
+.cosmic-spread-options button { position: relative; padding: 10px 3px; border: 0; background: none; color: #b5abbc; font-size: 14px; letter-spacing: .03em; text-shadow: 0 2px 10px #000; transition: color .2s; }
+.cosmic-spread-options button::after { content: ""; position: absolute; height: 1px; bottom: 3px; left: 10%; right: 10%; background: #dfbd7c; opacity: 0; transform: scaleX(.4); transition: opacity .2s, transform .2s; }
+.cosmic-spread-options button:hover, .cosmic-spread-options button.is-active { color: #f1d49c; }
+.cosmic-spread-options button.is-active::after { opacity: .8; transform: scaleX(1); }
+.cosmic-experience .cosmic-spread-options:disabled button { opacity: 1; cursor: default; }
+.cosmic-prepare-note { position: absolute; left: 50%; transform: translateX(-50%); color: #aea1b5; font-size: 12px; letter-spacing: .08em; }
 .cosmic-header, .cosmic-footer { transition: opacity .4s; }
 .stage-reversing .cosmic-header, .stage-returning .cosmic-header, .stage-reversing .cosmic-footer, .stage-returning .cosmic-footer { opacity: 0; pointer-events: none; }
-.stage-prepare .cosmic-brand { font-size: 16px; }
+.stage-prepare .cosmic-brand { font-size: 13px; color: #bcb0c2; letter-spacing: .1em; }
 .cosmic-track { position: absolute; left: 0; top: 0; aspect-ratio: 1; background: url("/assets/cosmic/orbital-track-v1.png") center / contain no-repeat; pointer-events: none; will-change: transform; }
 .cosmic-deck { pointer-events: none; }
 .cosmic-card { position: absolute; left: 0; top: 0; width: 68px; height: 116px; padding: 0; border: 0; background: transparent; will-change: transform; transform-origin: center; border-radius: 4px; -webkit-user-drag: none; }
@@ -165,21 +177,10 @@
 .cosmic-dialog h2 { font-size: 30px; margin: 12px 0; line-height: 1.5; letter-spacing: .1em; }
 .cosmic-dialog-intro { color: #b5a9bf; font-size: 14px; line-height: 1.9; margin-bottom: 28px; }
 .cosmic-close { position: absolute; top: 18px; right: 18px; background: none; border: 0; color: #bba483; padding: 5px; }
-.cosmic-spread-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; border: 0; padding: 0; }
-.cosmic-spread-options legend { color: #d2bf9f; font-size: 13px; margin-bottom: 15px; }
-.cosmic-spread-options button { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 14px 4px; background: #121321; color: #c0b3c8; border: 1px solid #b4945b35; border-radius: 3px; font-size: 13px; }
-.cosmic-spread-options button small { font-size: 10px; color: #9d91a8; }
-.cosmic-spread-options button.is-active { border-color: #d2ae70; color: #f0d0a0; background: #302536; }
-.cosmic-spread-detail { padding: 16px 0 20px; border-bottom: 1px solid var(--cosmic-line); margin-bottom: 24px; }
-.cosmic-spread-detail strong { font-size: 14px; color: #ccad7c; font-weight: 500; }
-.cosmic-spread-detail p { color: #9e91aa; font-size: 13px; line-height: 1.9; margin-top: 9px; }
-.cosmic-question-label, .cosmic-login label { display: block; margin-bottom: 13px; font-size: 14px; }
+.cosmic-login label { display: block; margin-bottom: 13px; font-size: 14px; }
 .cosmic-dialog textarea, .cosmic-dialog input, .cosmic-dialog select { background: #070a15; color: #e2d2bb; border: 1px solid #ae91554d; border-radius: 3px; padding: 14px; font-size: 15px; }
 .cosmic-dialog textarea { width: 100%; line-height: 1.8; resize: vertical; max-height: 190px; min-height: 90px; }
 .cosmic-dialog input::placeholder, .cosmic-dialog textarea::placeholder { color: #80758e; }
-.cosmic-form-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 17px; }
-.cosmic-form-bottom > span { font-size: 11px; color: #90859c; }
-.cosmic-form-bottom > button { padding: 13px 25px; }
 .cosmic-encyclopedia-tools { display: flex; gap: 15px; margin: 25px 0; }
 .cosmic-encyclopedia-tools > label { display: flex; align-items: center; flex: 1; border: 1px solid #ae91554d; border-radius: 3px; padding-left: 15px; color: #b3a086; background: #070a15; }
 .cosmic-encyclopedia-tools input { border: 0; width: 100%; background: none; }
@@ -209,6 +210,10 @@
 .cosmic-login > p { font-size: 14px; color: #c1b1cd; line-height: 2; margin: 20px 0 30px; }
 @media (max-height: 850px) {
   .cosmic-header { top: 25px; }
+  .cosmic-prepare { --cosmic-question-height: 60px; }
+  .cosmic-prepare h2 { font-size: 30px; line-height: 1.45; }
+  .cosmic-spread-options { margin-top: 12px; gap: 4px 10px; }
+  .cosmic-spread-options button { padding: 8px 3px; font-size: 13px; }
   .cosmic-reading { gap: 20px; }
   .cosmic-reading-section { margin-top: 18px; padding-top: 18px; }
   .cosmic-reading-section h3 { font-size: 21px; }
@@ -221,6 +226,10 @@
   .cosmic-summary-footer { padding-top: 14px; }
   .cosmic-summary-cards { margin: 16px 0 12px; gap: 10px 8px; }
   .cosmic-summary-cards button { gap: 4px; padding-top: 6px; padding-bottom: 6px; }
+}
+@media (max-height: 700px) {
+  .cosmic-prepare { --cosmic-question-height: 58px; }
+  .cosmic-prepare h2 { font-size: 28px; }
 }
 @media (max-width: 1200px) {
   .cosmic-header nav { gap: 23px; }

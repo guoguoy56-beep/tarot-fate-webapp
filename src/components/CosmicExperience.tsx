@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { CosmicQuestion } from "@/components/CosmicQuestion";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
 import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
@@ -475,8 +476,7 @@ export function CosmicExperience() {
     if (stage !== "home") setDeck(newDeck());
     setPanel(null); setStage("home"); setSelected([]); setCurrent(0); setSaved(false); setReviewingSummary(false); summaryScroll.current = 0;
   }
-  function begin(event: FormEvent) {
-    event.preventDefault();
+  function begin() {
     if (!question.trim() || stage !== "prepare") return;
     setSelected([]); setCurrent(0); setSaved(false); setReviewingSummary(false); summaryScroll.current = 0; setPanel(null); setStage("travel");
   }
@@ -499,7 +499,7 @@ export function CosmicExperience() {
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} />
     <motion.div className="cosmic-summary-shade" aria-hidden="true" initial={false} animate={{ opacity: stage === "summary" ? 1 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.6 }} />
     <header className="cosmic-header">
-      <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" disabled={stage === "reversing" || stage === "returning"} tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></button>
+      <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" disabled={stage === "reversing" || stage === "returning"} tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}>{stage === "prepare" ? <><ArrowLeft size={15} strokeWidth={1.2} /><span>返回首页</span></> : <><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></>}</button>
       {stage === "home" && <nav aria-label="主导航">
         <button onClick={() => openPanel("encyclopedia")}><BookOpen size={15} />塔罗百科</button>
         <button onClick={() => openPanel("history")}><History size={15} />历史记录</button>
@@ -515,10 +515,7 @@ export function CosmicExperience() {
         <p className="cosmic-hero-copy">让未说出口的问题，在星光中找到回响。</p>
         <motion.button className="cosmic-primary hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Sparkles size={19} strokeWidth={1.2} />开始占卜<ArrowRight size={20} strokeWidth={1.2} /></motion.button>
       </motion.section>}
-      {stage === "prepare" && <motion.section key="prepare" className="cosmic-prepare-preview" aria-label="占卜准备" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}><form onSubmit={begin}><p className="cosmic-eyebrow">在星轨开启之前</p><h2>让心中的问题，有一个形状</h2><p className="cosmic-dialog-intro">选一个适合此刻的牌阵，再写下你想探索的事。</p><fieldset className="cosmic-spread-options"><legend>选择牌阵</legend>{cosmicSpreads.map((item) => <button key={item.id} type="button" className={spread.id === item.id ? "is-active" : ""} aria-pressed={spread.id === item.id} onClick={() => setSpread(item)}><span>{item.name}</span><small>{item.slots.length} 张</small></button>)}</fieldset>
-          <div className="cosmic-spread-detail"><strong>{spread.subtitle}</strong><p>{spread.slots.map((slot, index) => `${index + 1}. ${slot}`).join("　·　")}</p></div>
-          <label className="cosmic-question-label" htmlFor="cosmic-question">你想问星空什么？</label><textarea id="cosmic-question" required maxLength={500} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="此刻，有什么问题萦绕在你心中……" rows={3} />
-          <div className="cosmic-form-bottom"><span>{question.length} / 500</span><button type="submit" className="cosmic-primary" disabled={!question.trim()}>开启星轨<ArrowRight size={18} /></button></div><p className="cosmic-small-note">当前为前端体验版，牌阵位置暂按草案呈现，解读为示例内容。</p></form></motion.section>}
+      {stage === "prepare" && <CosmicQuestion key="prepare" question={question} spread={spread} onQuestion={setQuestion} onSpread={setSpread} onBegin={begin} />}
       {(stage === "travel" || stage === "shuffle") && <motion.section className="cosmic-status" key={stage} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
         <p className="cosmic-eyebrow">{stage === "travel" ? "步入星空深处" : "让此刻，重新交汇"}</p>
         <h2>{stage === "travel" ? "每个问题，都有一条来路" : "星轨正在排列"}</h2>
@@ -547,7 +544,7 @@ export function CosmicExperience() {
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
       {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveDemo} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
-    <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span><span>{stage === "home" ? "一段通往内心的旅程" : spread.name}</span></footer>
+    <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{stage === "home" ? "一段通往内心的旅程" : spread.name}</span></footer>
 
     <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>

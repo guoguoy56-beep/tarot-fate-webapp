@@ -1,7 +1,7 @@
 export interface SpaceCameraBlend { ring: number; reading: number; summary: number; reverse?: number }
 
 export const reverseCameraDurationMs = 3600;
-export const questionCamera = { position: [-9, -5, 32], target: [11, -22, 66], fov: 50 } as const;
+export const questionCamera = { position: [16, -9.5, -6], target: [26, -33, 36], fov: 50 } as const;
 
 export function cameraTravelProgress(elapsed: number) {
   const t = Math.max(0, Math.min(1, elapsed / reverseCameraDurationMs));
@@ -16,10 +16,14 @@ export function cosmicSpaceCamera(blend: SpaceCameraBlend): { position: readonly
   const reverse = clamp(blend.reverse ?? 0);
   if (reverse > 0) {
     // Rotate the viewing direction, rather than lerping opposing look-at targets through zero.
-    // Positive X is a rightward look from the home camera; the station moves diagonally down/left.
-    const yaw = Math.atan2(20, -34) * reverse;
-    const pitch = Math.atan2(-17, Math.hypot(20, 34)) * reverse;
-    const position = [-9 * reverse, -5 * reverse, 24 + 8 * reverse] as const;
+    // Positive X is a rightward look from the home camera, following the outgoing foreground stream.
+    const yaw = Math.atan2(10, -42) * Math.sin(reverse * Math.PI / 2);
+    const pitch = Math.atan2(-23.5, Math.hypot(10, 42)) * reverse ** 2;
+    const t = reverse, u = 1 - t;
+    // Move forward/down to the doorway-side station, bowing left of the foreground cards.
+    const position = [3 * u * u * t * -7 + 3 * u * t * t * -5 + t ** 3 * 16,
+      3 * u * u * t * -1 + 3 * u * t * t * -9 + t ** 3 * -9.5,
+      u ** 3 * 24 + 3 * u * u * t * 18 + t ** 3 * -6] as const;
     // Temporary bridge to the established downstream camera; ordered entry replaces this in step 3.
     const base = cosmicSpaceCamera({ ...blend, reverse: 0 });
     const weight = 1 - ring;

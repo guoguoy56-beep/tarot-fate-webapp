@@ -33,7 +33,7 @@ test("shuffle eases into continuous idle without pausing on hover", async ({ pag
     };
     requestAnimationFrame(frame);
   }));
-  await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").press("Enter");
   // Keep the pointer on the ring for the transition, then compare with the empty upper corner.
   await page.mouse.move(960, 820);
   const frames = await framesPromise;
@@ -41,7 +41,9 @@ test("shuffle eases into continuous idle without pausing on hover", async ({ pag
   const draw = frames.filter((frame) => frame.stage === "draw");
   const averageSpeed = (samples: typeof frames) => (samples.at(-1)!.angle - samples[0].angle) / (samples.at(-1)!.time - samples[0].time);
   const window = (start: number, end: number) => draw.filter((frame) => frame.time - draw[0].time >= start && frame.time - draw[0].time < end);
-  const shuffleSpeed = averageSpeed(shuffle.slice(-20));
+  // Measure the settled tail in milliseconds; twenty frames can span much earlier acceleration on a busy renderer.
+  const shuffleEnd = shuffle.at(-1)!.time;
+  const shuffleSpeed = averageSpeed(shuffle.filter((frame) => frame.time >= shuffleEnd - 400));
   expect(shuffleSpeed).toBeGreaterThan(0.0004);
   expect(shuffleSpeed).toBeLessThan(0.001);
   const early = averageSpeed(window(50, 350));

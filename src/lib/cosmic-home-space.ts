@@ -11,7 +11,9 @@ reference.position.set(...pose.position); reference.lookAt(...pose.target); refe
 export function homeStreamWorldPose(home: ReturnType<typeof homeStreamPose>, width: number, height: number) {
   const focal = height / (2 * Math.tan(reference.fov * Math.PI / 360));
   // Emerge at the nebula plane, then approach to six world units; stay clear of the near clipping plane.
-  const distance = 60 - 54 * home.progress;
+  // Settle the depth approach before the foreground exit. A linear depth reduction
+  // made the apparent downward path turn upward in world space right before the join.
+  const distance = 6 + 54 * (1 - home.progress) ** 2;
   const position = new Vector3((home.x - 0.5) * width * distance / focal, (0.5 - home.y) * height * distance / focal, -distance)
     .applyMatrix4(reference.matrixWorld);
   // Emergence grows the physical card as well as its perspective, retaining the one-pixel source.

@@ -37,8 +37,9 @@ for (const width of [1920, 1280]) {
       });
       return frames;
     });
-    const clicked = Date.now();
     await page.getByRole("button", { name: "开始占卜", exact: true }).click();
+    // Exclude Playwright's wait for the hero button to become actionable from camera travel time.
+    const clicked = Date.now();
     await expect(stage(page)).toHaveAttribute("data-stage", "reversing");
     await expect(page.getByLabel("你想问星空什么？")).toHaveCount(0);
     await page.keyboard.press("Escape");
@@ -46,21 +47,25 @@ for (const width of [1920, 1280]) {
     await expect(stage(page)).toHaveAttribute("data-stage", "prepare");
     expect(Date.now() - clicked).toBeGreaterThan(3400);
     expect(Date.now() - clicked).toBeLessThan(5000);
-    await expect(space(page)).toHaveAttribute("data-camera-x", "-9.00000");
-    await expect(space(page)).toHaveAttribute("data-camera-y", "-5.00000");
-    await expect(space(page)).toHaveAttribute("data-visible-backs", "0");
+    await expect(space(page)).toHaveAttribute("data-camera-x", "16.00000");
+    await expect(space(page)).toHaveAttribute("data-camera-y", "-9.50000");
+    await expect(space(page)).toHaveAttribute("data-camera-z", "-6.00000");
+    // The near stretch shows fronts; the far stretch pitches face-down and reveals its backs.
     await expect.poll(async () => Number(await space(page).getAttribute("data-visible-fronts"))).toBeGreaterThan(20);
+    await expect.poll(async () => Number(await space(page).getAttribute("data-visible-backs"))).toBeGreaterThan(0);
     const frames = await samples;
     expect(frames.length).toBeGreaterThan(40);
+    expect(Math.min(...frames.map((frame) => frame.x))).toBeLessThan(-2);
     for (let index = 1; index < frames.length; index++) {
       const a = frames[index - 1], b = frames[index];
       const delta = Math.max(1, b.time - a.time) / 1000;
-      expect(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z)).toBeLessThan(delta * 15 + 0.1);
-      expect(b.x).toBeLessThanOrEqual(a.x + 0.00001);
+      // The longer forward/downward arc peaks below 27 world units/s.
+      expect(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z)).toBeLessThan(delta * 28 + 0.1);
       expect(b.y).toBeLessThanOrEqual(a.y + 0.00001);
+      expect(b.z).toBeLessThanOrEqual(a.z + 0.00001);
       const yaw = (f: typeof a) => Math.atan2(f.target[0] - f.x, -(f.target[2] - f.z));
       expect(yaw(b)).toBeGreaterThanOrEqual(yaw(a) - 0.00001);
-      expect(yaw(b) - yaw(a)).toBeLessThan(delta * 2 + 0.02);
+      expect(yaw(b) - yaw(a)).toBeLessThan(delta * 2.1 + 0.02);
     }
     expect(await space(page).locator("canvas").screenshot()).not.toEqual(home);
     const clock = Number(await space(page).getAttribute("data-stream-time"));
@@ -74,7 +79,9 @@ for (const width of [1920, 1280]) {
     await page.getByRole("button", { name: "开始占卜", exact: true }).click();
     await expect(page.getByLabel("你想问星空什么？")).toHaveValue("如何安排接下来的学习？");
     expect(await identity(page)).toEqual(before);
-    await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+    // A retained draft exists before the opening capsule becomes editable and receives focus.
+    await expect(page.getByLabel("你想问星空什么？")).toBeFocused();
+    await page.getByLabel("你想问星空什么？").press("Enter");
     await expect(stage(page)).toHaveAttribute("data-stage", "draw");
     expect(await identity(page)).toEqual(before);
     expect(await canvas!.evaluate((element) => element === document.querySelector(".cosmic-space canvas"))).toBe(true);
