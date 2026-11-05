@@ -81,7 +81,10 @@ test("reduced motion uses a static WebGL view instead of continuously rendering"
   await page.waitForTimeout(300);
   expect(await space(page).getAttribute("data-frames")).toBe(before);
   await prepare(page);
-  expect(await space(page).getAttribute("data-frames")).toBe(before);
+  const questionFrame = await space(page).getAttribute("data-frames");
+  expect(Number(questionFrame)).toBeGreaterThan(Number(before));
+  await page.waitForTimeout(300);
+  expect(await space(page).getAttribute("data-frames")).toBe(questionFrame);
   await page.getByRole("button", { name: "开启星轨", exact: true }).click();
   await choose(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
@@ -126,3 +129,17 @@ test("context loss falls back and restoration reuses the same scene canvas", asy
   await before!.dispose();
   await extension.dispose();
 });
+
+for (const missing of ["/assets/cosmic/cosmic-panorama-v1.png", "/cards/rws/major-00-fool.jpg"]) {
+  test(`a failed scene resource does not block the reading flow: ${missing}`, async ({ page }) => {
+    await page.route(`**${missing}`, (route) => route.abort());
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await prepare(page);
+    await page.getByRole("button", { name: "开启星轨", exact: true }).click();
+    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+    await page.locator('.cosmic-card[data-card-id="magician"]').press("Enter");
+    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");
+    await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
+  });
+}

@@ -2,13 +2,26 @@ import { expect, test, type Page } from "@playwright/test";
 import { readingIdleMotion, readingIdlePose } from "../../src/lib/cosmic-experience";
 
 async function pickFrontCard(page: Page) {
+  // Observe the existing deceleration before aiming at a moving card. A point sampled during
+  // the fast release can be in empty space by the time native pointer input reaches the page.
+  await expect.poll(() => page.getByTestId("cosmic-scene").evaluate(async (scene) => {
+    const start = Number(scene.getAttribute("data-rotation")), time = performance.now();
+    await new Promise<void>((resolve) => {
+      const frame = () => performance.now() - time >= 80 ? resolve() : requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
+    });
+    return Math.abs(Number(scene.getAttribute("data-rotation")) - start) / (performance.now() - time);
+  })).toBeLessThan(0.00012);
   const findTarget = () => page.locator('.cosmic-card:not([disabled])').evaluateAll((cards) => {
     return cards.flatMap((card) => {
       const rect = card.getBoundingClientRect();
-      return [0.25, 0.5, 0.75].map((fraction) => {
+      return [0.5, 0.25, 0.75].map((fraction) => {
         const x = rect.x + rect.width * fraction;
         const y = rect.y + rect.height * 0.7;
-        return { anchor: card.getAttribute("data-anchor"), x, y, hit: card.contains(document.elementFromPoint(x, y)) };
+        // A moving card's exposed edge can pass the pointer between observation and input.
+        // Choose an interior hit area, while still sending a real pointer click (no forced selection).
+        const hit = [[0, 0], [-4, 0], [4, 0], [0, -4], [0, 4]].every(([dx, dy]) => card.contains(document.elementFromPoint(x + dx, y + dy)));
+        return { anchor: card.getAttribute("data-anchor"), x, y, hit };
       });
     }).filter((card) => card.hit && card.y > window.innerHeight * 0.45).sort((a, b) => b.y - a.y)[0];
   });
@@ -92,6 +105,7 @@ function expectArrivalSequence(frames: Awaited<ReturnType<typeof samplePresentat
 }
 
 test("cosmic ring preserves shuffled anchors through drag, reading and summary", async ({ page }) => {
+  test.setTimeout(90_000);
   const errors: string[] = [];
   const apiCalls: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -102,8 +116,9 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(navigation).toBeVisible();
   await expect(page.getByRole("heading", { name: "命运回廊", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.locator(".cosmic-header nav")).toBeVisible();
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "prepare");
+  await expect(page.getByRole("region", { name: "占卜准备", exact: true })).toBeVisible();
+  await expect(page.locator(".cosmic-header nav")).toHaveCount(0);
   await page.getByLabel("你想问星空什么？").fill("如何为接下来的学习找到方向？");
   await page.getByRole("button", { name: "开启星轨", exact: true }).click();
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "travel");

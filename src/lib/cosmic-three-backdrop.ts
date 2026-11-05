@@ -1,10 +1,13 @@
-import { AdditiveBlending, BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, Scene, SRGBColorSpace, TextureLoader, WebGLRenderer } from "three";
+import { AdditiveBlending, BackSide, BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, Scene, SphereGeometry, SRGBColorSpace, TextureLoader, WebGLRenderer } from "three";
 import { cosmicPanoramaFrame, cosmicSpaceCamera, type SpaceCameraBlend } from "@/lib/cosmic-space-camera";
 import { CosmicRingSpace } from "@/lib/cosmic-ring-space";
+import { CosmicStreamMeshes } from "@/lib/cosmic-stream-meshes";
+import type { CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 
 export interface CosmicBackdrop {
   ring: CosmicRingSpace;
-  render(blend: SpaceCameraBlend, width: number, height: number): void;
+  setDeck(deck: readonly CosmicDeckEntry[]): void;
+  render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number): void;
   dispose(): void;
 }
 
@@ -24,7 +27,8 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   const context = canvas.getContext("webgl2", { alpha: false, antialias: false });
   if (!context) {
     host.dataset.renderer = "fallback";
-    return { ring, render: updateCamera, dispose: () => ring.dispose() };
+    host.dataset.streamReady = "true";
+    return { ring, setDeck: () => {}, render: (blend, width, height) => updateCamera({ ...blend, reverse: 0 }, width, height), dispose: () => ring.dispose() };
   }
   const renderer = new WebGLRenderer({ canvas, context, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -36,16 +40,24 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   const panorama = new Mesh(planeGeometry, planeMaterial);
   panorama.position.z = -36;
   scene.add(panorama);
-  let disposed = false, ready = false, lost = false, dirty = true, lastKey = "", frames = 0;
+  let disposed = false, ready = false, backgroundFailed = false, lost = false, dirty = true, lastKey = "", frames = 0;
+  const stream = new CosmicStreamMeshes(scene, Math.min(8, renderer.capabilities.getMaxAnisotropy()), () => { dirty = true; });
   let width = 0, height = 0;
   const texture = new TextureLoader().load("/assets/cosmic/cosmic-panorama-v1.png", (loaded) => {
     if (disposed) { loaded.dispose(); return; }
     ready = true;
     dirty = true;
-  }, undefined, () => { if (!disposed) host.dataset.renderer = "fallback"; });
+  }, undefined, () => { if (!disposed) { backgroundFailed = true; host.dataset.renderer = "fallback"; } });
   texture.colorSpace = SRGBColorSpace;
   texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   planeMaterial.map = texture;
+
+  // A quiet surrounding shell makes the reverse side readable during the camera graybox.
+  // Formal flowing nebula volumes replace this placeholder in step 4.
+  const shellGeometry = new SphereGeometry(180, 32, 16);
+  const shellMaterial = new MeshBasicMaterial({ map: texture, color: 0x544864, side: BackSide, toneMapped: false });
+  const shell = new Mesh(shellGeometry, shellMaterial);
+  scene.add(shell);
 
   // Soft, low-contrast stars at three actual depths; no extra asset or ambient movement.
   const dot = document.createElement("canvas");
@@ -58,7 +70,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   dotTexture.colorSpace = SRGBColorSpace;
   let seed = 271828;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-  const layers = [[380, -34, -20, 1.4, 0.28], [180, -20, 3, 1.8, 0.34], [90, 3, 22, 2.4, 0.4]] as const;
+  const layers = [[380, -34, -20, 1.4, 0.28], [180, -20, 3, 1.8, 0.34], [90, 3, 22, 2.4, 0.4], [250, 35, 140, 1.8, 0.36]] as const;
   const stars = layers.map(([count, near, far, size, opacity]) => {
     const vertices = Array.from({ length: count }, () => [(random() - 0.35) * 130, (random() - 0.5) * 85, near + random() * (far - near)]).flat();
     const geometry = new BufferGeometry();
@@ -74,11 +86,14 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   canvas.addEventListener("webglcontextrestored", onRestored);
   return {
     ring,
-    render(blend, nextWidth, nextHeight) {
+    setDeck: (deck) => stream.setDeck(deck),
+    render(blend, nextWidth, nextHeight, streamTime = 0) {
       if (disposed || !nextWidth || !nextHeight) return;
-      const pose = updateCamera(blend, nextWidth, nextHeight);
-      if (!ready || lost) return;
-      const key = [...pose.position, ...pose.target, pose.fov, nextWidth, nextHeight].map((value) => value.toFixed(4)).join(":");
+      const fallback = lost || backgroundFailed || (stream.ready && !stream.available);
+      const pose = updateCamera(fallback ? { ...blend, reverse: 0 } : blend, nextWidth, nextHeight);
+      host.dataset.streamReady = String(stream.ready && (ready || backgroundFailed));
+      if (!ready || !stream.ready || lost) return;
+      const key = [...pose.position, ...pose.target, pose.fov, nextWidth, nextHeight, blend.ring < 0.999 ? streamTime : 0].map((value) => value.toFixed(4)).join(":");
       if (key === lastKey && !dirty) return;
       if (width !== nextWidth || height !== nextHeight) {
         width = nextWidth; height = nextHeight;
@@ -88,12 +103,18 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
         panorama.scale.set(image.width, image.height, 1);
         panorama.position.set(image.x, image.y, image.z);
       }
+      const visible = stream.update(streamTime, nextWidth, nextHeight, Math.max(0, 1 - blend.ring), camera);
       renderer.render(scene, camera);
       host.dataset.renderer = "webgl";
       host.dataset.cameraX = pose.position[0].toFixed(5);
       host.dataset.cameraY = pose.position[1].toFixed(5);
       host.dataset.cameraZ = pose.position[2].toFixed(5);
       host.dataset.cameraFov = pose.fov.toFixed(5);
+      host.dataset.streamRenderer = stream.available ? "mesh" : "fallback";
+      host.dataset.streamCount = String(stream.cards.length);
+      host.dataset.visibleFronts = String(visible.fronts); host.dataset.visibleBacks = String(visible.backs);
+      host.dataset.streamTime = streamTime.toFixed(2);
+      host.dataset.cameraTarget = pose.target.map((value) => value.toFixed(5)).join(",");
       host.dataset.frames = String(++frames);
       lastKey = key;
       dirty = false;
@@ -104,6 +125,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       canvas.removeEventListener("webglcontextrestored", onRestored);
       stars.forEach((points) => { points.geometry.dispose(); points.material.dispose(); });
       dotTexture.dispose(); texture.dispose(); planeGeometry.dispose(); planeMaterial.dispose();
+      shellGeometry.dispose(); shellMaterial.dispose(); stream.dispose();
       renderer.dispose();
       ring.dispose();
       canvas.remove();
