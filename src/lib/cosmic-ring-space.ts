@@ -1,6 +1,7 @@
 import { Group, Matrix4, Object3D, PerspectiveCamera, Plane, Raycaster, Scene, Vector2, Vector3 } from "three";
 import { cosmicSpaceCamera, type SpaceCameraBlend } from "@/lib/cosmic-space-camera";
-import { ringDragDelta } from "@/lib/cosmic-experience";
+import { ringDragDelta, type homeStreamPose } from "@/lib/cosmic-experience";
+import { homeStreamWorldPose } from "@/lib/cosmic-home-space";
 
 interface Frame { center: Vector3; u: Vector3; v: Vector3; cardSize: number }
 export interface RingCardProjection { x: number; y: number; scale: number; depth: number }
@@ -46,7 +47,7 @@ export class CosmicRingSpace {
     return { center, u, v, cardSize: size * distance / focal };
   }
 
-  layout(blend: SpaceCameraBlend, width: number, height: number, rotation: number): readonly RingCardProjection[] {
+  layout(blend: SpaceCameraBlend, width: number, height: number, rotation: number, homePoses?: readonly ReturnType<typeof homeStreamPose>[]): readonly RingCardProjection[] {
     if (width !== this.width || height !== this.height) {
       this.width = width; this.height = height;
       this.frames = [
@@ -64,9 +65,15 @@ export class CosmicRingSpace {
     this.inverse.copy(this.group.matrix).invert();
     this.plane.setFromNormalAndCoplanarPoint(this.normal, center);
     this.cardSize = (draw.cardSize + (reading.cardSize - draw.cardSize) * blend.reading) * (1 - blend.summary) + summary.cardSize * blend.summary;
-    this.anchors.forEach((node, index) => {
+    const sizes = this.anchors.map((node, index) => {
       const angle = index / this.anchors.length * Math.PI * 2 + rotation;
       node.position.set(Math.cos(angle), Math.sin(angle), 0);
+      if (!homePoses || blend.ring === 1) return this.cardSize;
+      const home = homeStreamWorldPose(homePoses[index % homePoses.length], width, height);
+      // Blend in world space, before the one shared camera projects either end of the journey.
+      this.point.copy(node.position).applyMatrix4(this.group.matrix);
+      node.position.copy(home.position.lerp(this.point, blend.ring)).applyMatrix4(this.inverse);
+      return home.size + (this.cardSize - home.size) * blend.ring;
     });
     this.group.updateMatrixWorld(true);
     const focal = height / (2 * Math.tan(this.camera.fov * Math.PI / 360));
@@ -74,7 +81,7 @@ export class CosmicRingSpace {
       node.getWorldPosition(this.point);
       const depth = -this.point.clone().applyMatrix4(this.camera.matrixWorldInverse).z;
       this.point.project(this.camera);
-      Object.assign(this.projected[index], { x: (this.point.x + 1) * width / 2, y: (1 - this.point.y) * height / 2, scale: focal * this.cardSize / depth, depth: -depth });
+      Object.assign(this.projected[index], { x: (this.point.x + 1) * width / 2, y: (1 - this.point.y) * height / 2, scale: focal * sizes[index] / depth, depth: -depth });
     });
     return this.projected;
   }

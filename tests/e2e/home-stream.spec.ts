@@ -74,6 +74,7 @@ test("homepage cards flow through a full loop and gather without remounting or j
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "命运回廊", exact: true })).toBeVisible();
+  await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
   const elements = await page.locator(".cosmic-card").first().evaluateHandle((first) => Array.from(first.parentElement!.children));
   const identity = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => ({
     anchor: card.getAttribute("data-anchor"), id: card.getAttribute("data-card-id"), orientation: card.getAttribute("data-orientation"),
@@ -82,7 +83,7 @@ test("homepage cards flow through a full loop and gather without remounting or j
   const frames = await sampleStream(page, homeCardStream.durationMs + 1000);
   expect(checkContinuousStream(frames, 1920, 1080).size).toBe(homeCardStream.count);
   expect(await identity()).toEqual(before);
-  await page.screenshot({ path: "output/frontend-v2/home-stream-1920.png" });
+  await page.screenshot({ path: "output/continuous-3d-2026-11-05/01-home-1920.png" });
 
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("我可以如何迈出下一步？");
@@ -105,6 +106,8 @@ test("homepage cards flow through a full loop and gather without remounting or j
   expect(largestStepRatio).toBeLessThan(1);
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   await expect(page.locator('.cosmic-card:not([disabled])')).toHaveCount(78);
+  await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
+  await page.screenshot({ path: "output/continuous-3d-2026-11-05/02-gathered-ring.png" });
   expect(new Set((await identity()).map((card) => card.id)).size).toBe(78);
   expect(await page.evaluate((original) => original.every((node, index) => node === document.querySelectorAll(".cosmic-card")[index]), elements)).toBe(true);
   const shuffled = await identity();
@@ -113,6 +116,7 @@ test("homepage cards flow through a full loop and gather without remounting or j
   const resumed = returning.filter((frame) => frame.time > returning.at(-1)!.time - 500);
   expect(resumed.at(-1)!.cards[0].y).toBeGreaterThan(resumed[0].cards[0].y);
   expect(await identity()).toEqual(shuffled);
+  await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
   expect(await page.evaluate((original) => original.every((node, index) => node === document.querySelectorAll(".cosmic-card")[index]), elements)).toBe(true);
   await elements.dispose();
   expect(apiCalls).toEqual([]);
@@ -132,7 +136,7 @@ test("homepage stream clears the title and loops on a smaller desktop", async ({
       if (card.y < hero!.y + hero!.height && card.opacity > 0.1) expect(card.x).toBeGreaterThan(hero!.x + hero!.width + 80);
     }
   }
-  await page.screenshot({ path: "output/frontend-v2/home-stream-1280.png" });
+  await page.screenshot({ path: "output/continuous-3d-2026-11-05/03-home-1280.png" });
 });
 
 test("reduced motion keeps the home stream still across preparation", async ({ page }) => {

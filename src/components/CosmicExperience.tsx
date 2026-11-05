@@ -133,8 +133,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         background.current.style.transform = `translate3d(${-3 - cam.ring * 5 - cam.reading * 107}%, ${-3 - cam.reading * 80}%, 0) scale(${1.12 + cam.ring * 0.18 + cam.travel * 0.4 + cam.reading * 2 - cam.summary * 0.13}) rotate(${cam.reading * -3}deg)`;
       }
       space.current?.render(cam, w, h);
-      const spatialCards = space.current?.ring.layout(cam, w, h, rotation.current);
+      const homePoses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, homeElapsed.current, w / h));
+      const spatialCards = space.current?.ring.layout(cam, w, h, rotation.current, homePoses);
       surface.dataset.ringSpace = spatialCards ? "world" : "loading";
+      surface.dataset.streamSpace = spatialCards ? "world" : "fallback";
       const cx = w * (0.5 - cam.reading * 0.16 + cam.summary * 0.16);
       const cy = h * (0.60 - cam.reading * 0.22 + cam.summary * 0.07);
       const rx = w * (0.405 - cam.reading * 0.065 - cam.summary * 0.08);
@@ -147,10 +149,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
         track.current.style.opacity = `${cam.ring * 0.85}`;
       }
       const depths = deck.map((_, index) => spatialCards?.[index].depth ?? (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
-      const homePoses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, homeElapsed.current, w / h));
       const homeSize = Math.min(w / 1440, h / 900);
       const homeDepthWeight = cam.ring < 0.99 ? 1 - cam.ring : 0;
-      const displayDepths = depths.map((depth, index) => homePoses[index % homeCardStream.count].progress * homeDepthWeight + depth * (1 - homeDepthWeight));
+      const displayDepths = depths.map((depth, index) => spatialCards ? depth : homePoses[index % homeCardStream.count].progress * homeDepthWeight + depth * (1 - homeDepthWeight));
       const depthOrder = deck.map((_, index) => index).sort((a, b) => displayDepths[a] - displayDepths[b]);
       const zIndices = new Array<number>(deck.length);
       depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
@@ -172,9 +173,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused }: {
           ? fromFocus[index] + (Number(focused) - fromFocus[index]) * approach
           : focusWeights.current[index] + (Number(focused) - focusWeights.current[index]) * ease;
         const focusScale = 1 + focusWeights.current[index] * 1.8 + (selectedIndex >= 0 ? 0.065 : 0);
-        const scale = homeScale * (1 - cam.ring) + perspective * focusScale * cam.ring;
-        const x = homeX * (1 - cam.ring) + ringX * cam.ring;
-        const y = homeY * (1 - cam.ring) + ringY * cam.ring;
+        const scale = spatialCards ? perspective * (1 + (focusScale - 1) * cam.ring) : homeScale * (1 - cam.ring) + perspective * focusScale * cam.ring;
+        const x = spatialCards ? ringX : homeX * (1 - cam.ring) + ringX * cam.ring;
+        const y = spatialCards ? ringY : homeY * (1 - cam.ring) + ringY * cam.ring;
         const homeTilt = pose.tilt;
         const tilt = homeTilt * (1 - cam.ring) + Math.cos(angle) * (12 - focusWeights.current[index] * 7) * cam.ring;
         const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);

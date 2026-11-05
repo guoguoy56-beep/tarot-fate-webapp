@@ -21,6 +21,7 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
   await expect(space(page)).toHaveAttribute("data-renderer", "webgl");
   await expect(space(page)).toHaveCSS("opacity", "1");
   await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-ring-space", "world");
+  await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
   const canvas = space(page).locator("canvas");
   const original = await canvas.elementHandle();
   const home = await canvas.screenshot();
@@ -101,6 +102,7 @@ test("the full reading flow works when WebGL2 is unavailable", async ({ page }) 
   await expect(space(page)).toHaveAttribute("data-renderer", "fallback");
   await expect(space(page).locator("canvas")).toHaveCount(0);
   await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-ring-space", "world");
+  await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
   await expect(page.locator(".cosmic-panorama")).toBeVisible();
   await prepare(page);
   await page.getByRole("button", { name: "开启星轨", exact: true }).click();
