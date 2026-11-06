@@ -34,15 +34,14 @@
 .cosmic-space[data-renderer="fallback"] { transition: none; }
 .cosmic-space canvas { display: block; width: 100%; height: 100%; }
 .cosmic-prepare { --cosmic-question-height: 66px; position: absolute; top: calc(50% - var(--cosmic-question-height) / 2); left: 50%; width: min(940px, calc(100% - 120px)); transform: translateX(-50%); text-align: center; }
-.cosmic-prepare h2 { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 clamp(80px, 12vh, 130px); color: #f2dfbd; font-size: clamp(30px, 2.3vw, 40px); line-height: 1.55; letter-spacing: .1em; text-shadow: 0 2px 6px #000, 0 4px 20px #000, 0 0 36px #000; isolation: isolate; }
+.cosmic-prepare h2 { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 28px; color: #f2dfbd; font-size: clamp(30px, 2.3vw, 40px); line-height: 1.55; letter-spacing: .1em; text-shadow: 0 2px 6px #000, 0 4px 20px #000, 0 0 36px #000; isolation: isolate; }
 .cosmic-prepare h2::before { content: ""; position: absolute; inset: -24px -40px; z-index: -1; background: radial-gradient(ellipse, #03050be8 0%, #03050ba8 42%, #03050b00 74%); filter: blur(14px); pointer-events: none; }
 .cosmic-question-frame { position: relative; width: min(760px, 100%); height: var(--cosmic-question-height); margin: 0 auto; }
-.cosmic-question-capsule { position: relative; height: 100%; border: 1px solid #caa66dc4; border-radius: 999px; background: linear-gradient(180deg, #0b0c17b8, #050711c9); -webkit-backdrop-filter: blur(20px) saturate(.65); backdrop-filter: blur(20px) saturate(.65); box-shadow: 0 12px 42px #000c, 0 0 30px #0009, inset 0 0 22px #d6ac6010; }
-.cosmic-question-capsule:focus-within { border-color: #eac889; box-shadow: 0 12px 42px #000c, 0 0 30px #0009, inset 0 0 20px #d6ac6014, 0 0 28px #d6ac601c; }
+.cosmic-question-capsule { position: relative; height: 100%; border: 0; border-radius: 999px; background: linear-gradient(180deg, #0b0c17b8, #050711c9); -webkit-backdrop-filter: blur(20px) saturate(.65); backdrop-filter: blur(20px) saturate(.65); box-shadow: 0 12px 42px #000c, 0 0 30px #0009, inset 0 0 22px #d6ac6010; }
+.cosmic-question-capsule:focus-within { box-shadow: 0 12px 42px #000c, 0 0 30px #0009, inset 0 0 20px #d6ac6014, 0 0 28px #d6ac601c; }
 .cosmic-experience .cosmic-question-capsule input { display: block; width: 100%; height: 100%; padding: 0 112px 0 30px; border: 0; border-radius: inherit; outline: 0; color: #f2dfbd; background: none; font-size: 18px; letter-spacing: .035em; caret-color: #f5db9f; }
 .cosmic-question-capsule input::placeholder { color: #a5a1ac; opacity: 1; }
 .cosmic-experience .cosmic-question-capsule input:focus-visible { outline: 0; }
-.cosmic-question-capsule:has(input:focus-visible) { outline: 1px solid #f0d19765; outline-offset: 4px; }
 .cosmic-question-meta { position: absolute; top: 0; right: 27px; height: 100%; display: flex; align-items: center; pointer-events: none; }
 .cosmic-question-meta kbd { display: flex; align-items: center; gap: 7px; padding-left: 18px; border-left: 1px solid #b6985e42; color: #d5be98; font: 12px var(--cosmic-font-ui); }
 .cosmic-question-sparks { position: absolute; top: -76px; left: -76px; width: calc(100% + 152px); height: calc(100% + 152px); pointer-events: none; }
@@ -212,7 +211,7 @@
 @media (max-height: 850px) {
   .cosmic-header { top: 25px; }
   .cosmic-prepare { --cosmic-question-height: 60px; }
-  .cosmic-prepare h2 { font-size: 30px; line-height: 1.45; }
+  .cosmic-prepare h2 { margin-bottom: 18px; font-size: 30px; line-height: 1.45; }
   .cosmic-spread-options { margin-top: 12px; gap: 4px 10px; }
   .cosmic-spread-options button { padding: 8px 3px; font-size: 13px; }
   .cosmic-reading { gap: 20px; }

@@ -5,7 +5,9 @@ import { CornerDownLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cosmicSpreads, type CosmicSpread } from "@/lib/cosmic-experience";
 
-const revealEase = [0.22, 1, 0.36, 1] as const;
+const traceDuration = 2.2, orbitDuration = 11;
+const joiningSpeed = traceDuration / orbitDuration;
+const revealEase = (value: number) => joiningSpeed * value + (1 - joiningSpeed) * value * value * (3 - 2 * value);
 
 /** Clockwise perimeter coordinates; decreasing phase makes the border light travel counterclockwise. */
 function capsulePoint(phase: number, width: number, height: number) {
@@ -27,12 +29,13 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const surface = canvas.current;
-    if (!surface || reducedMotion) return;
+    if (!surface) return;
     const context = surface.getContext("2d");
     if (!context) return;
     const frame = surface.parentElement!;
-    const padding = 76, origin = performance.now();
-    let width = 0, height = 0, frameId = 0, previous = origin, emission = 0;
+    const padding = 76;
+    let width = 0, height = 0, frameId = 0, previous = performance.now(), emission = 0;
+    let perimeter = 0, border = new Path2D(), finishedAt: number | undefined;
     const sparks: Array<{ x: number; y: number; vx: number; vy: number; age: number; life: number; size: number }> = [];
     const resize = () => {
       width = frame.clientWidth; height = frame.clientHeight;
@@ -41,6 +44,16 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
       surface.height = Math.round((height + padding * 2) * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
       sparks.length = 0;
+      const radius = height / 2, x = padding, y = padding;
+      perimeter = 2 * (width - height) + Math.PI * height;
+      // Begin at the upper midpoint and trace left, around the bottom, and back across the top.
+      border = new Path2D();
+      border.moveTo(x + width / 2, y); border.lineTo(x + radius, y);
+      border.arc(x + radius, y + radius, radius, -Math.PI / 2, -Math.PI * 1.5, true);
+      border.lineTo(x + width - radius, y + height);
+      border.arc(x + width - radius, y + radius, radius, Math.PI / 2, -Math.PI / 2, true);
+      border.lineTo(x + width / 2, y);
+      if (reducedMotion) draw(performance.now());
     };
     const glow = (x: number, y: number, opacity: number, radius = 15) => {
       const light = context.createRadialGradient(x, y, 0, x, y, radius);
@@ -51,16 +64,21 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
       context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     };
     const draw = (now: number) => {
-      const delta = Math.min(0.05, (now - previous) / 1000), time = (now - origin) / 1000;
+      const delta = Math.min(0.05, (now - previous) / 1000);
       previous = now;
       context.clearRect(0, 0, width + padding * 2, height + padding * 2);
       context.globalCompositeOperation = "lighter";
-      const open = reveal.get(), shownWidth = Math.max(2, width * open), shownHeight = Math.min(height, shownWidth);
+      const open = reducedMotion ? 1 : reveal.get();
+      if (open >= 1 && finishedAt === undefined) finishedAt = now;
+      if (open < 1 || surface.dataset.traceProgress !== "1.0000") surface.dataset.traceProgress = open.toFixed(4);
+      const start = (width - height) / (2 * perimeter);
+      const idle = finishedAt === undefined ? 0 : (now - finishedAt) / (orbitDuration * 1000);
+      const phase = start - open - idle;
       const cx = width / 2 + padding, cy = height / 2 + padding;
-      emission += delta * (open < 0.999 ? 9000 : 5000);
+      if (!reducedMotion) emission += delta * (open < 1 ? 14400 : 8000) * Math.min(1, open * 12);
       while (emission >= 1) {
         emission--;
-        const point = capsulePoint(Math.random(), shownWidth, shownHeight), speed = 18 + Math.random() * 37;
+        const point = capsulePoint(start - Math.random() * open, width, height), speed = 18 + Math.random() * 37;
         sparks.push({ x: cx + point.x, y: cy + point.y, vx: point.nx * speed + (Math.random() - 0.5) * 14,
           vy: point.ny * speed + (Math.random() - 0.5) * 14, age: 0, life: 0.65 + Math.random() * 0.45, size: 0.45 + Math.random() * 0.9 });
       }
@@ -79,26 +97,26 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
         }
       }
       context.globalAlpha = 1;
-      if (open > 0.01) {
-        const phase = 0.15 - time / 11;
+      context.strokeStyle = "#eac889"; context.lineWidth = 1; context.lineCap = "round";
+      context.setLineDash([perimeter * open, perimeter]);
+      context.stroke(border); context.setLineDash([]);
+      if (!reducedMotion) {
         for (let index = 15; index >= 0; index--) {
-          const point = capsulePoint(phase + index * 0.0018, shownWidth, shownHeight);
+          if (open < 1 && index * 0.0018 > open) continue;
+          const point = capsulePoint(phase + index * 0.0018, width, height);
           glow(cx + point.x, cy + point.y, (1 - index / 16) * 0.55, index ? 5 : 16);
         }
-        if (open < 0.999) {
-          glow(cx - shownWidth / 2, cy, 0.65, 22);
-          glow(cx + shownWidth / 2, cy, 0.65, 22);
-        }
       }
-      frameId = requestAnimationFrame(draw);
+      if (!reducedMotion && !document.hidden) frameId = requestAnimationFrame(draw);
     };
     const visibility = () => {
       cancelAnimationFrame(frameId);
       previous = performance.now();
-      if (!document.hidden) frameId = requestAnimationFrame(draw);
+      if (!reducedMotion && !document.hidden) frameId = requestAnimationFrame(draw);
     };
     const observer = new ResizeObserver(resize);
-    observer.observe(frame); resize(); visibility();
+    observer.observe(frame); resize();
+    if (!reducedMotion) visibility();
     document.addEventListener("visibilitychange", visibility);
     return () => { cancelAnimationFrame(frameId); observer.disconnect(); document.removeEventListener("visibilitychange", visibility); };
   }, [reveal, reducedMotion]);
@@ -114,12 +132,12 @@ export function CosmicQuestion({ question, spread, onQuestion, onSpread, onBegin
   const present = useIsPresent(), reducedMotion = Boolean(useReducedMotion());
   const [ready, setReady] = useState(false);
   const reveal = useMotionValue(0);
-  const clipPath = useTransform(reveal, (value) => `inset(${(1 - value) * 45}% ${(1 - value) * 50}% round 999px)`);
-  const textOpacity = useTransform(reveal, [0, 0.5, 1], [0, 0, 1]);
+  const bodyOpacity = useTransform(reveal, [0, 0.6, 1], [0, 0, 1]);
+  const textOpacity = useTransform(reveal, [0, 0.85, 1], [0, 0, 1]);
 
   useEffect(() => {
     if (!present) return;
-    const controls = animate(reveal, 1, { duration: reducedMotion ? 0 : 1.15, delay: reducedMotion ? 0 : 0.12, ease: revealEase,
+    const controls = animate(reveal, 1, { duration: reducedMotion ? 0 : traceDuration, delay: reducedMotion ? 0 : 0.12, ease: revealEase,
       onComplete: () => setReady(true) });
     return () => controls.stop();
   }, [present, reducedMotion, reveal]);
@@ -137,7 +155,7 @@ export function CosmicQuestion({ question, spread, onQuestion, onSpread, onBegin
     <h2>让心中的问题，有一个形状</h2>
     <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
       <div className="cosmic-question-frame">
-        <motion.div className="cosmic-question-capsule" style={{ clipPath: ready ? "none" : clipPath }}>
+        <motion.div className="cosmic-question-capsule" style={{ opacity: bodyOpacity }}>
           <motion.input ref={input} id="cosmic-question" type="text" aria-label="你想问星空什么？" aria-describedby="cosmic-question-hint"
             placeholder="输入你的问题" maxLength={500} autoComplete="off" value={question} disabled={!ready || !present} style={{ opacity: textOpacity }}
             onChange={(event) => onQuestion(event.target.value.slice(0, 500))}
@@ -156,7 +174,7 @@ export function CosmicQuestion({ question, spread, onQuestion, onSpread, onBegin
       </div>
       <span id="cosmic-question-hint" className="sr-only">按 Enter 开启星轨，按 Esc 返回首页并保留问题。</span>
       <motion.fieldset className="cosmic-spread-options" disabled={!ready || !present}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.6, delay: reducedMotion ? 0 : 0.85 }}>
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 1.8 }}>
         <legend className="sr-only">选择牌阵</legend>
         {cosmicSpreads.map((item) => <button key={item.id} type="button" aria-label={`${item.name} ${item.slots.length} 张`}
           className={spread.id === item.id ? "is-active" : ""} aria-pressed={spread.id === item.id}
