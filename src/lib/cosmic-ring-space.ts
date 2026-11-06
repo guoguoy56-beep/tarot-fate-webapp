@@ -6,6 +6,22 @@ import { homeStreamWorldPose } from "@/lib/cosmic-home-space";
 interface Frame { center: Vector3; u: Vector3; v: Vector3; cardSize: number }
 export interface RingCardProjection { x: number; y: number; scale: number; depth: number }
 
+function ringFrame(blend: SpaceCameraBlend, width: number, height: number, cx: number, cy: number, rx: number, ry: number, size: number): Frame {
+  const pose = cosmicSpaceCamera(blend);
+  const view = new PerspectiveCamera(pose.fov, width / height, 0.1, 1000);
+  view.position.set(...pose.position); view.lookAt(...pose.target); view.updateMatrixWorld();
+  const focal = height / (2 * Math.tan(pose.fov * Math.PI / 360));
+  const distance = 20, depthRatio = 0.28;
+  const x = (cx - 0.5) * width / focal, y = (cy - 0.5) * height / focal;
+  const a = rx * width / focal, b = ry * height / focal;
+  const center = new Vector3(x * distance, (-y + b * depthRatio) * distance, -distance).applyMatrix4(view.matrixWorld);
+  const u = new Vector3(a * distance * Math.sqrt(1 - depthRatio ** 2), 0, 0).applyQuaternion(view.quaternion);
+  const v = new Vector3(-x * distance * depthRatio, (y * depthRatio - b) * distance, distance * depthRatio).applyQuaternion(view.quaternion);
+  return { center, u, v, cardSize: size * distance / focal };
+}
+
+export const drawRingFrame = (width: number, height: number, continuous = false) => ringFrame({ ring: 1, reading: 0, summary: 0, ...(continuous ? { dive: 1 } : {}) }, width, height, 0.5, 0.6, 0.405, 0.18, 0.64);
+
 /** World-space anchors share the backdrop camera; native card surfaces keep their CSS3D poses. */
 export class CosmicRingSpace {
   readonly group = new Group();
@@ -16,6 +32,7 @@ export class CosmicRingSpace {
   });
   private width = 0;
   private height = 0;
+  private continuous = false;
   private frames: Frame[] = [];
   private cardSize = 0;
   private readonly point = new Vector3();
@@ -33,23 +50,13 @@ export class CosmicRingSpace {
   }
 
   private frame(blend: SpaceCameraBlend, cx: number, cy: number, rx: number, ry: number, size: number): Frame {
-    const pose = cosmicSpaceCamera(blend);
-    const view = new PerspectiveCamera(pose.fov, this.width / this.height, 0.1, 300);
-    view.position.set(...pose.position); view.lookAt(...pose.target); view.updateMatrixWorld();
-    const focal = this.height / (2 * Math.tan(pose.fov * Math.PI / 360));
-    const distance = 20, depthRatio = 0.28;
-    const x = (cx - 0.5) * this.width / focal, y = (cy - 0.5) * this.height / focal;
-    const a = rx * this.width / focal, b = ry * this.height / focal;
-    // Perspective conic calibration: retain endpoint framing without rebuilding screen positions each frame.
-    const center = new Vector3(x * distance, (-y + b * depthRatio) * distance, -distance).applyMatrix4(view.matrixWorld);
-    const u = new Vector3(a * distance * Math.sqrt(1 - depthRatio ** 2), 0, 0).applyQuaternion(view.quaternion);
-    const v = new Vector3(-x * distance * depthRatio, (y * depthRatio - b) * distance, distance * depthRatio).applyQuaternion(view.quaternion);
-    return { center, u, v, cardSize: size * distance / focal };
+    return ringFrame({ ...blend, ...(this.continuous ? { dive: 1 } : {}) }, this.width, this.height, cx, cy, rx, ry, size);
   }
 
   layout(blend: SpaceCameraBlend, width: number, height: number, rotation: number, homePoses?: readonly ReturnType<typeof homeStreamPose>[]): readonly RingCardProjection[] {
-    if (width !== this.width || height !== this.height) {
+    if (width !== this.width || height !== this.height || this.continuous !== (blend.dive !== undefined)) {
       this.width = width; this.height = height;
+      this.continuous = blend.dive !== undefined;
       this.frames = [
         this.frame({ ring: 1, reading: 0, summary: 0 }, 0.5, 0.6, 0.405, 0.18, 0.64),
         this.frame({ ring: 1, reading: 1, summary: 0 }, 0.34, 0.38, 0.34, 0.25, 0.83),

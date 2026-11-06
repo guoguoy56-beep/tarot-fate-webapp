@@ -13,7 +13,7 @@ async function measureRotation(page: Page, duration: number) {
   }, duration);
 }
 
-test("shuffle eases into continuous idle without pausing on hover", async ({ page }) => {
+test("the completed ring settles into continuous idle without pausing on hover", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
@@ -37,22 +37,24 @@ test("shuffle eases into continuous idle without pausing on hover", async ({ pag
   // Keep the pointer on the ring for the transition, then compare with the empty upper corner.
   await page.mouse.move(960, 820);
   const frames = await framesPromise;
-  const shuffle = frames.filter((frame) => frame.stage === "shuffle");
+  const travel = frames.filter((frame) => frame.stage === "travel");
   const draw = frames.filter((frame) => frame.stage === "draw");
   const averageSpeed = (samples: typeof frames) => (samples.at(-1)!.angle - samples[0].angle) / (samples.at(-1)!.time - samples[0].time);
   const window = (start: number, end: number) => draw.filter((frame) => frame.time - draw[0].time >= start && frame.time - draw[0].time < end);
-  // Measure the settled tail in milliseconds; twenty frames can span much earlier acceleration on a busy renderer.
-  const shuffleEnd = shuffle.at(-1)!.time;
-  const shuffleSpeed = averageSpeed(shuffle.filter((frame) => frame.time >= shuffleEnd - 400));
-  expect(shuffleSpeed).toBeGreaterThan(0.0004);
-  expect(shuffleSpeed).toBeLessThan(0.001);
+  const travelEnd = travel.at(-1)!.time;
+  const settlingSpeed = averageSpeed(travel.filter((frame) => frame.time >= travelEnd - 1100 && frame.time < travelEnd - 900));
+  const arrivalTail = averageSpeed(travel.filter((frame) => frame.time >= travelEnd - 350 && frame.time < travelEnd - 50));
+  expect(settlingSpeed).toBeGreaterThan(0.0005);
+  expect(settlingSpeed).toBeLessThan(0.001);
+  expect(arrivalTail).toBeGreaterThan(0.000065);
+  expect(arrivalTail).toBeLessThan(settlingSpeed / 2);
   const early = averageSpeed(window(50, 350));
   const middle = averageSpeed(window(850, 1150));
   const late = averageSpeed(window(2600, 3100));
-  expect(early).toBeGreaterThan(shuffleSpeed * 0.45);
-  expect(early).toBeLessThan(shuffleSpeed);
-  expect(middle).toBeGreaterThan(late * 1.5);
-  expect(middle).toBeLessThan(early);
+  expect(early).toBeGreaterThan(0.00005);
+  expect(early).toBeLessThan(0.00008);
+  expect(Math.abs(middle - early)).toBeLessThan(0.000015);
+  expect(Math.abs(late - early)).toBeLessThan(0.000015);
   expect(late).toBeGreaterThan(0.00005);
   expect(late).toBeLessThan(0.00008);
   const hovered = await measureRotation(page, 700);

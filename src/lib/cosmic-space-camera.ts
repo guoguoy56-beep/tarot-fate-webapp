@@ -1,7 +1,25 @@
-export interface SpaceCameraBlend { ring: number; reading: number; summary: number; reverse?: number }
+import { Matrix4, PerspectiveCamera, Vector3 } from "three";
+
+export interface SpaceCameraBlend { ring: number; reading: number; summary: number; reverse?: number; dive?: number }
 
 export const reverseCameraDurationMs = 3600;
 export const questionCamera = { position: [16, -9.5, -6], target: [26, -33, 36], fov: 50 } as const;
+
+const diveStation = { position: [145, -72, 95], target: [164, -97, 53], fov: 50 } as const;
+const stationMatrix = (position: readonly number[], target: readonly number[]) => {
+  const view = new PerspectiveCamera();
+  view.position.set(position[0], position[1], position[2]); view.lookAt(target[0], target[1], target[2]); view.updateMatrixWorld();
+  return view.matrixWorld;
+};
+// Move the established reading/summary space downstream as a rigid whole, retaining its framing.
+const downstream = new Matrix4().multiplyMatrices(stationMatrix(diveStation.position, diveStation.target), stationMatrix([4, 1, 6], [1, -1, -36]).invert());
+
+function diveCamera(t: number) {
+  const u = 1 - t;
+  const point = (a: readonly number[], b: readonly number[], c: readonly number[], d: readonly number[]) => a.map((value, i) => u ** 3 * value + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t ** 3 * d[i]) as [number, number, number];
+  return { position: point(questionCamera.position, [28, -20, 24], [82, -45, 80], diveStation.position),
+    target: point(questionCamera.target, [70, -45, 70], [130, -77, 66], diveStation.target), fov: 50 };
+}
 
 export function cameraTravelProgress(elapsed: number) {
   const t = Math.max(0, Math.min(1, elapsed / reverseCameraDurationMs));
@@ -11,6 +29,13 @@ export function cameraTravelProgress(elapsed: number) {
 /** One world-space camera follows the existing scene clock, including interrupted transitions. */
 export function cosmicSpaceCamera(blend: SpaceCameraBlend): { position: readonly [number, number, number]; target: readonly [number, number, number]; fov: number } {
   const clamp = (value: number) => Math.max(0, Math.min(1, value));
+  if (blend.dive !== undefined) {
+    const dive = clamp(blend.dive);
+    if (dive < 1) return diveCamera(dive);
+    const base = cosmicSpaceCamera({ ...blend, dive: undefined, reverse: 0 });
+    return { position: new Vector3(...base.position).applyMatrix4(downstream).toArray() as [number, number, number],
+      target: new Vector3(...base.target).applyMatrix4(downstream).toArray() as [number, number, number], fov: base.fov };
+  }
   const ring = clamp(blend.ring), reading = clamp(blend.reading), summary = clamp(blend.summary);
   const arc = Math.sin(Math.PI * ring) * (1 - reading);
   const reverse = clamp(blend.reverse ?? 0);
@@ -24,7 +49,7 @@ export function cosmicSpaceCamera(blend: SpaceCameraBlend): { position: readonly
     const position = [3 * u * u * t * -7 + 3 * u * t * t * -5 + t ** 3 * 16,
       3 * u * u * t * -1 + 3 * u * t * t * -9 + t ** 3 * -9.5,
       u ** 3 * 24 + 3 * u * u * t * 18 + t ** 3 * -6] as const;
-    // Temporary bridge to the established downstream camera; ordered entry replaces this in step 3.
+    // Legacy/fallback interpolation; the continuous dive uses the path above.
     const base = cosmicSpaceCamera({ ...blend, reverse: 0 });
     const weight = 1 - ring;
     const point = base.position.map((value, axis) => value * ring + position[axis] * weight) as [number, number, number];

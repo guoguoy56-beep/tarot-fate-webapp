@@ -67,6 +67,11 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
       const delta = Math.min(0.05, (now - previous) / 1000);
       previous = now;
       context.clearRect(0, 0, width + padding * 2, height + padding * 2);
+      // ResizeObserver can report a collapsed frame while the question is leaving the scene.
+      if (!width || !height) {
+        if (!reducedMotion && !document.hidden) frameId = requestAnimationFrame(draw);
+        return;
+      }
       context.globalCompositeOperation = "lighter";
       const open = reducedMotion ? 1 : reveal.get();
       if (open >= 1 && finishedAt === undefined) finishedAt = now;

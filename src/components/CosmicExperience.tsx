@@ -13,10 +13,11 @@ import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
 import { cameraTravelProgress, reverseCameraDurationMs } from "@/lib/cosmic-space-camera";
+import { CosmicRingEntry, ringEntryMotion } from "@/lib/cosmic-ring-entry";
 import "./cosmic-fonts.css";
 import "./cosmic-experience.css";
 
-type Stage = "home" | "reversing" | "prepare" | "returning" | "travel" | "shuffle" | "draw" | "reading" | "summarizing" | "summary";
+type Stage = "home" | "reversing" | "prepare" | "returning" | "travel" | "draw" | "reading" | "summarizing" | "summary";
 type Panel = "encyclopedia" | "history" | "login" | null;
 interface DeckCard { card: TarotCardData; orientation: CardOrientation }
 interface DemoJournal { id: number; question: string; spread: string; cards: OrbitalSelection[] }
@@ -32,17 +33,18 @@ const initialDeck: DeckCard[] = tarotCards.map((card) => ({ card, orientation: "
 const newDeck = (): DeckCard[] => shuffleDeck(tarotCards).map((card) => ({ card, orientation: randomOrientation() }));
 const cardData = (id: string) => tarotCardMap.get(id)!;
 
-function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady }: {
+function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady, onEntryComplete }: {
   stage: Stage; deck: DeckCard[]; selected: OrbitalSelection[]; current: number;
   onSelect: (anchor: number) => void; paused: boolean; onReady: (ready: boolean) => void;
+  onEntryComplete: (stage: "draw") => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const background = useRef<HTMLDivElement>(null);
-  const track = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLButtonElement | null)[]>([]);
   const rotation = useRef(-0.4);
   const ringProjection = useRef<RingProjection | null>(null);
-  const camera = useRef({ ring: 0, reading: 0, summary: 0, travel: 0, reverse: 0 });
+  const camera = useRef<{ ring: number; reading: number; summary: number; travel: number; reverse: number; dive?: number }>({ ring: 0, reading: 0, summary: 0, travel: 0, reverse: 0 });
+  const entry = useRef<CosmicRingEntry | null>(null);
   const pointer = useRef<{ id: number; x: number; y: number; lastX: number; lastY: number; lastTime: number; directionDelta: number; dragging: boolean } | null>(null);
   const velocity = useRef(0);
   const idleDirection = useRef(1);
@@ -76,6 +78,12 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
     if (!surface) return;
     let frame = 0;
     const arrivalStart = performance.now();
+    if (stage === "travel") entry.current = new CosmicRingEntry(homeElapsed.current);
+    if (stage === "home" || (stage === "reversing" && entry.current)) {
+      entry.current = null;
+      camera.current = { ring: 0, reading: 0, summary: 0, travel: 0, reverse: 0 };
+    }
+    let entryComplete = false;
     const readingButton = stage === "reading" && active ? cards.current[active.anchor] : null;
     const poseNode = readingButton?.querySelector<HTMLElement>(".cosmic-card-pose");
     if (readingButton) readingPose.current = { yaw: 0, pitch: 0, ready: false, idleOrigin: arrivalStart + readingArrivalMs - readingPresentationMotion.idleLeadMs, resume: null, hold: null };
@@ -98,6 +106,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       const ring = !streamStage;
       const summary = stage === "summarizing" || stage === "summary";
       const cam = camera.current;
+      const entryElapsed = stage === "travel" ? reducedMotion ? ringEntryMotion.durationMs : now - arrivalStart : 0;
+      const entryState = stage === "travel" ? entry.current?.state(entryElapsed) : null;
       const ease = reducedMotion ? 1 : 1 - Math.exp(-delta / 650);
       if (stage === "reversing" || stage === "returning") {
         const progress = reducedMotion ? 1 : cameraTravelProgress(now - arrivalStart);
@@ -121,17 +131,20 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         cam.summary += (Number(summary) - cam.summary) * ease;
         cam.travel += (Number(stage === "travel") - cam.travel) * ease;
       }
+      if (entryState) { cam.dive = entryState.camera; cam.ring = 1; cam.reverse = 0; }
       // One clock continues through the first camera move and all time spent writing the question.
       if (streamStage && !reducedMotion) homeElapsed.current += delta;
       if (stage === "reading" && active) {
         velocity.current = 0;
         rotation.current = fromRotation + (readingRotation - fromRotation) * approach;
-      } else if (stage === "travel" || stage === "shuffle" || stage === "draw") {
-        if (stage !== "draw") idleDirection.current = 1;
+      } else if (entryState) {
+        idleDirection.current = 1;
+        rotation.current = entryState.rotation; velocity.current = entryState.speed;
+      } else if (stage === "draw") {
         if (paused || reducedMotion) {
           velocity.current = 0;
         } else if (!pointer.current?.dragging) {
-          const target = stage === "travel" ? orbitMotion.travelSpeed : stage === "shuffle" ? orbitMotion.shuffleSpeed : orbitMotion.idleSpeed * idleDirection.current;
+          const target = orbitMotion.idleSpeed * idleDirection.current;
           const next = advanceOrbitMotion(velocity.current, target, delta);
           velocity.current = next.speed;
           rotation.current += next.angle;
@@ -145,14 +158,14 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       if (background.current) {
         background.current.style.transform = `translate3d(${-3 - cam.ring * 5 - cam.reading * 107}%, ${-3 - cam.reading * 80}%, 0) scale(${1.12 + cam.ring * 0.18 + cam.travel * 0.4 + cam.reading * 2 - cam.summary * 0.13}) rotate(${cam.reading * -3}deg)`;
       }
-      space.current?.render(cam, w, h, homeElapsed.current);
+      space.current?.render(cam, w, h, homeElapsed.current, entryState && entry.current ? { queue: entry.current, elapsed: entryElapsed } : undefined);
       if (!notifiedReady.current && spaceHost.current?.dataset.streamReady === "true") {
         notifiedReady.current = true; onReady(true);
       }
       const meshStream = spaceHost.current?.dataset.renderer === "webgl" && spaceHost.current.dataset.streamRenderer === "mesh";
       surface.dataset.streamRenderer = meshStream ? "mesh" : "fallback";
       const homePoses = Array.from({ length: homeCardStream.count }, (_, index) => homeStreamPose(index, homeElapsed.current, w / h));
-      const spatialCards = space.current?.ring.layout(cam, w, h, rotation.current, homePoses);
+      const spatialCards = space.current?.ring.layout(meshStream ? cam : { ...cam, dive: undefined }, w, h, rotation.current, homePoses);
       surface.dataset.ringSpace = spatialCards ? "world" : "loading";
       surface.dataset.streamSpace = spatialCards ? "world" : "fallback";
       const cx = w * (0.5 - cam.reading * 0.16 + cam.summary * 0.16);
@@ -160,12 +173,6 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       const rx = w * (0.405 - cam.reading * 0.065 - cam.summary * 0.08);
       const ry = h * (0.18 + cam.reading * 0.07 - cam.summary * 0.07);
       ringProjection.current = { cx, cy, rx, ry };
-      if (track.current) {
-        track.current.style.transform = spatialCards ? space.current!.ring.trackTransform(rotation.current) : `translate3d(${cx}px, ${cy + 15}px, 0) translate(-50%, -50%) scale(1, ${ry / rx}) rotate(${rotation.current * 180 / Math.PI * 0.15}deg)`;
-        track.current.style.transformOrigin = spatialCards ? "0 0" : "center";
-        track.current.style.width = spatialCards ? "1000px" : `${rx * 2.55}px`;
-        track.current.style.opacity = `${cam.ring * 0.85}`;
-      }
       const depths = deck.map((_, index) => spatialCards?.[index].depth ?? (Math.sin(index / deck.length * Math.PI * 2 + rotation.current) + 1) / 2);
       const homeSize = Math.min(w / 1440, h / 900);
       const homeDepthWeight = cam.ring < 0.99 ? 1 - cam.ring : 0;
@@ -202,7 +209,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
         // A partially transparent parent flattens its 3D children during the reveal.
-        element.style.opacity = focused ? "1" : String((meshStream ? cam.ring : index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
+        element.style.opacity = focused ? "1" : String((meshStream ? streamStage || stage === "travel" ? 0 : cam.ring : index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
       });
       if (poseNode) {
@@ -234,6 +241,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         poseNode.style.transition = "none";
         poseNode.style.transform = `rotateX(${pose.pitch}deg) rotateY(${pose.yaw}deg)`;
       }
+      if (stage === "travel" && entryElapsed >= ringEntryMotion.durationMs && (!reducedMotion || now - arrivalStart >= 180) && !entryComplete) {
+        entryComplete = true; onEntryComplete("draw");
+      }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
@@ -249,7 +259,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         poseNode?.style.removeProperty("transform");
       }
     };
-  }, [stage, deck, selected, active, paused, reducedMotion, onReady]);
+  }, [stage, deck, selected, active, paused, reducedMotion, onReady, onEntryComplete]);
 
   function down(event: PointerEvent<HTMLDivElement>) {
     if (stage !== "draw" || paused || event.button !== 0) return;
@@ -336,7 +346,6 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
     onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
     <div className="cosmic-panorama" ref={background} />
     <div className="cosmic-space" ref={spaceHost} data-testid="cosmic-space" aria-hidden="true" />
-    <div className="cosmic-track" ref={track} aria-hidden="true" />
     <div className="cosmic-deck" aria-label="星空中的塔罗牌">
       {deck.map(({ card, orientation }, index) => {
         const chosen = selected.findIndex((item) => item.anchor === index);
@@ -452,10 +461,10 @@ export function CosmicExperience() {
   }, [panel]);
 
   useEffect(() => {
-    const next: Partial<Record<Stage, Stage>> = { reversing: "prepare", returning: "home", travel: "shuffle", shuffle: "draw", summarizing: "summary" };
+    const next: Partial<Record<Stage, Stage>> = { reversing: "prepare", returning: "home", summarizing: "summary" };
     const nextStage = next[stage];
     if (!nextStage) return;
-    const duration = stage === "reversing" || stage === "returning" ? reverseCameraDurationMs : stage === "travel" ? 2200 : 1900;
+    const duration = stage === "reversing" || stage === "returning" ? reverseCameraDurationMs : 1900;
     const timer = setTimeout(() => setStage(nextStage), reducedMotion ? 180 : duration);
     return () => clearTimeout(timer);
   }, [stage, reducedMotion]);
@@ -496,9 +505,9 @@ export function CosmicExperience() {
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
   return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
-    <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} />
+    <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} onEntryComplete={setStage} />
     <motion.div className="cosmic-summary-shade" aria-hidden="true" initial={false} animate={{ opacity: stage === "summary" ? 1 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.6 }} />
-    <header className="cosmic-header">
+    {stage !== "travel" && <header className="cosmic-header">
       <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" disabled={stage === "reversing" || stage === "returning"} tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}>{stage === "prepare" ? <><ArrowLeft size={15} strokeWidth={1.2} /><span>返回首页</span></> : <><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></>}</button>
       {stage === "home" && <nav aria-label="主导航">
         <button onClick={() => openPanel("encyclopedia")}><BookOpen size={15} />塔罗百科</button>
@@ -506,7 +515,7 @@ export function CosmicExperience() {
         <span className="nav-divider" />
         <button onClick={() => openPanel("login")}><UserRound size={15} />{visitor || "登录"}</button>
       </nav>}
-    </header>
+    </header>}
     <AnimatePresence mode="wait">
       {stage === "home" && <motion.section className="cosmic-hero" key="home" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.45, delay: 0 } }} transition={{ duration: 1.1, delay: reducedMotion ? 0 : 0.7, ease: motionEase }}>
         <p className="cosmic-eyebrow">循星而来 · 向心而行</p>
@@ -516,11 +525,6 @@ export function CosmicExperience() {
         <motion.button className="cosmic-primary hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Sparkles size={19} strokeWidth={1.2} />开始占卜<ArrowRight size={20} strokeWidth={1.2} /></motion.button>
       </motion.section>}
       {stage === "prepare" && <CosmicQuestion key="prepare" question={question} spread={spread} onQuestion={setQuestion} onSpread={setSpread} onBegin={begin} />}
-      {(stage === "travel" || stage === "shuffle") && <motion.section className="cosmic-status" key={stage} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-        <p className="cosmic-eyebrow">{stage === "travel" ? "步入星空深处" : "让此刻，重新交汇"}</p>
-        <h2>{stage === "travel" ? "每个问题，都有一条来路" : "星轨正在排列"}</h2>
-        <p>{stage === "travel" ? question : "静心片刻，等待属于你的牌。"}</p>
-      </motion.section>}
       {stage === "draw" && <motion.section className="cosmic-draw-heading" key="draw" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
         <p className="cosmic-eyebrow">{spread.name} · {selected.length} / {spread.slots.length}</p>
         <h2>选择与你共鸣的牌</h2>
@@ -544,7 +548,7 @@ export function CosmicExperience() {
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
       {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveDemo} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
-    <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{stage === "home" ? "一段通往内心的旅程" : spread.name}</span></footer>
+    {stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{stage === "home" ? "一段通往内心的旅程" : spread.name}</span></footer>}
 
     <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>

@@ -1,6 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const space = (page: Page) => page.getByTestId("cosmic-space");
+const cameraPose = (page: Page) => space(page).evaluate((element) => {
+  const data = (element as HTMLElement).dataset;
+  return { position: [Number(data.cameraX), Number(data.cameraY), Number(data.cameraZ)], target: data.cameraTarget!.split(",").map(Number) };
+});
+const forwardTravel = (from: Awaited<ReturnType<typeof cameraPose>>, to: Awaited<ReturnType<typeof cameraPose>>) => {
+  const direction = from.target.map((value, i) => value - from.position[i]);
+  return direction.reduce((sum, value, i) => sum + value * (to.position[i] - from.position[i]), 0) / Math.hypot(...direction);
+};
 async function prepare(page: Page) {
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
   await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
@@ -43,18 +51,20 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
   });
   await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
-  const drawZ = Number(await space(page).getAttribute("data-camera-z"));
+  const drawPose = await cameraPose(page);
   await choose(page);
   await page.getByRole("button", { name: "查看整体解读", exact: true }).waitFor({ state: "visible" });
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
-  const readingZ = Number(await space(page).getAttribute("data-camera-z"));
+  const readingPose = await cameraPose(page);
   const coverage = await canvas.evaluate((element) => {
     const canvas = element.getBoundingClientRect(), scene = document.querySelector<HTMLElement>('.cosmic-scene')!, bounds = scene.getBoundingClientRect();
     return { scroll: scene.scrollTop, top: canvas.top - bounds.top, left: canvas.left - bounds.left, bottom: canvas.bottom - bounds.bottom, right: canvas.right - bounds.right };
   });
   Object.values(coverage).forEach((offset) => expect(offset).toBeCloseTo(0, 1));
-  expect(homeZ).toBeGreaterThan(drawZ + 10);
-  expect(drawZ).toBeGreaterThan(readingZ + 5);
+  expect(Number(await space(page).getAttribute("data-camera-x"))).toBeGreaterThan(100);
+  expect(Number(await space(page).getAttribute("data-camera-y"))).toBeLessThan(-50);
+  // The downstream space is rotated; measure approach along the actual viewing direction.
+  expect(forwardTravel(drawPose, readingPose)).toBeGreaterThan(10);
   expect(await canvas.screenshot()).not.toEqual(home);
   await page.getByRole("button", { name: "查看整体解读", exact: true }).click();
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
@@ -64,10 +74,10 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
     const a = frames[index - 1], b = frames[index];
     const distance = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     expect(Number.isFinite(distance)).toBe(true);
-    // The approved doorway station starts the 650ms ring approach at |(-79, 11, 48)| / .65 ≈ 143 units/s.
+    // The dive and subsequent reading approach must remain continuous, even on delayed frames.
     expect(distance).toBeLessThan(150 * (b.time - a.time) / 1000 + 0.05);
   }
-  expect(Number(await space(page).getAttribute("data-camera-z"))).toBeGreaterThan(readingZ + 5);
+  expect(forwardTravel(readingPose, await cameraPose(page))).toBeLessThan(-8);
   await page.getByRole("button", { name: "命运回廊，返回首页", exact: true }).click();
   await expect.poll(async () => Number(await space(page).getAttribute("data-camera-z"))).toBeGreaterThan(homeZ - 1);
   expect(await original!.evaluate((element) => element === document.querySelector(".cosmic-space canvas"))).toBe(true);

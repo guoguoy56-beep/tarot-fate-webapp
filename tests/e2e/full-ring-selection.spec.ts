@@ -34,6 +34,7 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
     // Each card needs an actually exposed hit point, rather than just an enabled DOM button.
     await expect.poll(async () => (await exposedCards(page)).length).toBe(78);
     if (scenario.turn) {
+      const startingRotation = Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"));
       const cx = viewport.width * 0.5;
       const cy = viewport.height * 0.6;
       // Follow actual projected anchors: a perspective orbit's screen angle is not its world angle.
@@ -52,7 +53,7 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
       // In reduced-motion mode there is no release inertia; an empty-center click must not select a card.
       await page.mouse.click(cx, cy);
       await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(0);
-      expect(Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"))).toBeCloseTo(1.4, 1);
+      expect(Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"))).toBeCloseTo(startingRotation + 1.8, 1);
       await expect.poll(async () => (await exposedCards(page)).length).toBe(78);
     }
     const facts = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => ({

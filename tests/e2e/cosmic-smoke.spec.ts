@@ -123,8 +123,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await page.getByLabel("你想问星空什么？").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "travel");
   await expect(navigation).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "命运回廊，返回首页", exact: true })).toBeVisible();
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "shuffle");
+  await expect(page.getByRole("button", { name: "命运回廊，返回首页", exact: true })).toHaveCount(0);
   await expect(navigation).toHaveCount(0);
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
   await expect(navigation).toHaveCount(0);

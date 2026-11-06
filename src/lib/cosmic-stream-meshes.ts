@@ -1,6 +1,7 @@
 import { BufferGeometry, Group, MeshBasicMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
 import { createCardEdgeGeometry, createCardFaceGeometry, createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import type { PerspectiveCamera, Scene } from "three";
+import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
 
 export class CosmicStreamMeshes {
   readonly group = new Group();
@@ -56,7 +57,7 @@ export class CosmicStreamMeshes {
     this.changed();
   }
 
-  update(elapsed: number, width: number, height: number, opacity: number, camera: PerspectiveCamera) {
+  update(elapsed: number, width: number, height: number, opacity: number, camera: PerspectiveCamera, entry?: { queue: CosmicRingEntry; elapsed: number }) {
     this.group.visible = this.available && opacity > 0.001;
     if (!this.group.visible) return { fronts: 0, backs: 0 };
     for (const material of [this.back, this.edge, ...this.faces.values()]) {
@@ -65,8 +66,10 @@ export class CosmicStreamMeshes {
     }
     let fronts = 0, backs = 0;
     this.cards.forEach((node, index) => {
-      const pose = spatialStreamPose(index, elapsed, width, height);
-      node.position.copy(pose.position); node.scale.setScalar(pose.size); node.rotation.set(pose.pitch, 0, pose.tilt);
+      const pose = entry ? entry.queue.pose(index, entry.elapsed, width, height) : spatialStreamPose(index, elapsed, width, height);
+      node.position.copy(pose.position); node.scale.setScalar(pose.size);
+      if ("quaternion" in pose) node.quaternion.copy(pose.quaternion);
+      else node.rotation.set(pose.pitch, 0, pose.tilt);
       this.point.copy(pose.position).project(camera);
       this.direction.copy(pose.position).applyMatrix4(camera.matrixWorldInverse);
       if (this.direction.z < 0 && Math.abs(this.point.x) < 1 && Math.abs(this.point.y) < 1) {
