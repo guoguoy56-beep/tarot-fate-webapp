@@ -57,26 +57,28 @@ function QuestionSparks({ reveal, reducedMotion }: { reveal: MotionValue<number>
       context.globalCompositeOperation = "lighter";
       const open = reveal.get(), shownWidth = Math.max(2, width * open), shownHeight = Math.min(height, shownWidth);
       const cx = width / 2 + padding, cy = height / 2 + padding;
-      emission += delta * (open < 0.999 ? 150 : 42);
+      emission += delta * (open < 0.999 ? 9000 : 5000);
       while (emission >= 1) {
         emission--;
-        const point = capsulePoint(Math.random(), shownWidth, shownHeight), speed = 15 + Math.random() * 38;
+        const point = capsulePoint(Math.random(), shownWidth, shownHeight), speed = 18 + Math.random() * 37;
         sparks.push({ x: cx + point.x, y: cy + point.y, vx: point.nx * speed + (Math.random() - 0.5) * 14,
-          vy: point.ny * speed + (Math.random() - 0.5) * 14, age: 0, life: 0.35 + Math.random() * 0.6, size: 0.5 + Math.random() * 0.9 });
+          vy: point.ny * speed + (Math.random() - 0.5) * 14, age: 0, life: 0.65 + Math.random() * 0.45, size: 0.45 + Math.random() * 0.9 });
       }
+      context.fillStyle = "#ffdc9f";
       for (let index = sparks.length - 1; index >= 0; index--) {
         const spark = sparks[index];
         spark.age += delta;
-        if (spark.age >= spark.life) { sparks.splice(index, 1); continue; }
+        if (spark.age >= spark.life) { sparks[index] = sparks[sparks.length - 1]; sparks.pop(); continue; }
         spark.x += spark.vx * delta; spark.y += spark.vy * delta;
         const opacity = (1 - spark.age / spark.life) ** 2 * 0.85;
-        context.fillStyle = `rgba(255,220,159,${opacity})`;
+        context.globalAlpha = opacity;
         context.fillRect(spark.x, spark.y, spark.size, spark.size);
-        if (spark.size > 1.15) {
+        if (spark.size > 1.25) {
           context.fillRect(spark.x - 2, spark.y, 5, 0.6);
           context.fillRect(spark.x, spark.y - 2, 0.6, 5);
         }
       }
+      context.globalAlpha = 1;
       if (open > 0.01) {
         const phase = 0.15 - time / 11;
         for (let index = 15; index >= 0; index--) {
@@ -135,7 +137,7 @@ export function CosmicQuestion({ question, spread, onQuestion, onSpread, onBegin
     <h2>让心中的问题，有一个形状</h2>
     <form onSubmit={(event) => { event.preventDefault(); submit(); }}>
       <div className="cosmic-question-frame">
-        <motion.div className="cosmic-question-capsule" style={{ clipPath }}>
+        <motion.div className="cosmic-question-capsule" style={{ clipPath: ready ? "none" : clipPath }}>
           <motion.input ref={input} id="cosmic-question" type="text" aria-label="你想问星空什么？" aria-describedby="cosmic-question-hint"
             placeholder="输入你的问题" maxLength={500} autoComplete="off" value={question} disabled={!ready || !present} style={{ opacity: textOpacity }}
             onChange={(event) => onQuestion(event.target.value.slice(0, 500))}
