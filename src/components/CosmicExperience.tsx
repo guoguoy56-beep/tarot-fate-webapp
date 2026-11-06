@@ -95,7 +95,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
     const fromRotation = rotation.current;
     const readingRotation = active ? nearestRotation(fromRotation, active.anchor, deck.length) : fromRotation;
     const render = (now: number) => {
-      const delta = Math.min(now - (previousFrameTime.current ?? now), 100);
+      const frameElapsed = Math.max(0, now - (previousFrameTime.current ?? now));
+      const delta = Math.min(frameElapsed, 100);
       previousFrameTime.current = now;
       if (sceneStart.current === null) sceneStart.current = now;
       const elapsed = now - sceneStart.current;
@@ -133,7 +134,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       }
       if (entryState) { cam.dive = entryState.camera; cam.ring = 1; cam.reverse = 0; }
       // One clock continues through the first camera move and all time spent writing the question.
-      if (streamStage && !reducedMotion) homeElapsed.current += delta;
+      if (streamStage && !reducedMotion) homeElapsed.current += frameElapsed;
       if (stage === "reading" && active) {
         velocity.current = 0;
         rotation.current = fromRotation + (readingRotation - fromRotation) * approach;

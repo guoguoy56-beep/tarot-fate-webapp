@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readingIdleMotion, readingIdlePose } from "../../src/lib/cosmic-experience";
+import { ringEntryMotion } from "../../src/lib/cosmic-ring-entry";
 
 async function pickFrontCard(page: Page) {
   // Observe the existing deceleration before aiming at a moving card. A point sampled during
@@ -33,8 +34,8 @@ async function pickFrontCard(page: Page) {
   return target.anchor;
 }
 
-async function samplePresentation(page: Page, duration: number, previousAnchor: string | null = null) {
-  return page.evaluate(async ({ ms, previous }) => {
+async function samplePresentation(page: Page, duration: number, previousAnchor: string | null = null, tailStart?: number) {
+  return page.evaluate(async ({ ms, previous, stableAfter }) => {
     const frames: Array<{ time: number; clock: number; arrivalTime: number | null; x: number; y: number; width: number; height: number; flip: number; yaw: number; pitch: number; rotation: number; topBottom: number; leftRight: number }> = [];
     const start = performance.now();
     let first = 0;
@@ -69,14 +70,18 @@ async function samplePresentation(page: Page, duration: number, previousAnchor: 
             rotation: Number(document.querySelector<HTMLElement>('[data-testid="cosmic-scene"]')!.dataset.rotation),
             topBottom: edge(0, 1) / edge(3, 2), leftRight: edge(0, 3) / edge(1, 2) });
         }
-        if (now - start >= ms) resolve();
+        // Observe the requested duration from the first real sample. A delayed first RAF
+        // must not shorten a 320ms long-press observation to less than its 240ms stable tail.
+        const enoughTail = stableAfter === undefined || frames.filter((frame) => frame.time >= stableAfter).length >= 2;
+        if (frames.length ? now - first >= ms && enoughTail : now - start >= ms + 2000) resolve();
+        else if (now - start >= ms + 2000) resolve();
         else requestAnimationFrame((time) => setTimeout(() => record(time), 0));
       };
       // Read after the scene's RAF writes, so we observe the frame actually presented by the browser.
       requestAnimationFrame((time) => setTimeout(() => record(time), 0));
     });
     return frames;
-  }, { ms: duration, previous: previousAnchor });
+  }, { ms: duration, previous: previousAnchor, stableAfter: tailStart });
 }
 
 function expectArrivalSequence(frames: Awaited<ReturnType<typeof samplePresentation>>) {
@@ -125,7 +130,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("button", { name: "命运回廊，返回首页", exact: true })).toHaveCount(0);
   await expect(navigation).toHaveCount(0);
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   await expect(navigation).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "选择与你共鸣的牌" })).toBeVisible();
   await page.screenshot({ path: "output/ring-3d-2026-11-04/01-draw.png" });
@@ -265,7 +270,7 @@ test("reading card drag is stronger, has soft thresholds and returns to the unin
   await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("如何更好地理解此刻的自己？");
   await page.getByLabel("你想问星空什么？").press("Enter");
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   await pickFrontCard(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
   const card = page.locator(".cosmic-card.is-face-up");
@@ -343,7 +348,7 @@ test("reading card accepts repeated grabs during its return to the original idle
   await page.getByRole("button", { name: "单牌 1 张", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("如何理解反复出现的想法？");
   await page.getByLabel("你想问星空什么？").press("Enter");
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   await pickFrontCard(page);
   await expect(page.getByRole("button", { name: "查看整体解读", exact: true })).toBeEnabled();
   const card = page.locator(".cosmic-card.is-face-up");
@@ -363,14 +368,15 @@ test("reading card accepts repeated grabs during its return to the original idle
     await page.mouse.move(x, y);
     const beforeGrab = lastRelease === null ? null : (await samplePresentation(page, 20)).at(-1)!;
     await page.mouse.down();
-    const held = await samplePresentation(page, lastRelease === null ? readingIdleMotion.holdMs + 140 : 140);
+    const stableAfter = lastRelease === null ? readingIdleMotion.holdMs + 60 : 0;
+    const held = await samplePresentation(page, lastRelease === null ? readingIdleMotion.holdMs + 140 : 140, null, stableAfter);
     const grabbed = held.at(-1)!;
     if (beforeGrab) {
       expect(Math.abs(held[0].yaw - beforeGrab.yaw)).toBeLessThan(0.5);
       expect(Math.abs(held[0].pitch - beforeGrab.pitch)).toBeLessThan(0.5);
     }
     // A returning card is grabbed immediately; only the initial idle grab needs a long press.
-    const tail = held.filter((frame) => frame.time >= (lastRelease === null ? readingIdleMotion.holdMs + 60 : 0));
+    const tail = held.filter((frame) => frame.time >= stableAfter);
     expect(tail.length).toBeGreaterThan(1);
     expect(Math.max(...tail.map((frame) => frame.yaw)) - Math.min(...tail.map((frame) => frame.yaw))).toBeLessThan(0.05);
     expect(Math.max(...tail.map((frame) => frame.pitch)) - Math.min(...tail.map((frame) => frame.pitch))).toBeLessThan(0.05);
@@ -378,7 +384,7 @@ test("reading card accepts repeated grabs during its return to the original idle
     const moved = (await samplePresentation(page, 70)).at(-1)!;
     expect(moved.yaw - grabbed.yaw).toBeCloseTo(direction * 8.64, 1);
     expect(moved.pitch - grabbed.pitch).toBeCloseTo(direction * 5.76, 1);
-    if (lastRelease !== null) expect(moved.clock - lastRelease).toBeLessThan(readingIdleMotion.returnMs);
+    if (lastRelease !== null) expect(held[0].clock - lastRelease).toBeLessThan(readingIdleMotion.returnMs);
     await page.mouse.up();
     lastRelease = await page.evaluate(() => performance.now());
     await page.waitForTimeout(50);

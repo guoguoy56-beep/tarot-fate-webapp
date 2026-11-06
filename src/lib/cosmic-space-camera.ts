@@ -1,11 +1,11 @@
-import { Matrix4, PerspectiveCamera, Vector3 } from "three";
+import { Matrix4, PerspectiveCamera, Quaternion, Vector3 } from "three";
+import { cameraEyePoint, diveGuidePoint, diveStation } from "@/lib/cosmic-dive-path";
 
 export interface SpaceCameraBlend { ring: number; reading: number; summary: number; reverse?: number; dive?: number }
 
 export const reverseCameraDurationMs = 3600;
 export const questionCamera = { position: [16, -9.5, -6], target: [26, -33, 36], fov: 50 } as const;
 
-const diveStation = { position: [145, -72, 95], target: [164, -97, 53], fov: 50 } as const;
 const stationMatrix = (position: readonly number[], target: readonly number[]) => {
   const view = new PerspectiveCamera();
   view.position.set(position[0], position[1], position[2]); view.lookAt(target[0], target[1], target[2]); view.updateMatrixWorld();
@@ -13,12 +13,25 @@ const stationMatrix = (position: readonly number[], target: readonly number[]) =
 };
 // Move the established reading/summary space downstream as a rigid whole, retaining its framing.
 const downstream = new Matrix4().multiplyMatrices(stationMatrix(diveStation.position, diveStation.target), stationMatrix([4, 1, 6], [1, -1, -36]).invert());
+const questionHeading = new Quaternion().setFromRotationMatrix(stationMatrix(questionCamera.position, questionCamera.target));
+const ringHeading = new Quaternion().setFromRotationMatrix(stationMatrix(diveStation.position, diveStation.target));
 
 function diveCamera(t: number) {
-  const u = 1 - t;
-  const point = (a: readonly number[], b: readonly number[], c: readonly number[], d: readonly number[]) => a.map((value, i) => u ** 3 * value + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t ** 3 * d[i]) as [number, number, number];
-  return { position: point(questionCamera.position, [28, -20, 24], [82, -45, 80], diveStation.position),
-    target: point(questionCamera.target, [70, -45, 70], [130, -77, 66], diveStation.target), fov: 50 };
+  const smooth = (value: number) => { const x = Math.max(0, Math.min(1, value)); return x * x * (3 - 2 * x); };
+  const eye = cameraEyePoint(t), guide = diveGuidePoint(t);
+  const y = 0.7 - 0.4 * smooth((t - 0.1) / 0.65), tangent = Math.tan(25 * Math.PI / 180);
+  const ray = new Vector3(-0.54 * tangent * 16 / 9, (1 - 2 * y) * tangent, -1).normalize();
+  // Solve yaw/pitch with world-up intact: a lookAt camera does not retain quaternion roll.
+  const direction = guide.clone().sub(eye).normalize(), depth = -ray.z;
+  const pitch = Math.asin(Math.max(-1, Math.min(1, direction.y / Math.hypot(depth, ray.y)))) - Math.atan2(ray.y, depth);
+  const yaw = Math.atan2(direction.x, -direction.z) - Math.atan2(ray.x, depth * Math.cos(pitch) - ray.y * Math.sin(pitch));
+  const forward = new Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+  const view = new PerspectiveCamera(50); view.position.copy(eye); view.lookAt(eye.clone().add(forward)); view.updateMatrixWorld();
+  const heading = view.quaternion.clone();
+  heading.slerpQuaternions(questionHeading, heading.clone(), smooth(t / 0.14));
+  heading.slerp(ringHeading, smooth((t - 0.8) / 0.2));
+  const target = eye.clone().add(new Vector3(0, 0, -40).applyQuaternion(heading));
+  return { position: eye.toArray() as [number, number, number], target: target.toArray() as [number, number, number], fov: 50 };
 }
 
 export function cameraTravelProgress(elapsed: number) {

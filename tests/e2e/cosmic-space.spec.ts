@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ringEntryMotion } from "../../src/lib/cosmic-ring-entry";
 
 const space = (page: Page) => page.getByTestId("cosmic-space");
 const cameraPose = (page: Page) => space(page).evaluate((element) => {
@@ -15,7 +16,7 @@ async function prepare(page: Page) {
   await page.getByLabel("你想问星空什么？").fill("如何开始接下来的学习计划？");
 }
 async function choose(page: Page) {
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   await page.getByTestId("orbit-card-20").press("Enter");
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");
 }
@@ -35,22 +36,24 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
   const home = await canvas.screenshot();
   const homeZ = Number(await space(page).getAttribute("data-camera-z"));
   await prepare(page);
-  const samples = space(page).evaluate(async (element) => {
-    const frames: Array<{ time: number; x: number; y: number; z: number }> = [];
+  const samples = space(page).evaluate(async (element, durationMs) => {
+    const frames: Array<{ stage: string; time: number; x: number; y: number; z: number }> = [];
     const start = performance.now();
     await new Promise<void>((resolve) => {
       const frame = (time: number) => {
         // Match the pose to the RAF that rendered it; an observer can run on either side of that RAF.
         const rendered = (element.closest(".cosmic-scene") as HTMLElement).dataset.rotationTime;
-        frames.push({ time: Number(rendered), x: Number(element.getAttribute("data-camera-x")), y: Number(element.getAttribute("data-camera-y")), z: Number(element.getAttribute("data-camera-z")) });
-        if (time - start > 8500) resolve(); else requestAnimationFrame(frame);
+        const stage = document.querySelector("main")!.dataset.stage!;
+        frames.push({ stage, time: Number(rendered), x: Number(element.getAttribute("data-camera-x")), y: Number(element.getAttribute("data-camera-y")), z: Number(element.getAttribute("data-camera-z")) });
+        // Continue through the actual reading arrival; a fixed 8.5s window stopped mid-dive.
+        if (stage === "summarizing" || stage === "summary" || time - start > durationMs + 5000) resolve(); else requestAnimationFrame(frame);
       };
       requestAnimationFrame(frame);
     });
     return frames;
-  });
+  }, ringEntryMotion.durationMs);
   await page.getByLabel("你想问星空什么？").press("Enter");
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   const drawPose = await cameraPose(page);
   await choose(page);
   await page.getByRole("button", { name: "查看整体解读", exact: true }).waitFor({ state: "visible" });
@@ -70,6 +73,8 @@ test("one WebGL scene carries a continuous camera through reading and summary", 
   await expect(page.getByRole("heading", { name: "命运手记", exact: true })).toBeVisible();
   const frames = await samples;
   expect(frames.length).toBeGreaterThan(40);
+  expect(frames.some((frame) => frame.stage === "travel")).toBe(true);
+  expect(frames.some((frame) => frame.stage === "reading")).toBe(true);
   for (let index = 1; index < frames.length; index++) {
     const a = frames[index - 1], b = frames[index];
     const distance = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);

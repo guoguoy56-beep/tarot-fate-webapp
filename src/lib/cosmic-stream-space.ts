@@ -1,6 +1,7 @@
 import { BufferGeometry, CubicBezierCurve3, ExtrudeGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry, Vector3 } from "three";
 import { homeCardStream, homeStreamPose } from "@/lib/cosmic-experience";
 import { homeStreamWorldPose } from "@/lib/cosmic-home-space";
+import { questionStreamBend, questionStreamTail } from "@/lib/cosmic-dive-path";
 import type { CardOrientation, TarotCardData } from "@/types/tarot";
 
 export interface CosmicDeckEntry { card: TarotCardData; orientation: CardOrientation }
@@ -54,13 +55,13 @@ function continuation(width: number, height: number) {
   const tangent = exit.position.clone().sub(home(1 - 0.0001, width, height).position).divideScalar(0.0001);
   // Fixed world anchors trace the guide's shallow trough, crest and left-hand exit.
   // Shared tangents keep the cards moving smoothly across all three segments.
-  const first = new Vector3(18.6162, -30.8645, 39.9415), second = new Vector3(53.0809, -38.8436, 56.5302);
+  const first = new Vector3(18.6162, -30.8645, 39.9415);
   const end = new Vector3(166.8064, -107.5271, 37.8373);
-  const firstTangent = new Vector3(10.9341, -10.6822, 20.6788), secondTangent = new Vector3(56.8366, -11.7374, 15.0111);
+  const firstTangent = new Vector3(10.9341, -10.6822, 20.6788);
   const curves = [
     new CubicBezierCurve3(exit.position, exit.position.clone().addScaledVector(tangent, 1 / 9), first.clone().addScaledVector(firstTangent, -1 / 3), first),
-    new CubicBezierCurve3(first, first.clone().addScaledVector(firstTangent, 1 / 3), second.clone().addScaledVector(secondTangent, -1 / 3), second),
-    new CubicBezierCurve3(second, second.clone().addScaledVector(secondTangent, 1 / 3), new Vector3(130.8105, -56.7360, 59.2217), end),
+    questionStreamBend,
+    questionStreamTail,
     // Recycle only after the distant card has diminished to a point. The return is outside the composition.
     new CubicBezierCurve3(end, new Vector3(350, -250, 180), home(0, width, height).position.clone().add(new Vector3(120, 100, -70)), home(0, width, height).position),
   ];

@@ -1,10 +1,37 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ringEntryMotion } from "@/lib/cosmic-ring-entry";
 
 const space = (page: Page) => page.getByTestId("cosmic-space");
 const stage = (page: Page) => page.getByTestId("cosmic-experience");
 const identity = (page: Page) => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => ({
   id: card.getAttribute("data-card-id"), orientation: card.getAttribute("data-orientation"), anchor: card.getAttribute("data-anchor"),
 })));
+
+test("the stream keeps real time during the reverse shot when rendering falls below ten frames per second", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    // Delay both the scene and motion-library RAFs without changing the actual monotonic clock.
+    window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(performance.now()), 180);
+    window.cancelAnimationFrame = (id) => window.clearTimeout(id);
+  });
+  await page.goto("/");
+  await expect(space(page)).toHaveAttribute("data-stream-renderer", "mesh");
+  await page.getByRole("button", { name: "开始占卜", exact: true }).click();
+  await expect(stage(page)).toHaveAttribute("data-stage", "reversing");
+  const read = () => space(page).evaluate((element) => ({
+    time: Number((element.closest(".cosmic-scene") as HTMLElement).dataset.rotationTime),
+    stream: Number((element as HTMLElement).dataset.streamTime),
+  }));
+  const before = await read();
+  await page.waitForTimeout(1800);
+  const after = await read();
+  await expect(stage(page)).toHaveAttribute("data-stage", "reversing");
+  const renderedElapsed = after.time - before.time;
+  expect(renderedElapsed).toBeGreaterThan(1500);
+  // The former 100ms physics cap advanced the flow only ~55% of real time at 180ms/frame.
+  expect(after.stream - before.stream).toBeCloseTo(renderedElapsed, 1);
+  await expect(stage(page)).toHaveAttribute("data-stage", "prepare");
+});
 
 for (const width of [1920, 1280]) {
   test(`same 78 double-sided cards survive reverse camera, draft return and ring at ${width}px`, async ({ page }) => {
@@ -82,7 +109,7 @@ for (const width of [1920, 1280]) {
     // A retained draft exists before the opening capsule becomes editable and receives focus.
     await expect(page.getByLabel("你想问星空什么？")).toBeFocused();
     await page.getByLabel("你想问星空什么？").press("Enter");
-    await expect(stage(page)).toHaveAttribute("data-stage", "draw");
+    await expect(stage(page)).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
     expect(await identity(page)).toEqual(before);
     expect(await canvas!.evaluate((element) => element === document.querySelector(".cosmic-space canvas"))).toBe(true);
     await expect(space(page).locator("canvas")).toHaveCount(1);

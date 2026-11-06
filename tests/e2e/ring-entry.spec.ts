@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import { ringEntryMotion } from "../../src/lib/cosmic-ring-entry";
 
 for (const width of [1920, 1280]) {
   test(`the same 78 cards dive into an ordered ring before selection at ${width}px`, async ({ page }) => {
@@ -13,7 +14,7 @@ for (const width of [1920, 1280]) {
     await input.fill("如何迈出下一步？");
     const facts = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => [card.getAttribute("data-anchor"), card.getAttribute("data-card-id"), card.getAttribute("data-orientation")]));
     const before = await facts(), canvas = await space.locator("canvas").elementHandle();
-    const framesPromise = scene.evaluate(async (element) => {
+    const framesPromise = scene.evaluate(async (element, durationMs) => {
       const frames: Array<{ stage: string; time: number; entered: number; rotation: number; x: number; y: number; selectable: number }> = [];
       const start = performance.now();
       await new Promise<void>((resolve) => {
@@ -23,31 +24,33 @@ for (const width of [1920, 1280]) {
           const stage = document.querySelector("main")!.dataset.stage!;
           frames.push({ stage, time: Number(sceneData.rotationTime), entered: Number(data.ringEntered), rotation: Number(sceneData.rotation), x: Number(data.cameraX), y: Number(data.cameraY),
             selectable: element.querySelectorAll('.cosmic-card:not([disabled])').length });
-          if (stage === "draw" || performance.now() - start > 11000) resolve(); else requestAnimationFrame(frame);
+          if (stage === "draw" || performance.now() - start > durationMs + 2000) resolve(); else requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
       });
       return frames;
-    });
+    }, ringEntryMotion.durationMs);
     await input.press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "travel");
     await expect(page.locator(".cosmic-track")).toHaveCount(0);
     await expect(page.locator(".cosmic-header")).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "travel");
-    const directory = "output/ring-entry-2026-11-06";
+    const directory = "output/single-stream-2026-11-06";
     await mkdir(directory, { recursive: true });
-    await page.waitForTimeout(1600);
+    await page.waitForTimeout(2800);
+    await page.screenshot({ path: `${directory}/${width}-00-lower-left.png` });
+    await page.waitForTimeout(2200);
     await page.screenshot({ path: `${directory}/${width}-01-dive.png` });
     await expect.poll(async () => Number(await space.getAttribute("data-ring-entered"))).toBeGreaterThan(15);
     await page.screenshot({ path: `${directory}/${width}-02-entry.png` });
     await expect.poll(async () => Number(await space.getAttribute("data-ring-entered"))).toBe(78);
     await page.screenshot({ path: `${directory}/${width}-03-settling.png` });
-    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
     const frames = await framesPromise, travel = frames.filter((frame) => frame.stage === "travel");
     expect(travel.length).toBeGreaterThan(40);
-    expect(travel.at(-1)!.time - travel[0].time).toBeGreaterThan(7400);
-    expect(travel.at(-1)!.time - travel[0].time).toBeLessThan(8100);
+    expect(travel.at(-1)!.time - travel[0].time).toBeGreaterThan(ringEntryMotion.durationMs - 200);
+    expect(travel.at(-1)!.time - travel[0].time).toBeLessThan(ringEntryMotion.durationMs + 500);
     expect(travel.some((frame) => frame.entered > 0 && frame.entered < 20)).toBe(true);
     expect(travel.some((frame) => frame.entered > 40 && frame.entered < 78)).toBe(true);
     expect(travel.at(-1)!.entered).toBe(78);

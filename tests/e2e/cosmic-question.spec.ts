@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ringEntryMotion } from "../../src/lib/cosmic-ring-entry";
 
 const stage = (page: Page) => page.getByTestId("cosmic-experience");
 const question = (page: Page) => page.getByRole("textbox", { name: "你想问星空什么？" });
@@ -53,7 +54,7 @@ test("the magic capsule retains a 500-character draft and the same moving deck t
   await expect(page.getByRole("button", { name: "十字牌阵 5 张", exact: true })).toHaveAttribute("aria-pressed", "true");
   await question(page).press("Enter");
   await expect(stage(page)).toHaveAttribute("data-stage", "travel");
-  await expect(stage(page)).toHaveAttribute("data-stage", "draw");
+  await expect(stage(page)).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   expect(await identities(page)).toEqual(before);
   expect(errors).toEqual([]); expect(apiCalls).toEqual([]);
 });
