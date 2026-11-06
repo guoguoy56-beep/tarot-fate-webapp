@@ -154,6 +154,12 @@ export function resumeReadingPose(elapsedMs: number, timelineMs: number, fromYaw
 
 export const homeCardStream = { count: 36, durationMs: 105_000 } as const;
 
+/** Keep the flow visibly advancing during the reverse shot, easing back to its original idle rate. */
+export function reverseStreamExtraTime(elapsedMs: number, durationMs: number) {
+  const t = Math.max(0, Math.min(1, elapsedMs / durationMs));
+  return 5 * durationMs * (t / 2 - Math.sin(2 * Math.PI * t) / (4 * Math.PI));
+}
+
 // Follow the user's red-line guide: left from the vortex, right, then left into the foreground.
 // Adjacent cubic segments share their end tangent; the last segment continues below the screen.
 const homeStreamPath = [

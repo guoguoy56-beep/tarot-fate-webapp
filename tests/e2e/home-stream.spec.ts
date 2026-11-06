@@ -21,6 +21,7 @@ test("the stream keeps real time during the reverse shot when rendering falls be
   const read = () => space(page).evaluate((element) => ({
     time: Number((element.closest(".cosmic-scene") as HTMLElement).dataset.rotationTime),
     stream: Number((element as HTMLElement).dataset.streamTime),
+    extra: Number((element.closest(".cosmic-scene") as HTMLElement).dataset.streamTransitionExtra),
   }));
   const before = await read();
   await page.waitForTimeout(1800);
@@ -29,7 +30,7 @@ test("the stream keeps real time during the reverse shot when rendering falls be
   const renderedElapsed = after.time - before.time;
   expect(renderedElapsed).toBeGreaterThan(1500);
   // The former 100ms physics cap advanced the flow only ~55% of real time at 180ms/frame.
-  expect(after.stream - before.stream).toBeCloseTo(renderedElapsed, 1);
+  expect(after.stream - before.stream).toBeCloseTo(renderedElapsed + after.extra - before.extra, 1);
   await expect(stage(page)).toHaveAttribute("data-stage", "prepare");
 });
 

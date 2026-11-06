@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, S
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CosmicQuestion } from "@/components/CosmicQuestion";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
-import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
+import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, reverseStreamExtraTime, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
@@ -84,6 +84,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       camera.current = { ring: 0, reading: 0, summary: 0, travel: 0, reverse: 0 };
     }
     let entryComplete = false;
+    let previousStreamExtra = 0;
     const readingButton = stage === "reading" && active ? cards.current[active.anchor] : null;
     const poseNode = readingButton?.querySelector<HTMLElement>(".cosmic-card-pose");
     if (readingButton) readingPose.current = { yaw: 0, pitch: 0, ready: false, idleOrigin: arrivalStart + readingArrivalMs - readingPresentationMotion.idleLeadMs, resume: null, hold: null };
@@ -134,7 +135,10 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       }
       if (entryState) { cam.dive = entryState.camera; cam.ring = 1; cam.reverse = 0; }
       // One clock continues through the first camera move and all time spent writing the question.
-      if (streamStage && !reducedMotion) homeElapsed.current += frameElapsed;
+      const streamExtra = stage === "reversing" && !reducedMotion ? reverseStreamExtraTime(now - arrivalStart, reverseCameraDurationMs) : 0;
+      if (streamStage && !reducedMotion) homeElapsed.current += frameElapsed + streamExtra - previousStreamExtra;
+      previousStreamExtra = streamExtra;
+      surface.dataset.streamTransitionExtra = streamExtra.toFixed(2);
       if (stage === "reading" && active) {
         velocity.current = 0;
         rotation.current = fromRotation + (readingRotation - fromRotation) * approach;
