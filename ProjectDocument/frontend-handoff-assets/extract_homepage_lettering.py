@@ -4,6 +4,7 @@ Requires Pillow. Run from any directory; the original reference stays unchanged.
 """
 
 from collections import deque
+from math import hypot
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageFilter
@@ -88,6 +89,52 @@ def button(source):
     return result
 
 
+def title_emblem(source):
+    alpha = Image.new("L", source.size)
+    values = []
+    for y in range(source.height):
+        for x in range(source.width):
+            gx, gy = x + 154, y + 118
+            radius = hypot(gx - 387, gy - 315)
+            ornament = (
+                88 <= radius <= 143
+                or (abs(gx - 387) <= 18 and gy < 275)
+                or (abs(gx - 387) <= 2 and 180 <= gy <= 439)
+                or (abs(gx - 387) <= 15 and gy >= 425)
+            )
+            red, green, blue = source.getpixel((x, y))
+            values.append(min(255, max(0, (red - blue - 6) * 32))
+                          if ornament and green - blue > 3 else 0)
+    alpha.putdata(values)
+    # Remove the old English subtitle, leaving its visible surrounding rings.
+    english_box = (86, 282, 384, 310)
+    english = source.crop(english_box)
+    letters = Image.new("L", english.size)
+    letters.putdata([255 if gold(pixel, 80) else 0
+                    for pixel in english.get_flattened_data()])
+    letters = letters.filter(ImageFilter.MaxFilter(7))
+    alpha.paste(ImageChops.subtract(alpha.crop(english_box), letters), english_box)
+    title_box = (0, 133, 462, 277)
+    title_alpha = lettering(source.crop(title_box)).getchannel("A")
+    alpha.paste(ImageChops.lighter(alpha.crop(title_box), title_alpha), title_box)
+    result = source.convert("RGBA")
+    result.putalpha(alpha)
+    return result
+
+
+def sharp_button(source):
+    # Premultiplied resizing keeps the transparent rim free of dark colour bleed.
+    enlarged = source.convert("RGBa").resize(
+        (source.width * 4, source.height * 4), Image.Resampling.LANCZOS
+    ).convert("RGBA")
+    rgb = enlarged.convert("RGB").filter(
+        ImageFilter.UnsharpMask(radius=2.8, percent=140, threshold=2)
+    )
+    result = rgb.convert("RGBA")
+    result.putalpha(enlarged.getchannel("A"))
+    return result
+
+
 if __name__ == "__main__":
     original = Image.open(SOURCE).convert("RGB")
     title_box = (154, 251, 616, 395)
@@ -95,6 +142,7 @@ if __name__ == "__main__":
     assets = (
         ("home-title-source-v1.png", title_box, lettering),
         ("start-button-source-v1.png", button_box, button),
+        ("home-title-emblem-source-v2.png", (154, 118, 616, 451), title_emblem),
     )
     DESTINATION.mkdir(parents=True, exist_ok=True)
     for name, box, extract in assets:
@@ -104,3 +152,7 @@ if __name__ == "__main__":
         assert result.convert("RGB").tobytes() == crop.tobytes()
         result.save(DESTINATION / name, optimize=True)
         print(f"{name}: {result.width} x {result.height}; source crop {box}")
+    sharp = sharp_button(button(original.crop(button_box)))
+    sharp.save(DESTINATION / "start-button-source-sharp-v2.webp",
+               lossless=True, method=6, exact=True)
+    print(f"start-button-source-sharp-v2.webp: {sharp.width} x {sharp.height}")

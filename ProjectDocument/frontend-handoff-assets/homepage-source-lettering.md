@@ -22,3 +22,22 @@ python ProjectDocument/frontend-handoff-assets/extract_homepage_lettering.py
 标题 SHA-256：`b9d185a7f0473677e3836a8ae9cfd53d414ebd46b961ed50235a341d5940ed29`。
 
 按钮 SHA-256：`3a739af446241a6358b1d543d3c1f9e43a2c8ed48824806b35c7f39648c52869`。
+
+## 金圈与清晰版（2026-11-09）
+
+同一提取脚本新增以下当前使用的素材，旧版继续保留作为来源与对照：
+
+| 文件（位于 public/assets/cosmic） | 尺寸 | 来源／处理 | 字节 |
+| --- | --- | --- | --- |
+| home-title-emblem-source-v2.png | 462×333 | 原图 (154,118,616,451)，提取金圈、星芒和标题，移除英文；仅改 alpha | 200278 |
+| start-button-source-sharp-v2.webp | 1700×460 | 原 425×115 按钮四倍重采样及适度锐化，无损 WebP | 486796 |
+
+前文 RGB 原样复制的约束适用于原始提取版及新版标题。按钮清晰版在保留原字形的基础上改变边缘对比度；缩放采用预乘 alpha，防止透明金边混入暗色，保存后已验证 RGBA 无损往返。没有使用 AI 重绘文字。
+
+新版页面移除了按钮居中的 transform 与悬停模糊阴影，保留轻微亮度反馈。素材自然比例不变，标题周围金圈纳入标题装饰区域，单行介绍留在其下方。
+
+新版校验：`output/home-ui-ring-sharp-2026-11-09/asset-verification.json`。
+
+标题金圈 SHA-256：`496d5fe44b5c5c008ffb793faf5f9c8d5d831ba397a07ed102ee1a1b3732768a`。
+
+按钮清晰版 SHA-256：`c86138248911d2c86d9ad1b7005d977003e940b8145384366ec2b20b770a4d94`。
