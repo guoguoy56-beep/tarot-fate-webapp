@@ -211,7 +211,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
     expect(Math.min(...crossing.map((item) => item.rate))).toBeGreaterThan(12);
   }
   expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
-  await expect(page.locator(".cosmic-card.is-face-up img")).toBeVisible();
+  await expect(page.locator(".cosmic-card.is-face-up .cosmic-card-front img")).toBeVisible();
   await expect(page.getByText("示例解读", { exact: true })).toBeVisible();
   const previousAnchor = await page.locator('.cosmic-card.is-face-up').getAttribute("data-anchor");
   const [nextArrival] = await Promise.all([

@@ -58,7 +58,7 @@
 .cosmic-track { position: absolute; left: 0; top: 0; aspect-ratio: 1; background: url("/assets/cosmic/orbital-track-v1.png") center / contain no-repeat; pointer-events: none; will-change: transform; }
 .cosmic-deck { pointer-events: none; }
 .cosmic-card { position: absolute; left: 0; top: 0; width: 68px; height: 116px; padding: 0; border: 0; background: transparent; will-change: transform; transform-origin: center; border-radius: 4px; -webkit-user-drag: none; }
-.stage-home .cosmic-card { will-change: auto; }
+.stage-home .cosmic-card, .stage-draw .cosmic-card { will-change: auto; }
 .cosmic-card.is-face-up { transform-style: preserve-3d; cursor: grab; }
 .cosmic-card.is-card-held { cursor: grabbing; }
 .cosmic-experience .cosmic-card:disabled { opacity: 1; }
@@ -66,7 +66,8 @@
 .cosmic-card-pose { transform: rotateX(0deg) rotateY(0deg); }
 .cosmic-card-flipper { transform: rotateY(0deg); }
 .cosmic-card-back, .cosmic-card-front { position: absolute; inset: 0; display: block; border: 1px solid #d4b270a8; border-radius: 5px; backface-visibility: hidden; box-shadow: 0 6px 18px #0009; overflow: hidden; }
-.cosmic-card-back { background: #070b16 var(--cosmic-card-back-image) center / 100% 100% no-repeat; border-color: #dcc393b3; }
+.cosmic-card-back { background: #070b16; border-color: transparent; }
+.cosmic-card-back img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .cosmic-card-front { transform: rotateY(180deg); background: #e8d7b4; }
 .cosmic-card-front img { width: 100%; height: 100%; object-fit: fill; }
 .cosmic-card.is-face-up .cosmic-card-flipper { transform: rotateY(180deg); transition-delay: var(--cosmic-reading-flip-delay); transition-duration: var(--cosmic-reading-flip-duration); transition-timing-function: ease-in-out; }

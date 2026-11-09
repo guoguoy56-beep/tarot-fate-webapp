@@ -52,9 +52,16 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1480, h
     await page.evaluate(() => document.fonts.ready);
     await expectClearDrawText(page);
     const backUrl = new URL(cosmicCardBackSrc, page.url()).href;
-    const images = await page.locator('.cosmic-card-back').evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundImage));
-    expect(images).toHaveLength(78);
-    expect(new Set(images)).toEqual(new Set([`url("${backUrl}")`]));
+    const images = page.locator('.cosmic-card-back img');
+    await expect(images).toHaveCount(78);
+    await images.evaluateAll(async (nodes) => { await Promise.all(nodes.map((node) => (node as HTMLImageElement).decode())); });
+    const painted = await images.evaluateAll((nodes) => nodes.map((node) => {
+      const image = node as HTMLImageElement, back = node.parentElement!;
+      return { src: image.currentSrc, width: image.naturalWidth, height: image.naturalHeight,
+        fillsBack: Math.abs(image.clientWidth - back.clientWidth) <= 1 && Math.abs(image.clientHeight - back.clientHeight) <= 1,
+        background: getComputedStyle(back).backgroundImage };
+    }));
+    expect(painted.every((image) => image.src === backUrl && image.width === 962 && image.height === 1635 && image.fillsBack && image.background === "none")).toBe(true);
     expect(new Set(backs)).toEqual(new Set([backUrl]));
     await mkdir("output/draw-text-back-2026-11-09", { recursive: true });
     await page.screenshot({ path: `output/draw-text-back-2026-11-09/${viewport.width}-draw.png` });

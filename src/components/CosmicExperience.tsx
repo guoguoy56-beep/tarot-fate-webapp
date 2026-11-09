@@ -366,7 +366,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
           onClick={() => { if (!pointer.current?.dragging) onSelect(index); }}>
           {chosen >= 0 && <span className="cosmic-card-marker">{chosen + 1}</span>}
           <span className="cosmic-card-pose"><span className="cosmic-card-flipper">
-            <span className="cosmic-card-back" />
+            <span className="cosmic-card-back"><Image src={cosmicCardBackSrc} alt="" width={962} height={1635} unoptimized loading="eager" draggable={false} /></span>
             <span className="cosmic-card-front">
               {chosen >= 0 && <Image src={card.image} alt={`${card.nameCn} · ${orientation === "upright" ? "正位" : "逆位"}`} width={100} height={170} unoptimized draggable={false} style={{ transform: orientation === "reversed" ? "rotate(180deg)" : undefined }} />}
             </span>
@@ -510,7 +510,7 @@ export function CosmicExperience() {
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
-  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-card-back-image": `url("${cosmicCardBackSrc}")`, "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
+  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} onEntryComplete={setStage} />
     <motion.div className="cosmic-summary-shade" aria-hidden="true" initial={false} animate={{ opacity: stage === "summary" ? 1 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.6 }} />
     {stage !== "travel" && <header className="cosmic-header">
