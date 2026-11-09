@@ -523,9 +523,9 @@ export function CosmicExperience() {
     </header>}
     <AnimatePresence mode="wait">
       {stage === "home" && <motion.section className="cosmic-hero" key="home" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.45, delay: 0 } }} transition={{ duration: 1.1, delay: reducedMotion ? 0 : 0.7, ease: motionEase }}>
-        <h1>命运回廊</h1>
-        <p className="cosmic-hero-copy"><span>写下此刻的困惑，选择你的塔罗牌，</span><span>开启一段自我探索的旅程。</span></p>
-        <motion.button className="cosmic-primary hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Sparkles size={16} strokeWidth={1.2} />开始占卜<ArrowRight size={18} strokeWidth={1.2} /></motion.button>
+        <h1><span className="sr-only">命运回廊</span><Image className="hero-title-art" src="/assets/cosmic/home-title-source-v1.png" alt="" aria-hidden="true" width={462} height={144} unoptimized priority /></h1>
+        <p className="cosmic-hero-copy">写下此刻的困惑，选择你的塔罗牌，开启一段自我探索的旅程。</p>
+        <motion.button className="hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Image className="hero-start-frame" src="/assets/cosmic/start-button-source-v1.png" alt="" aria-hidden="true" width={425} height={115} unoptimized priority draggable={false} /><span className="sr-only">开始占卜</span></motion.button>
       </motion.section>}
       {stage === "prepare" && <CosmicQuestion key="prepare" question={question} spread={spread} onQuestion={setQuestion} onSpread={setSpread} onBegin={begin} />}
       {stage === "draw" && <motion.section className="cosmic-draw-heading" key="draw" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
