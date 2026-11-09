@@ -13,6 +13,7 @@ import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
+import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
 import { cameraTravelProgress, reverseCameraDurationMs } from "@/lib/cosmic-space-camera";
 import { CosmicRingEntry, ringEntryMotion } from "@/lib/cosmic-ring-entry";
 import "./cosmic-fonts.css";
@@ -186,6 +187,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       const depthOrder = deck.map((_, index) => index).sort((a, b) => displayDepths[a] - displayDepths[b]);
       const zIndices = new Array<number>(deck.length);
       depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
+      const backProjections: CardBackProjection[] = [];
       deck.forEach((_, index) => {
         const element = cards.current[index];
         if (!element) return;
@@ -212,12 +214,15 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);
         const introEase = 1 - Math.pow(1 - intro, 3);
         element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(${900 - focusWeights.current[index] * 520}px) rotateY(${Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index])}deg) rotateZ(${tilt}deg) scale(${scale})`;
+        if (stage === "draw") backProjections.push({ x, y, scale, yaw: Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index]),
+          tilt, perspective: 900 - focusWeights.current[index] * 520, order: zIndices[index] });
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
         // A partially transparent parent flattens its 3D children during the reveal.
         element.style.opacity = focused ? "1" : String((meshStream ? streamStage || stage === "travel" ? 0 : cam.ring : index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
       });
+      surface.dataset.cardBackRenderer = stage === "draw" && meshStream && space.current?.drawBacks(backProjections, w, h) ? "mesh" : "native";
       if (poseNode) {
         const state = readingPose.current;
         state.ready = arrival >= 1;

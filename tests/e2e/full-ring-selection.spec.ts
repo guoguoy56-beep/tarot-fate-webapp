@@ -52,6 +52,8 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1480, h
     await page.evaluate(() => document.fonts.ready);
     await expectClearDrawText(page);
     const backUrl = new URL(cosmicCardBackSrc, page.url()).href;
+    await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-card-back-renderer", "mesh");
+    await expect(page.getByTestId("cosmic-space")).toHaveAttribute("data-card-back-source", backUrl);
     const images = page.locator('.cosmic-card-back img');
     await expect(images).toHaveCount(78);
     await images.evaluateAll(async (nodes) => { await Promise.all(nodes.map((node) => (node as HTMLImageElement).decode())); });
