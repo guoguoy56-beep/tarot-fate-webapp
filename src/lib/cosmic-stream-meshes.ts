@@ -1,5 +1,6 @@
 import { BufferGeometry, Group, MeshBasicMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
 import { createCardEdgeGeometry, createCardFaceGeometry, createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
+import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import type { PerspectiveCamera, Scene } from "three";
 import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
 
@@ -23,7 +24,7 @@ export class CosmicStreamMeshes {
   constructor(scene: Scene, private readonly anisotropy: number, private readonly changed: () => void) {
     this.group.name = "continuous-tarot-stream";
     scene.add(this.group);
-    this.back.map = this.load("/assets/cosmic/card-back-v2.webp");
+    this.back.map = this.load(cosmicCardBackSrc);
   }
 
   private load(path: string) {

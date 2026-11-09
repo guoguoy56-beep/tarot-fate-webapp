@@ -1,4 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { mkdir, readFile } from "node:fs/promises";
+import { cosmicCardBackSrc } from "../../src/lib/cosmic-assets";
+
+async function expectClearDrawText(page: Page) {
+  await expect(page.locator('.cosmic-draw-heading .cosmic-eyebrow')).toHaveCount(0);
+  await expect.poll(() => page.locator('.cosmic-draw-heading').evaluate((heading) => {
+    const bottom = heading.getBoundingClientRect().bottom;
+    const cardTop = Math.min(...Array.from(document.querySelectorAll('.cosmic-card, .cosmic-card-marker'),
+      (node) => node.getBoundingClientRect().top));
+    return cardTop - bottom;
+  })).toBeGreaterThanOrEqual(8);
+}
 
 async function exposedCards(page: Page) {
   return page.locator('.cosmic-card:not([disabled])').evaluateAll((cards) => cards.flatMap((card) => {
@@ -17,20 +30,34 @@ async function exposedCards(page: Page) {
   }));
 }
 
-for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, height: 720, turn: 0 }, { width: 1280, height: 720, turn: 1.8 }]) {
+for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1480, height: 711, turn: 0 }, { width: 1280, height: 720, turn: 0 }, { width: 1280, height: 720, turn: 1.8 }]) {
   const viewport = { width: scenario.width, height: scenario.height };
   test(`every orbital card is physically clickable at ${viewport.width}x${viewport.height}${scenario.turn ? " after dragging and adjacent selections" : ""}`, async ({ page }) => {
     const errors: string[] = [];
+    const backs: string[] = [];
+    page.on("request", (request) => { if (request.url().includes("/assets/cosmic/card-back-")) backs.push(request.url()); });
+    const loadedBack = page.waitForResponse((response) => new URL(response.url()).pathname === "/assets/cosmic/card-back-v2.webp");
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
+    const response = await loadedBack, hash = (data: Buffer) => createHash("sha256").update(data).digest("hex");
+    expect(hash(await response.body())).toBe(hash(await readFile("public/assets/cosmic/card-back-v2.webp")));
     await page.getByRole("button", { name: "开始占卜", exact: true }).click();
     await page.getByRole("button", { name: "十字牌阵 5 张", exact: true }).click();
     await page.getByLabel("你想问星空什么？").fill("接下来我应该关注什么？");
     await page.getByLabel("你想问星空什么？").press("Enter");
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+    await page.evaluate(() => document.fonts.ready);
+    await expectClearDrawText(page);
+    const backUrl = new URL(cosmicCardBackSrc, page.url()).href;
+    const images = await page.locator('.cosmic-card-back').evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundImage));
+    expect(images).toHaveLength(78);
+    expect(new Set(images)).toEqual(new Set([`url("${backUrl}")`]));
+    expect(new Set(backs)).toEqual(new Set([backUrl]));
+    await mkdir("output/draw-text-back-2026-11-09", { recursive: true });
+    await page.screenshot({ path: `output/draw-text-back-2026-11-09/${viewport.width}-draw.png` });
     // Each card needs an actually exposed hit point, rather than just an enabled DOM button.
     await expect.poll(async () => (await exposedCards(page)).length).toBe(78);
     if (scenario.turn) {
@@ -63,6 +90,7 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1280, h
     const chosen: string[] = [];
     const regions = scenario.turn ? ["0", "1", "2", "77", "back"] : ["back", "left", "right", "front", "back"];
     for (const region of regions) {
+      await expectClearDrawText(page);
       const visible = await exposedCards(page);
       expect(visible).toHaveLength(78 - chosen.length);
       const target = /^\d+$/.test(region) ? visible.find((card) => card.anchor === region)! : visible.sort((a, b) => region === "back" ? a.cy - b.cy : region === "front" ? b.cy - a.cy : region === "left" ? a.cx - b.cx : b.cx - a.cx)[0];

@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CosmicQuestion } from "@/components/CosmicQuestion";
+import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
 import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, reverseStreamExtraTime, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
@@ -509,7 +510,7 @@ export function CosmicExperience() {
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
-  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
+  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-card-back-image": `url("${cosmicCardBackSrc}")`, "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} onEntryComplete={setStage} />
     <motion.div className="cosmic-summary-shade" aria-hidden="true" initial={false} animate={{ opacity: stage === "summary" ? 1 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.6 }} />
     {stage !== "travel" && <header className="cosmic-header">
@@ -528,9 +529,8 @@ export function CosmicExperience() {
       </motion.section>}
       {stage === "prepare" && <CosmicQuestion key="prepare" question={question} spread={spread} onQuestion={setQuestion} onSpread={setSpread} onBegin={begin} />}
       {stage === "draw" && <motion.section className="cosmic-draw-heading" key="draw" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-        <p className="cosmic-eyebrow">{spread.name} · {selected.length} / {spread.slots.length}</p>
         <h2>选择与你共鸣的牌</h2>
-        <p>{question}</p>
+        <p className="cosmic-draw-question">{question}</p>
         <ol className="cosmic-slots">{spread.slots.map((slot, index) => <li key={slot} className={index < selected.length ? "is-filled" : ""}><span>{index < selected.length ? <Check size={12} /> : index + 1}</span>{slot}</li>)}</ol>
         <p className="cosmic-next-slot" aria-live="polite">下一张 · {spread.slots[selected.length]}</p>
       </motion.section>}
