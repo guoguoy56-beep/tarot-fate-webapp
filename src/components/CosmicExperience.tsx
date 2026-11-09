@@ -515,19 +515,16 @@ export function CosmicExperience() {
     {stage !== "travel" && <header className="cosmic-header">
       <button className="cosmic-brand" onClick={home} aria-label="命运回廊，返回首页" disabled={stage === "reversing" || stage === "returning"} tabIndex={stage === "home" ? -1 : 0} aria-hidden={stage === "home"}>{stage === "prepare" ? <><ArrowLeft size={15} strokeWidth={1.2} /><span>返回首页</span></> : <><Orbit size={25} strokeWidth={1} /><span>命运回廊</span></>}</button>
       {stage === "home" && <nav aria-label="主导航">
-        <button onClick={() => openPanel("encyclopedia")}><BookOpen size={15} />塔罗百科</button>
-        <button onClick={() => openPanel("history")}><History size={15} />历史记录</button>
-        <span className="nav-divider" />
-        <button onClick={() => openPanel("login")}><UserRound size={15} />{visitor || "登录"}</button>
+        <button onClick={() => openPanel("encyclopedia")}><BookOpen size={16} strokeWidth={1.3} />塔罗百科</button>
+        <button onClick={() => openPanel("history")}><History size={16} strokeWidth={1.3} />历史记录</button>
+        <button onClick={() => openPanel("login")}><UserRound size={16} strokeWidth={1.3} />{visitor || "登录"}</button>
       </nav>}
     </header>}
     <AnimatePresence mode="wait">
       {stage === "home" && <motion.section className="cosmic-hero" key="home" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.45, delay: 0 } }} transition={{ duration: 1.1, delay: reducedMotion ? 0 : 0.7, ease: motionEase }}>
-        <p className="cosmic-eyebrow">循星而来 · 向心而行</p>
         <h1>命运回廊</h1>
-        <p className="cosmic-english">CORRIDOR OF FATE</p>
-        <p className="cosmic-hero-copy">让未说出口的问题，在星光中找到回响。</p>
-        <motion.button className="cosmic-primary hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Sparkles size={19} strokeWidth={1.2} />开始占卜<ArrowRight size={20} strokeWidth={1.2} /></motion.button>
+        <p className="cosmic-hero-copy"><span>写下此刻的困惑，选择你的塔罗牌，</span><span>开启一段自我探索的旅程。</span></p>
+        <motion.button className="cosmic-primary hero-start" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reducedMotion ? 0 : 1.8 }} disabled={!sceneReady} onClick={() => setStage("reversing")}><Sparkles size={16} strokeWidth={1.2} />开始占卜<ArrowRight size={18} strokeWidth={1.2} /></motion.button>
       </motion.section>}
       {stage === "prepare" && <CosmicQuestion key="prepare" question={question} spread={spread} onQuestion={setQuestion} onSpread={setSpread} onBegin={begin} />}
       {stage === "draw" && <motion.section className="cosmic-draw-heading" key="draw" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -553,7 +550,7 @@ export function CosmicExperience() {
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
       {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveDemo} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
-    {stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{stage === "home" ? "一段通往内心的旅程" : spread.name}</span></footer>}
+    {stage !== "home" && stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{spread.name}</span></footer>}
 
     <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>
