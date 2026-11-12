@@ -109,6 +109,58 @@ function expectArrivalSequence(frames: Awaited<ReturnType<typeof samplePresentat
   }
 }
 
+async function sampleReturningCard(page: Page, anchor: string) {
+  return page.evaluate(async (anchor) => {
+    const frames: Array<{ returning: boolean; turning: boolean; native: boolean; back: string; surfaces: number }> = [];
+    const start = performance.now();
+    let first: number | null = null;
+    await new Promise<void>((resolve) => {
+      const record = () => {
+        const card = document.querySelector<HTMLElement>(`[data-testid="orbit-card-${anchor}"]`)!;
+        if (card.classList.contains("is-face-up")) {
+          if (performance.now() - start > 8000) { resolve(); return; }
+          requestAnimationFrame(() => setTimeout(record, 0));
+          return;
+        }
+        first ??= performance.now();
+        const flipper = card.querySelector<HTMLElement>(".cosmic-card-flipper")!;
+        const flip = new DOMMatrixReadOnly(getComputedStyle(flipper).transform);
+        const space = document.querySelector<HTMLElement>('[data-testid="cosmic-space"]')!;
+        frames.push({ returning: !card.classList.contains("is-face-up"), turning: Math.abs(flip.m13) > 0.01,
+          native: card.classList.contains("is-native"), back: getComputedStyle(card.querySelector(".cosmic-card-back img")!).visibility,
+          surfaces: Number(space.dataset.cardBackCount) + document.querySelectorAll(".cosmic-card.is-native").length });
+        if (performance.now() - first >= 2300) resolve();
+        else requestAnimationFrame(() => setTimeout(record, 0));
+      };
+      requestAnimationFrame(() => setTimeout(record, 0));
+    });
+    return frames;
+  }, anchor);
+}
+
+test("returning cards keep one surface while the next card arrives", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.getByRole("button", { name: "开始占卜", exact: true }).click();
+  await page.getByLabel("你想问星空什么？").fill("如何为接下来的学习找到方向？");
+  await page.getByLabel("你想问星空什么？").press("Enter");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  for (const anchor of [20, 40, 60]) await page.getByTestId(`orbit-card-${anchor}`).press("Enter");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect(page.getByRole("button", { name: "下一张", exact: true })).toBeEnabled();
+  const previousCard = await page.getByTestId("orbit-card-20").elementHandle();
+  const [frames] = await Promise.all([
+    sampleReturningCard(page, "20"),
+    page.getByRole("button", { name: "下一张", exact: true }).click(),
+  ]);
+  const turning = frames.filter((frame) => frame.returning && frame.turning);
+  expect(turning.length).toBeGreaterThan(2);
+  expect(turning.every((frame) => frame.native && frame.back === "visible")).toBe(true);
+  expect(frames.every((frame) => frame.surfaces === 78)).toBe(true);
+  await expect(page.getByTestId("orbit-card-20")).not.toHaveClass(/is-native/);
+  expect(await previousCard!.evaluate((card) => card === document.querySelector('[data-testid="orbit-card-20"]'))).toBe(true);
+});
+
 test("cosmic ring preserves shuffled anchors through drag, reading and summary", async ({ page }) => {
   test.setTimeout(90_000);
   const errors: string[] = [];
@@ -211,13 +263,21 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
     expect(Math.min(...crossing.map((item) => item.rate))).toBeGreaterThan(12);
   }
   expect((await snapshot()).filter((card) => card.selected === "true")).toEqual(chosen);
-  await expect(page.locator(".cosmic-card.is-face-up img")).toBeVisible();
+  await expect(page.locator(".cosmic-card.is-face-up .cosmic-card-front img")).toBeVisible();
   await expect(page.getByText("示例解读", { exact: true })).toBeVisible();
   const previousAnchor = await page.locator('.cosmic-card.is-face-up').getAttribute("data-anchor");
-  const [nextArrival] = await Promise.all([
+  const previousCard = await page.getByTestId(`orbit-card-${previousAnchor}`).elementHandle();
+  const [nextArrival, returnFrames] = await Promise.all([
     samplePresentation(page, 2300, previousAnchor),
+    sampleReturningCard(page, previousAnchor!),
     page.getByRole("button", { name: "下一张", exact: true }).click(),
   ]);
+  const turningHome = returnFrames.filter((frame) => frame.returning && frame.turning);
+  expect(turningHome.length).toBeGreaterThan(2);
+  expect(turningHome.every((frame) => frame.native && frame.back === "visible")).toBe(true);
+  expect(returnFrames.every((frame) => frame.surfaces === 78)).toBe(true);
+  await expect(page.getByTestId(`orbit-card-${previousAnchor}`)).not.toHaveClass(/is-native/);
+  expect(await previousCard!.evaluate((card, anchor) => card === document.querySelector(`[data-testid="orbit-card-${anchor}"]`), previousAnchor)).toBe(true);
   await test.info().attach("next-arrival-frames", { body: JSON.stringify(nextArrival), contentType: "application/json" });
   const nextSettled = nextArrival.at(-1)!;
   expect(nextArrival.some((frame) => frame.time > 300 && frame.time < 850 && frame.flip > 5 && frame.flip < 175

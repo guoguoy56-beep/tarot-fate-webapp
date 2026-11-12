@@ -13,6 +13,7 @@ import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
+import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
 import { cameraTravelProgress, reverseCameraDurationMs } from "@/lib/cosmic-space-camera";
 import { CosmicRingEntry, ringEntryMotion } from "@/lib/cosmic-ring-entry";
 import "./cosmic-fonts.css";
@@ -54,6 +55,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
   const sceneStart = useRef<number | null>(null);
   const homeElapsed = useRef(0);
   const focusWeights = useRef<number[]>(Array(78).fill(0));
+  const nativeCards = useRef(new Set<number>());
   const readingPose = useRef<ReadingPoseState>({ yaw: 0, pitch: 0, ready: false, idleOrigin: 0, resume: null, hold: null });
   const spaceHost = useRef<HTMLDivElement>(null);
   const space = useRef<CosmicBackdrop | null>(null);
@@ -186,6 +188,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       const depthOrder = deck.map((_, index) => index).sort((a, b) => displayDepths[a] - displayDepths[b]);
       const zIndices = new Array<number>(deck.length);
       depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
+      const ringBackStage = stage === "draw" || stage === "reading" || stage === "summarizing" || stage === "summary";
+      const backProjections: CardBackProjection[] = [];
       deck.forEach((_, index) => {
         const element = cards.current[index];
         if (!element) return;
@@ -212,12 +216,22 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);
         const introEase = 1 - Math.pow(1 - intro, 3);
         element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(${900 - focusWeights.current[index] * 520}px) rotateY(${Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index])}deg) rotateZ(${tilt}deg) scale(${scale})`;
+        // Keep the same two-sided surface until its return and flip have both finished.
+        // Otherwise a projected back appears underneath a card that is still turning home.
+        const returning = nativeCards.current.has(index) && (focusWeights.current[index] > 0.001 || element.getAnimations({ subtree: true }).some((animation) =>
+          animation instanceof CSSTransition && animation.transitionProperty === "transform" && animation.playState !== "finished"));
+        const native = focused || returning;
+        if (native) nativeCards.current.add(index); else nativeCards.current.delete(index);
+        element.classList.toggle("is-native", native);
+        if (ringBackStage && !native) backProjections.push({ x, y, scale, yaw: Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index]),
+          tilt, perspective: 900 - focusWeights.current[index] * 520, order: zIndices[index] });
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
         // A partially transparent parent flattens its 3D children during the reveal.
         element.style.opacity = focused ? "1" : String((meshStream ? streamStage || stage === "travel" ? 0 : cam.ring : index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
       });
+      surface.dataset.cardBackRenderer = ringBackStage && meshStream && space.current?.drawBacks(backProjections, w, h) ? "mesh" : "native";
       if (poseNode) {
         const state = readingPose.current;
         state.ready = arrival >= 1;
@@ -364,9 +378,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
           tabIndex={stage === "draw" && chosen < 0 && !paused ? 0 : -1}
           onPointerDown={(event) => startCardDrag(event, index)} onPointerMove={moveCardDrag} onPointerUp={endCardDrag} onPointerCancel={endCardDrag} onLostPointerCapture={endCardDrag}
           onClick={() => { if (!pointer.current?.dragging) onSelect(index); }}>
-          {chosen >= 0 && <span className="cosmic-card-marker">{chosen + 1}</span>}
+          {chosen >= 0 && <span className="cosmic-card-marker"><span>{chosen + 1}</span></span>}
           <span className="cosmic-card-pose"><span className="cosmic-card-flipper">
-            <span className="cosmic-card-back" />
+            <span className="cosmic-card-back"><Image src={cosmicCardBackSrc} alt="" width={962} height={1635} unoptimized loading="eager" draggable={false} /></span>
             <span className="cosmic-card-front">
               {chosen >= 0 && <Image src={card.image} alt={`${card.nameCn} · ${orientation === "upright" ? "正位" : "逆位"}`} width={100} height={170} unoptimized draggable={false} style={{ transform: orientation === "reversed" ? "rotate(180deg)" : undefined }} />}
             </span>
@@ -510,7 +524,7 @@ export function CosmicExperience() {
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
-  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-card-back-image": `url("${cosmicCardBackSrc}")`, "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
+  return <main className={`cosmic-experience stage-${stage}`} data-testid="cosmic-experience" data-stage={stage} style={{ "--cosmic-reading-arrival": `${readingArrivalMs}ms`, "--cosmic-reading-flip-delay": `${readingPresentationMotion.flipDelayMs}ms`, "--cosmic-reading-flip-duration": `${readingArrivalMs - readingPresentationMotion.flipDelayMs}ms` } as CSSProperties}>
     <CosmicScene stage={stage} deck={deck} selected={selected} current={current} onSelect={select} paused={panel !== null} onReady={setSceneReady} onEntryComplete={setStage} />
     <motion.div className="cosmic-summary-shade" aria-hidden="true" initial={false} animate={{ opacity: stage === "summary" ? 1 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.6 }} />
     {stage !== "travel" && <header className="cosmic-header">
@@ -536,7 +550,7 @@ export function CosmicExperience() {
         <p className="cosmic-next-slot" aria-live="polite">下一张 · {spread.slots[selected.length]}</p>
       </motion.section>}
       {stage === "reading" && card && active && <motion.section className="cosmic-reading" key="reading" initial={reducedMotion ? false : { x: "100%" }} animate={{ x: 0 }} exit={{ x: reducedMotion ? 0 : "100%", transition: { duration: reducedMotion ? 0 : 0.35, delay: 0 } }} transition={{ duration: reducedMotion ? 0 : 1.1, delay: reducedMotion ? 0 : 0.35, ease: motionEase }} aria-label="逐牌解读">
-        <AnimatePresence mode="wait"><motion.div className="cosmic-reading-copy" key={active.cardId} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1, transition: { duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.25 } }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.18 } }}>
+        <AnimatePresence mode="wait"><motion.div className="cosmic-reading-copy" role="region" aria-label="单牌解读正文" tabIndex={0} key={active.cardId} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1, transition: { duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.25 } }} exit={{ opacity: 0, transition: { duration: reducedMotion ? 0 : 0.18 } }}>
           <p className="cosmic-eyebrow">{spread.slots[current]} · 第 {current + 1} / {selected.length} 张</p>
           <h2>{card.nameCn}<span>· {active.orientation === "upright" ? "正位" : "逆位"}</span></h2>
           <p className="cosmic-card-english">{card.nameEn}</p>

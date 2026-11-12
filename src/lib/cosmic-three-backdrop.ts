@@ -5,9 +5,12 @@ import { CosmicStreamMeshes } from "@/lib/cosmic-stream-meshes";
 import type { CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
 
+import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
+
 export interface CosmicBackdrop {
   ring: CosmicRingSpace;
   setDeck(deck: readonly CosmicDeckEntry[]): void;
+  drawBacks(poses: readonly CardBackProjection[], width: number, height: number): boolean;
   render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number, entry?: { queue: CosmicRingEntry; elapsed: number }): void;
   dispose(): void;
 }
@@ -29,7 +32,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   if (!context) {
     host.dataset.renderer = "fallback";
     host.dataset.streamReady = "true";
-    return { ring, setDeck: () => {}, render: (blend, width, height) => updateCamera({ ...blend, reverse: 0, dive: undefined }, width, height), dispose: () => ring.dispose() };
+    return { ring, setDeck: () => {}, drawBacks: () => false, render: (blend, width, height) => updateCamera({ ...blend, reverse: 0, dive: undefined }, width, height), dispose: () => ring.dispose() };
   }
   const renderer = new WebGLRenderer({ canvas, context, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -88,6 +91,14 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   return {
     ring,
     setDeck: (deck) => stream.setDeck(deck),
+    drawBacks(poses, width, height) {
+      if (disposed || lost || !stream.available || host.dataset.renderer !== "webgl") return false;
+      renderer.render(scene, camera);
+      stream.drawBacks(renderer, camera, poses, width, height);
+      host.dataset.cardBackSource = stream.cardBackSource;
+      host.dataset.cardBackCount = String(poses.length);
+      return true;
+    },
     render(blend, nextWidth, nextHeight, streamTime = 0, entry) {
       if (disposed || !nextWidth || !nextHeight) return;
       const fallback = lost || backgroundFailed || (stream.ready && !stream.available);

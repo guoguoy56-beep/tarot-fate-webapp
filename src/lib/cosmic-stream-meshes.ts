@@ -1,7 +1,8 @@
-import { BufferGeometry, Group, MeshBasicMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { BufferGeometry, Group, Matrix4, Mesh, MeshBasicMaterial, Scene, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { cardBackClipMatrix, type CardBackProjection } from "@/lib/cosmic-card-back-projection";
 import { createCardEdgeGeometry, createCardFaceGeometry, createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
-import type { PerspectiveCamera, Scene } from "three";
+import type { PerspectiveCamera, WebGLRenderer } from "three";
 import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
 
 export class CosmicStreamMeshes {
@@ -20,6 +21,33 @@ export class CosmicStreamMeshes {
   private readonly point = new Vector3();
   private readonly direction = new Vector3();
   private readonly normal = new Vector3();
+  private readonly backScene = new Scene();
+  private readonly projectedBacks: Mesh[] = [];
+
+  drawBacks(renderer: WebGLRenderer, camera: PerspectiveCamera, poses: readonly CardBackProjection[], width: number, height: number) {
+    // Use the actual home material and texture, rather than a separately rasterized DOM image.
+    const worldFromClip = new Matrix4().multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse);
+    poses.forEach((pose, index) => {
+      let mesh = this.projectedBacks[index];
+      if (!mesh) {
+        mesh = new Mesh(this.geometry, this.back);
+        mesh.matrixAutoUpdate = false; mesh.frustumCulled = false;
+        this.projectedBacks[index] = mesh; this.backScene.add(mesh);
+      }
+      mesh.visible = true;
+      mesh.matrix.copy(worldFromClip).multiply(cardBackClipMatrix(pose, width, height));
+      mesh.matrixWorld.copy(mesh.matrix);
+      mesh.matrixWorldNeedsUpdate = false;
+      mesh.renderOrder = pose.order;
+    });
+    for (let index = poses.length; index < this.projectedBacks.length; index++) {
+      this.projectedBacks[index].visible = false;
+    }
+    const depthTest = this.back.depthTest, depthWrite = this.back.depthWrite, transparent = this.back.transparent, opacity = this.back.opacity, autoClear = renderer.autoClear;
+    this.back.depthTest = false; this.back.depthWrite = false; this.back.transparent = false; this.back.opacity = 1; renderer.autoClear = false;
+    renderer.render(this.backScene, camera);
+    this.back.depthTest = depthTest; this.back.depthWrite = depthWrite; this.back.transparent = transparent; this.back.opacity = opacity; renderer.autoClear = autoClear;
+  }
 
   constructor(scene: Scene, private readonly anisotropy: number, private readonly changed: () => void) {
     this.group.name = "continuous-tarot-stream";
@@ -39,6 +67,7 @@ export class CosmicStreamMeshes {
 
   get ready() { return this.cards.length === 78 && this.pending === 0; }
   get available() { return this.ready && !this.failed; }
+  get cardBackSource(): string { return (this.back.map?.image as HTMLImageElement | undefined)?.currentSrc ?? ""; }
 
   setDeck(deck: readonly CosmicDeckEntry[]) {
     deck.forEach(({ card, orientation }, index) => {
@@ -85,6 +114,7 @@ export class CosmicStreamMeshes {
   dispose() {
     this.disposed = true;
     this.group.removeFromParent(); this.group.clear();
+    this.backScene.clear();
     this.geometry.dispose(); this.edgeGeometry.dispose(); this.back.dispose(); this.edge.dispose();
     this.faces.forEach((material) => material.dispose()); this.textures.forEach((texture) => texture.dispose());
   }

@@ -11,3 +11,7 @@ Noto Serif SC and Noto Sans SC WOFF2 subsets, retrieved on 2026-11-04 from the [
 - In the selected B direction, Serif is used for headings and prose; Sans is used for controls and compact labels. CSS aliases are scoped to the cosmic UI; the legacy UI retains its original font stacks.
 
 The original font binaries have not been renamed internally or modified. CSS aliases are not new font software names.
+
+## Selected-card numerals (2026-11-12)
+
+`CinzelDecorative-Regular.ttf` is the unmodified 60,408-byte upstream regular face from [Google Fonts](https://github.com/google/fonts/blob/main/ofl/cinzeldecorative/CinzelDecorative-Regular.ttf). Its SIL Open Font License and reserved name are retained in `CinzelDecorative-OFL.txt` (one upstream trailing space removed). The CSS alias `Fate Numerals` applies only to U+0030–0039 in selected-card markers; the original font name and binary remain unchanged. The engraved serif numerals retain ordinary 1–5 numbering and load locally without a runtime font-service request.
