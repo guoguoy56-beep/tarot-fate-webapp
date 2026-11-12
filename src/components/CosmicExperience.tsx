@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CosmicQuestion } from "@/components/CosmicQuestion";
 import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
@@ -14,6 +14,7 @@ import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
 import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
+import { cardMarkerPose, cardMarkerNumerals } from "@/lib/cosmic-card-marker";
 import { cameraTravelProgress, reverseCameraDurationMs } from "@/lib/cosmic-space-camera";
 import { CosmicRingEntry, ringEntryMotion } from "@/lib/cosmic-ring-entry";
 import "./cosmic-fonts.css";
@@ -43,6 +44,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
   const root = useRef<HTMLDivElement>(null);
   const background = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLButtonElement | null)[]>([]);
+  const markers = useRef<(SVGSVGElement | null)[]>([]);
   const rotation = useRef(-0.4);
   const ringProjection = useRef<RingProjection | null>(null);
   const camera = useRef<{ ring: number; reading: number; summary: number; travel: number; reverse: number; dive?: number }>({ ring: 0, reading: 0, summary: 0, travel: 0, reverse: 0 });
@@ -227,6 +229,17 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
           tilt, perspective: 900 - focusWeights.current[index] * 520, order: zIndices[index] });
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
+        const marker = markers.current[index];
+        if (marker) {
+          const badge = cardMarkerPose({ x, y, scale, tilt, yaw: Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index]), perspective: 900 - focusWeights.current[index] * 520 });
+          // Lay out at the final pixel size, outside the card's scaled compositor layer.
+          marker.style.left = `${badge.x - badge.size / 2}px`;
+          marker.style.top = `${badge.y - badge.size / 2}px`;
+          marker.style.width = `${badge.size}px`;
+          marker.style.height = `${badge.size}px`;
+          marker.style.zIndex = element.style.zIndex;
+          marker.style.visibility = "visible";
+        }
         // A partially transparent parent flattens its 3D children during the reveal.
         element.style.opacity = focused ? "1" : String((meshStream ? streamStage || stage === "travel" ? 0 : cam.ring : index < homeCardStream.count ? pose.opacity * (1 - cam.ring) + cam.ring : cam.ring) * introEase);
         element.style.pointerEvents = (stage === "draw" || focused) && !paused ? "auto" : "none";
@@ -370,7 +383,7 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       {deck.map(({ card, orientation }, index) => {
         const chosen = selected.findIndex((item) => item.anchor === index);
         const faceUp = stage === "reading" && active?.anchor === index;
-        return <button key={index} ref={(node) => { cards.current[index] = node; }} type="button"
+        return <Fragment key={index}><button ref={(node) => { cards.current[index] = node; }} type="button"
           className={`cosmic-card ${chosen >= 0 ? "is-selected" : ""} ${faceUp ? "is-face-up" : ""}`}
           data-testid={`orbit-card-${index}`} data-anchor={index} data-card-id={card.id} data-orientation={orientation}
           data-selected={chosen >= 0} aria-label={faceUp ? `${card.nameCn}牌面，按住可转动` : `选择第 ${index + 1} 张牌${chosen >= 0 ? `，已选为第 ${chosen + 1} 张` : ""}`}
@@ -378,14 +391,17 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
           tabIndex={stage === "draw" && chosen < 0 && !paused ? 0 : -1}
           onPointerDown={(event) => startCardDrag(event, index)} onPointerMove={moveCardDrag} onPointerUp={endCardDrag} onPointerCancel={endCardDrag} onLostPointerCapture={endCardDrag}
           onClick={() => { if (!pointer.current?.dragging) onSelect(index); }}>
-          {chosen >= 0 && <span className="cosmic-card-marker"><span>{chosen + 1}</span></span>}
           <span className="cosmic-card-pose"><span className="cosmic-card-flipper">
             <span className="cosmic-card-back"><Image src={cosmicCardBackSrc} alt="" width={962} height={1635} unoptimized loading="eager" draggable={false} /></span>
             <span className="cosmic-card-front">
               {chosen >= 0 && <Image src={card.image} alt={`${card.nameCn} · ${orientation === "upright" ? "正位" : "逆位"}`} width={100} height={170} unoptimized draggable={false} style={{ transform: orientation === "reversed" ? "rotate(180deg)" : undefined }} />}
             </span>
           </span></span>
-        </button>;
+        </button>
+        {chosen >= 0 && <svg ref={(node) => { markers.current[index] = node; }} className="cosmic-card-marker" data-marker-for={index} data-number={chosen + 1} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <circle cx="10" cy="10" r="9.4" />
+          <path d={cardMarkerNumerals[chosen]} />
+        </svg>}</Fragment>;
       })}
     </div>
   </div>;

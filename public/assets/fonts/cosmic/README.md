@@ -14,4 +14,6 @@ The original font binaries have not been renamed internally or modified. CSS ali
 
 ## Selected-card numerals (2026-11-12)
 
-`CinzelDecorative-Regular.ttf` is the unmodified 60,408-byte upstream regular face from [Google Fonts](https://github.com/google/fonts/blob/main/ofl/cinzeldecorative/CinzelDecorative-Regular.ttf). Its SIL Open Font License and reserved name are retained in `CinzelDecorative-OFL.txt` (one upstream trailing space removed). The CSS alias `Fate Numerals` applies only to U+0030–0039 in selected-card markers; the original font name and binary remain unchanged. The engraved serif numerals retain ordinary 1–5 numbering and load locally without a runtime font-service request.
+`CinzelDecorative-Regular.ttf` is the unmodified 60,408-byte upstream regular face from [Google Fonts](https://github.com/google/fonts/blob/main/ofl/cinzeldecorative/CinzelDecorative-Regular.ttf). Its SIL Open Font License and reserved name are retained in `CinzelDecorative-OFL.txt` (one upstream trailing space removed). The original font name and binary remain unchanged.
+
+The 1–5 outlines are now embedded as SVG paths in `src/lib/cosmic-card-marker.ts`, with the source font hash and attribution. Each outline is optically centered in a 20×20 viewBox. Markers render as siblings of the transformed cards, at their final screen-pixel dimensions; they do not magnify a small cached card layer. The former `Fate Numerals` runtime font face was removed; marker rendering needs no font or image request. The bundled font remains the licensed source for those outlines.

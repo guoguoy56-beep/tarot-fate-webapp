@@ -1,13 +1,5 @@
 /* Google Fonts Noto SC, unmodified WOFF2 subsets; see SOURCES.json and OFL licenses. */
 @font-face {
-  font-family: "Fate Numerals";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(/assets/fonts/cosmic/CinzelDecorative-Regular.ttf) format('truetype');
-  unicode-range: U+0030-0039;
-}
-@font-face {
   font-family: "Fate Sans";
   font-style: normal;
   font-weight: 400 600;

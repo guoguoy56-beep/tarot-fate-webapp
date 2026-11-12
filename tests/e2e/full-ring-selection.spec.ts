@@ -109,7 +109,9 @@ for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1480, h
       await page.mouse.click(target.x, target.y);
       chosen.push(target.anchor);
       await expect(page.getByTestId(`orbit-card-${target.anchor}`)).toHaveAttribute("data-selected", "true");
-      await expect(page.getByTestId(`orbit-card-${target.anchor}`).locator(".cosmic-card-marker")).toHaveText(String(chosen.length));
+      const marker = page.locator(`svg.cosmic-card-marker[data-marker-for="${target.anchor}"]`);
+      await expect(marker).toHaveAttribute("data-number", String(chosen.length));
+      await expect(marker.locator("path")).toHaveAttribute("d", /\S+/);
       await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(chosen.length);
       expect(await facts()).toEqual(before);
     }
