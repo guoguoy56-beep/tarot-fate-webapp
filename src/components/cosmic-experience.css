@@ -69,8 +69,9 @@
 .cosmic-card-back, .cosmic-card-front { position: absolute; inset: 0; display: block; border: 1px solid #d4b270a8; border-radius: 5px; backface-visibility: hidden; box-shadow: 0 6px 18px #0009; overflow: hidden; }
 .cosmic-card-back { background: #070b16; border-color: transparent; box-shadow: none; }
 .cosmic-card.is-face-up .cosmic-card-back { box-shadow: 0 6px 18px #0009; }
-.cosmic-scene[data-card-back-renderer="mesh"] .cosmic-card:not(.is-native):not(.is-face-up) .cosmic-card-back { background: transparent; }
-.cosmic-scene[data-card-back-renderer="mesh"] .cosmic-card:not(.is-native):not(.is-face-up) .cosmic-card-back img { visibility: hidden; }
+.cosmic-scene[data-card-back-renderer="mesh"] .cosmic-card:not(.is-face-up) .cosmic-card-back,
+.cosmic-scene[data-card-back-renderer="mesh"] .cosmic-card:not(.is-face-up) .cosmic-card-front { background: transparent; border-color: transparent; box-shadow: none; }
+.cosmic-scene[data-card-back-renderer="mesh"] .cosmic-card:not(.is-face-up) img { visibility: hidden; }
 .cosmic-card-back img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .cosmic-card-front { transform: rotateY(180deg); background: #e8d7b4; }
 .cosmic-card-front img { width: 100%; height: 100%; object-fit: fill; }

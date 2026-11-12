@@ -3,14 +3,14 @@ import { cosmicPanoramaFrame, cosmicSpaceCamera, type SpaceCameraBlend } from "@
 import { CosmicRingSpace } from "@/lib/cosmic-ring-space";
 import { CosmicStreamMeshes } from "@/lib/cosmic-stream-meshes";
 import type { CosmicDeckEntry } from "@/lib/cosmic-stream-space";
-import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
+import { ringEntryMotion, type CosmicRingEntry } from "@/lib/cosmic-ring-entry";
 
-import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
+import type { CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 
 export interface CosmicBackdrop {
   ring: CosmicRingSpace;
   setDeck(deck: readonly CosmicDeckEntry[]): void;
-  drawBacks(poses: readonly CardBackProjection[], width: number, height: number): boolean;
+  drawBacks(poses: readonly CardSurfaceProjection[], width: number, height: number): boolean;
   render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number, entry?: { queue: CosmicRingEntry; elapsed: number }): void;
   dispose(): void;
 }
@@ -45,6 +45,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   panorama.position.z = -36;
   scene.add(panorama);
   let disposed = false, ready = false, backgroundFailed = false, lost = false, dirty = true, lastKey = "", frames = 0;
+  let baseDrawn = false;
   const stream = new CosmicStreamMeshes(scene, Math.min(8, renderer.capabilities.getMaxAnisotropy()), () => { dirty = true; });
   let width = 0, height = 0;
   const texture = new TextureLoader().load("/assets/cosmic/cosmic-panorama-v1.png", (loaded) => {
@@ -93,13 +94,16 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
     setDeck: (deck) => stream.setDeck(deck),
     drawBacks(poses, width, height) {
       if (disposed || lost || !stream.available || host.dataset.renderer !== "webgl") return false;
-      renderer.render(scene, camera);
+      if (!baseDrawn) renderer.render(scene, camera);
+      baseDrawn = false;
       stream.drawBacks(renderer, camera, poses, width, height);
       host.dataset.cardBackSource = stream.cardBackSource;
       host.dataset.cardBackCount = String(poses.length);
+      host.dataset.returningCards = poses.filter((pose) => pose.transform).map((pose) => `${pose.anchor}:${pose.order}`).join(",");
       return true;
     },
     render(blend, nextWidth, nextHeight, streamTime = 0, entry) {
+      baseDrawn = false;
       if (disposed || !nextWidth || !nextHeight) return;
       const fallback = lost || backgroundFailed || (stream.ready && !stream.available);
       const pose = updateCamera(fallback ? { ...blend, reverse: 0, dive: undefined } : blend, nextWidth, nextHeight);
@@ -117,6 +121,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       }
       const visible = stream.update(streamTime, nextWidth, nextHeight, entry ? 1 : Math.max(0, 1 - blend.ring), camera, entry);
       renderer.render(scene, camera);
+      baseDrawn = true;
       host.dataset.renderer = "webgl";
       host.dataset.cameraX = pose.position[0].toFixed(5);
       host.dataset.cameraY = pose.position[1].toFixed(5);
@@ -127,6 +132,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       host.dataset.visibleFronts = String(visible.fronts); host.dataset.visibleBacks = String(visible.backs);
       host.dataset.streamTime = streamTime.toFixed(2);
       host.dataset.ringEntered = String(entry?.queue.state(entry.elapsed).entered ?? (blend.ring === 1 ? 78 : 0));
+      host.dataset.ringHandoff = String(entry ? Math.max(0, Math.min(1, (entry.elapsed - ringEntryMotion.arrivalMs) / (ringEntryMotion.durationMs - ringEntryMotion.arrivalMs))) : 1);
       host.dataset.cameraTarget = pose.target.map((value) => value.toFixed(5)).join(",");
       host.dataset.frames = String(++frames);
       lastKey = key;

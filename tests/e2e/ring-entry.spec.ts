@@ -15,7 +15,7 @@ for (const width of [1920, 1280]) {
     const facts = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => [card.getAttribute("data-anchor"), card.getAttribute("data-card-id"), card.getAttribute("data-orientation")]));
     const before = await facts(), canvas = await space.locator("canvas").elementHandle();
     const framesPromise = scene.evaluate(async (element, durationMs) => {
-      const frames: Array<{ stage: string; time: number; entered: number; rotation: number; x: number; y: number; selectable: number }> = [];
+      const frames: Array<{ stage: string; time: number; entered: number; rotation: number; x: number; y: number; selectable: number; handoff: number; surfaces: number }> = [];
       const start = performance.now();
       await new Promise<void>((resolve) => {
         const frame = () => {
@@ -23,7 +23,7 @@ for (const width of [1920, 1280]) {
           const sceneData = (element as HTMLElement).dataset;
           const stage = document.querySelector("main")!.dataset.stage!;
           frames.push({ stage, time: Number(sceneData.rotationTime), entered: Number(data.ringEntered), rotation: Number(sceneData.rotation), x: Number(data.cameraX), y: Number(data.cameraY),
-            selectable: element.querySelectorAll('.cosmic-card:not([disabled])').length });
+            selectable: element.querySelectorAll('.cosmic-card:not([disabled])').length, handoff: Number(data.ringHandoff), surfaces: Number(data.cardBackCount) });
           if (stage === "draw" || performance.now() - start > durationMs + 2000) resolve(); else requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
@@ -49,6 +49,7 @@ for (const width of [1920, 1280]) {
     await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
     const frames = await framesPromise, travel = frames.filter((frame) => frame.stage === "travel");
     expect(travel.length).toBeGreaterThan(40);
+    expect(travel.some((frame) => frame.handoff > 0 && frame.handoff < 1 && frame.surfaces === 78)).toBe(true);
     expect(travel.at(-1)!.time - travel[0].time).toBeGreaterThan(ringEntryMotion.durationMs - 200);
     expect(travel.at(-1)!.time - travel[0].time).toBeLessThan(ringEntryMotion.durationMs + 500);
     expect(travel.some((frame) => frame.entered > 0 && frame.entered < 20)).toBe(true);

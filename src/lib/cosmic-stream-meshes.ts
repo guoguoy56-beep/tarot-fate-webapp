@@ -1,9 +1,11 @@
-import { BufferGeometry, Group, Matrix4, Mesh, MeshBasicMaterial, Scene, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
-import { cardBackClipMatrix, type CardBackProjection } from "@/lib/cosmic-card-back-projection";
+import { BufferGeometry, DoubleSide, Group, Matrix4, Mesh, MeshBasicMaterial, PlaneGeometry, Scene, ShaderMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { cardSurfaceClipMatrix, cardSurfaceShowsBack, type CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 import { createCardEdgeGeometry, createCardFaceGeometry, createDoubleSidedCard, spatialStreamPose, type CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import type { PerspectiveCamera, WebGLRenderer } from "three";
 import type { CosmicRingEntry } from "@/lib/cosmic-ring-entry";
+import { ringEntryMotion } from "@/lib/cosmic-ring-entry";
+import { ringHandoffMatrix } from "@/lib/cosmic-ring-handoff";
 
 export class CosmicStreamMeshes {
   readonly group = new Group();
@@ -22,31 +24,64 @@ export class CosmicStreamMeshes {
   private readonly direction = new Vector3();
   private readonly normal = new Vector3();
   private readonly backScene = new Scene();
-  private readonly projectedBacks: Mesh[] = [];
+  private readonly projectedCards = new Map<number, Group>();
+  private handoff: number | null = null;
+  private readonly glowGeometry = new PlaneGeometry(1.65, 116 / 68 + 0.65);
+  private readonly glowMaterial = new ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false, toneMapped: false, side: DoubleSide,
+    vertexShader: `varying vec2 point; void main() { point = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      varying vec2 point;
+      void main() {
+        vec2 q = abs(point) - vec2(0.425, 116.0 / 136.0 - 0.075);
+        float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.075;
+        float edge = 1.0 - smoothstep(0.015, 0.03, abs(d));
+        float halo = exp(-max(d, 0.0) * 16.0) * 0.32;
+        gl_FragColor = vec4(1.0, 0.72, 0.3, max(edge, halo));
+        #include <colorspace_fragment>
+      }`,
+  });
 
-  drawBacks(renderer: WebGLRenderer, camera: PerspectiveCamera, poses: readonly CardBackProjection[], width: number, height: number) {
-    // Use the actual home material and texture, rather than a separately rasterized DOM image.
+  drawBacks(renderer: WebGLRenderer, camera: PerspectiveCamera, poses: readonly CardSurfaceProjection[], width: number, height: number) {
+    // Returning faces and ring backs share one painter order, including their highlights.
     const worldFromClip = new Matrix4().multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse);
-    poses.forEach((pose, index) => {
-      let mesh = this.projectedBacks[index];
-      if (!mesh) {
-        mesh = new Mesh(this.geometry, this.back);
-        mesh.matrixAutoUpdate = false; mesh.frustumCulled = false;
-        this.projectedBacks[index] = mesh; this.backScene.add(mesh);
+    this.projectedCards.forEach((node) => { node.visible = false; });
+    poses.forEach((pose) => {
+      let node = this.projectedCards.get(pose.anchor);
+      const source = this.cards[pose.anchor];
+      const material = (source.children[2] as Mesh<BufferGeometry, MeshBasicMaterial>).material;
+      if (!node) {
+        node = new Group(); node.matrixAutoUpdate = false;
+        node.add(new Mesh(this.glowGeometry, this.glowMaterial), new Mesh(this.geometry, this.back), new Mesh(this.geometry, material));
+        node.children.forEach((mesh, index) => { mesh.frustumCulled = false; mesh.renderOrder = index; });
+        this.projectedCards.set(pose.anchor, node); this.backScene.add(node);
       }
-      mesh.visible = true;
-      mesh.matrix.copy(worldFromClip).multiply(cardBackClipMatrix(pose, width, height));
-      mesh.matrixWorld.copy(mesh.matrix);
-      mesh.matrixWorldNeedsUpdate = false;
-      mesh.renderOrder = pose.order;
+      node.visible = true;
+      const clip = cardSurfaceClipMatrix(pose, width, height);
+      if (this.handoff !== null) {
+        node.matrix.copy(ringHandoffMatrix(source.children[1].matrixWorld, pose, camera, width, height, this.handoff));
+      } else node.matrix.copy(worldFromClip).multiply(clip);
+      node.renderOrder = pose.order;
+      node.userData = { ...source.userData, order: pose.order, returning: Boolean(pose.transform) };
+      node.children[0].visible = Boolean(pose.glow);
+      const backFacing = !pose.transform || cardSurfaceShowsBack(clip);
+      node.children[1].visible = backFacing;
+      const front = node.children[2] as Mesh<BufferGeometry, MeshBasicMaterial>;
+      front.visible = !backFacing; front.material = material;
+      front.rotation.set(0, Math.PI, source.userData.orientation === "reversed" ? Math.PI : 0);
+      // Native front images sit inside the 1px border of the 68x116 CSS card.
+      front.scale.set(66 / 68, 114 / 116, 1);
     });
-    for (let index = poses.length; index < this.projectedBacks.length; index++) {
-      this.projectedBacks[index].visible = false;
+    const materials = [this.back, ...this.faces.values()];
+    const states = materials.map((material) => ({ material, depthTest: material.depthTest, depthWrite: material.depthWrite, transparent: material.transparent, opacity: material.opacity, side: material.side }));
+    const autoClear = renderer.autoClear;
+    materials.forEach((material) => { material.depthTest = false; material.depthWrite = false; material.transparent = true; material.opacity = 1; material.side = DoubleSide; });
+    renderer.autoClear = false;
+    try { renderer.render(this.backScene, camera); }
+    finally {
+      states.forEach(({ material, ...state }) => Object.assign(material, state));
+      renderer.autoClear = autoClear;
     }
-    const depthTest = this.back.depthTest, depthWrite = this.back.depthWrite, transparent = this.back.transparent, opacity = this.back.opacity, autoClear = renderer.autoClear;
-    this.back.depthTest = false; this.back.depthWrite = false; this.back.transparent = false; this.back.opacity = 1; renderer.autoClear = false;
-    renderer.render(this.backScene, camera);
-    this.back.depthTest = depthTest; this.back.depthWrite = depthWrite; this.back.transparent = transparent; this.back.opacity = opacity; renderer.autoClear = autoClear;
   }
 
   constructor(scene: Scene, private readonly anisotropy: number, private readonly changed: () => void) {
@@ -88,8 +123,11 @@ export class CosmicStreamMeshes {
   }
 
   update(elapsed: number, width: number, height: number, opacity: number, camera: PerspectiveCamera, entry?: { queue: CosmicRingEntry; elapsed: number }) {
-    this.group.visible = this.available && opacity > 0.001;
-    if (!this.group.visible) return { fronts: 0, backs: 0 };
+    this.handoff = entry && entry.elapsed >= ringEntryMotion.arrivalMs
+      ? Math.min(1, (entry.elapsed - ringEntryMotion.arrivalMs) / (ringEntryMotion.durationMs - ringEntryMotion.arrivalMs)) : null;
+    const visible = this.available && opacity > 0.001;
+    this.group.visible = visible && this.handoff === null;
+    if (!visible) return { fronts: 0, backs: 0 };
     for (const material of [this.back, this.edge, ...this.faces.values()]) {
       if (material.transparent !== (opacity < 0.999)) { material.transparent = opacity < 0.999; material.needsUpdate = true; }
       material.opacity = opacity;
@@ -115,6 +153,7 @@ export class CosmicStreamMeshes {
     this.disposed = true;
     this.group.removeFromParent(); this.group.clear();
     this.backScene.clear();
+    this.projectedCards.clear(); this.glowGeometry.dispose(); this.glowMaterial.dispose();
     this.geometry.dispose(); this.edgeGeometry.dispose(); this.back.dispose(); this.edge.dispose();
     this.faces.forEach((material) => material.dispose()); this.textures.forEach((texture) => texture.dispose());
   }

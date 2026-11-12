@@ -111,7 +111,7 @@ function expectArrivalSequence(frames: Awaited<ReturnType<typeof samplePresentat
 
 async function sampleReturningCard(page: Page, anchor: string) {
   return page.evaluate(async (anchor) => {
-    const frames: Array<{ returning: boolean; turning: boolean; native: boolean; back: string; surfaces: number }> = [];
+    const frames: Array<{ returning: boolean; turning: boolean; projected: boolean; back: string; surfaces: number; sharedOrder: boolean }> = [];
     const start = performance.now();
     let first: number | null = null;
     await new Promise<void>((resolve) => {
@@ -127,8 +127,9 @@ async function sampleReturningCard(page: Page, anchor: string) {
         const flip = new DOMMatrixReadOnly(getComputedStyle(flipper).transform);
         const space = document.querySelector<HTMLElement>('[data-testid="cosmic-space"]')!;
         frames.push({ returning: !card.classList.contains("is-face-up"), turning: Math.abs(flip.m13) > 0.01,
-          native: card.classList.contains("is-native"), back: getComputedStyle(card.querySelector(".cosmic-card-back img")!).visibility,
-          surfaces: Number(space.dataset.cardBackCount) + document.querySelectorAll(".cosmic-card.is-native").length });
+          projected: card.classList.contains("is-projected-return"), back: getComputedStyle(card.querySelector(".cosmic-card-back img")!).visibility,
+          sharedOrder: space.dataset.returningCards?.split(",").includes(`${anchor}:${card.style.zIndex}`) ?? false,
+          surfaces: Number(space.dataset.cardBackCount) + document.querySelectorAll(".cosmic-card.is-face-up").length });
         if (performance.now() - first >= 2300) resolve();
         else requestAnimationFrame(() => setTimeout(record, 0));
       };
@@ -139,14 +140,13 @@ async function sampleReturningCard(page: Page, anchor: string) {
 }
 
 test("returning cards keep one surface while the next card arrives", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   await page.getByRole("button", { name: "开始占卜", exact: true }).click();
   await page.getByLabel("你想问星空什么？").fill("如何为接下来的学习找到方向？");
   await page.getByLabel("你想问星空什么？").press("Enter");
-  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+  await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw", { timeout: ringEntryMotion.durationMs + 2000 });
   for (const anchor of [20, 40, 60]) await page.getByTestId(`orbit-card-${anchor}`).press("Enter");
-  await page.emulateMedia({ reducedMotion: "no-preference" });
   await expect(page.getByRole("button", { name: "下一张", exact: true })).toBeEnabled();
   const previousCard = await page.getByTestId("orbit-card-20").elementHandle();
   const [frames] = await Promise.all([
@@ -155,7 +155,7 @@ test("returning cards keep one surface while the next card arrives", async ({ pa
   ]);
   const turning = frames.filter((frame) => frame.returning && frame.turning);
   expect(turning.length).toBeGreaterThan(2);
-  expect(turning.every((frame) => frame.native && frame.back === "visible")).toBe(true);
+  expect(turning.every((frame) => frame.projected && frame.sharedOrder && frame.back === "hidden")).toBe(true);
   expect(frames.every((frame) => frame.surfaces === 78)).toBe(true);
   await expect(page.getByTestId("orbit-card-20")).not.toHaveClass(/is-native/);
   expect(await previousCard!.evaluate((card) => card === document.querySelector('[data-testid="orbit-card-20"]'))).toBe(true);
@@ -274,7 +274,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   ]);
   const turningHome = returnFrames.filter((frame) => frame.returning && frame.turning);
   expect(turningHome.length).toBeGreaterThan(2);
-  expect(turningHome.every((frame) => frame.native && frame.back === "visible")).toBe(true);
+  expect(turningHome.every((frame) => frame.projected && frame.sharedOrder && frame.back === "hidden")).toBe(true);
   expect(returnFrames.every((frame) => frame.surfaces === 78)).toBe(true);
   await expect(page.getByTestId(`orbit-card-${previousAnchor}`)).not.toHaveClass(/is-native/);
   expect(await previousCard!.evaluate((card, anchor) => card === document.querySelector(`[data-testid="orbit-card-${anchor}"]`), previousAnchor)).toBe(true);

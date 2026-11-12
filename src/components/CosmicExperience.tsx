@@ -13,7 +13,7 @@ import { readReadingRecords } from "@/lib/storage";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
-import type { CardBackProjection } from "@/lib/cosmic-card-back-projection";
+import type { CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 import { cardMarkerPose, cardMarkerNumerals } from "@/lib/cosmic-card-marker";
 import { cameraTravelProgress, reverseCameraDurationMs } from "@/lib/cosmic-space-camera";
 import { CosmicRingEntry, ringEntryMotion } from "@/lib/cosmic-ring-entry";
@@ -190,8 +190,8 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
       const depthOrder = deck.map((_, index) => index).sort((a, b) => displayDepths[a] - displayDepths[b]);
       const zIndices = new Array<number>(deck.length);
       depthOrder.forEach((index, rank) => { zIndices[index] = rank; });
-      const ringBackStage = stage === "draw" || stage === "reading" || stage === "summarizing" || stage === "summary";
-      const backProjections: CardBackProjection[] = [];
+      const ringBackStage = stage === "draw" || stage === "reading" || stage === "summarizing" || stage === "summary" || Boolean(entryState && entryElapsed >= ringEntryMotion.arrivalMs);
+      const backProjections: CardSurfaceProjection[] = [];
       deck.forEach((_, index) => {
         const element = cards.current[index];
         if (!element) return;
@@ -218,15 +218,23 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
         const intro = reducedMotion ? 1 : Math.min(1, elapsed / 1000);
         const introEase = 1 - Math.pow(1 - intro, 3);
         element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) perspective(${900 - focusWeights.current[index] * 520}px) rotateY(${Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index])}deg) rotateZ(${tilt}deg) scale(${scale})`;
-        // Keep the same two-sided surface until its return and flip have both finished.
-        // Otherwise a projected back appears underneath a card that is still turning home.
+        // Track the existing pose/flip clocks until both have finished returning.
         const returning = nativeCards.current.has(index) && (focusWeights.current[index] > 0.001 || element.getAnimations({ subtree: true }).some((animation) =>
           animation instanceof CSSTransition && animation.transitionProperty === "transform" && animation.playState !== "finished"));
         const native = focused || returning;
         if (native) nativeCards.current.add(index); else nativeCards.current.delete(index);
         element.classList.toggle("is-native", native);
-        if (ringBackStage && !native) backProjections.push({ x, y, scale, yaw: Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index]),
-          tilt, perspective: 900 - focusWeights.current[index] * 520, order: zIndices[index] });
+        element.classList.toggle("is-projected-return", !focused && native && meshStream);
+        if (ringBackStage && !focused) {
+          const projection: CardSurfaceProjection = { anchor: index, x, y, scale, yaw: Math.cos(angle) * cam.ring * 20 * (1 - focusWeights.current[index]),
+            tilt, perspective: 900 - focusWeights.current[index] * 520, order: zIndices[index], glow: selectedIndex >= 0 || (stage === "draw" && element.matches(":hover")) };
+          if (native) {
+            const poseMatrix = new DOMMatrixReadOnly(getComputedStyle(element.querySelector(".cosmic-card-pose")!).transform);
+            const flipMatrix = new DOMMatrixReadOnly(getComputedStyle(element.querySelector(".cosmic-card-flipper")!).transform);
+            projection.transform = Array.from(poseMatrix.multiply(flipMatrix).toFloat64Array());
+          }
+          backProjections.push(projection);
+        }
         // Keep real depth order: raising selected cards can completely cover a neighbor.
         element.style.zIndex = String(focused ? 160 : zIndices[index]);
         const marker = markers.current[index];
