@@ -315,7 +315,7 @@ test("cosmic ring preserves shuffled anchors through drag, reading and summary",
   await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "home");
   await expect(navigation).toBeVisible();
   await page.getByRole("button", { name: "历史记录", exact: true }).click();
-  await expect(page.getByText("本次浏览 · 示例", { exact: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "如何为接下来的学习找到方向？", exact: true }).getByText("示例手记", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "如何为接下来的学习找到方向？", exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("tarot_reading_records"))).toBeNull();
   expect(apiCalls).toEqual([]);

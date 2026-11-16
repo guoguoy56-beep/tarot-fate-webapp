@@ -221,6 +221,28 @@
 .cosmic-history-list details { margin-top: 15px; }
 .cosmic-history-list summary { cursor: pointer; color: #cfb184; }
 .cosmic-history-list h4 { font-weight: 400; color: #dfc299; margin-top: 15px; }
+.cosmic-dialog.is-history { scrollbar-width: none; }
+.cosmic-dialog.is-history::-webkit-scrollbar { display: none; }
+.cosmic-history-list h3, .cosmic-history-list p, .cosmic-history-list h4 { overflow-wrap: anywhere; }
+.cosmic-history-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.cosmic-history-meta time { font-size: 12px; color: #ac9eb7; }
+.cosmic-history-cards { display: flex; flex-wrap: wrap; gap: 16px 20px; margin: 20px 0; padding: 0; list-style: none; }
+.cosmic-history-cards li { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #b5a7bf; }
+.cosmic-history-cards img { width: 44px; height: 76px; object-fit: cover; border-radius: 2px; }
+.cosmic-history-cards strong, .cosmic-history-cards small { display: block; }
+.cosmic-history-cards strong { margin: 5px 0; font-size: 14px; font-weight: 400; color: #e0c49c; }
+.cosmic-history-reading section { margin: 22px 0; }
+.cosmic-history-reading h5 { margin: 14px 0 6px; font-size: 13px; color: #bda986; font-weight: 400; }
+.cosmic-history-list .cosmic-history-keywords { font-size: 13px; color: #c9a970; }
+.cosmic-history-summary, .cosmic-history-reading p { white-space: pre-wrap; }
+.cosmic-history-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.cosmic-history-actions span { flex: 1; font-size: 12px; color: #c4b4bd; }
+.cosmic-history-actions .cosmic-secondary { padding: 8px 13px; font-size: 12px; letter-spacing: .04em; }
+.cosmic-history-delete, .cosmic-journal-link { border: 0; background: transparent; color: #c9ad85; padding: 5px 0; font-size: 12px; }
+.cosmic-history-delete { display: inline-flex; align-items: center; gap: 6px; }
+.cosmic-journal-link { margin-left: 14px; text-decoration: underline; text-underline-offset: 4px; }
+.cosmic-journal-error { color: #e5b1b1; font-size: 13px; line-height: 1.8; margin: 12px 0; }
+.cosmic-journal-error .cosmic-secondary { margin-left: 12px; padding: 7px 12px; font-size: 12px; }
 .cosmic-login { display: flex; flex-direction: column; align-items: flex-start; padding: 12px 0 20px; }
 .cosmic-login > input { width: 100%; margin-bottom: 25px; }
 .cosmic-login > p { font-size: 14px; color: #c1b1cd; line-height: 2; margin: 20px 0 30px; }

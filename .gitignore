@@ -15,3 +15,5 @@ prod-server.*.log
 tsconfig.tsbuildinfo
 .playwright-cli/
 output/
+data/*.sqlite
+data/*.sqlite-*

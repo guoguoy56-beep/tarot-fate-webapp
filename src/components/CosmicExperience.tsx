@@ -5,13 +5,14 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, Search, Sparkles, UserRound, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CosmicQuestion } from "@/components/CosmicQuestion";
+import { CosmicHistory } from "@/components/CosmicHistory";
 import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
 import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, reverseStreamExtraTime, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
-import { readReadingRecords } from "@/lib/storage";
+import { saveJournalRecord } from "@/lib/journal-storage";
+import { createSampleJournal, sampleCardReading, sampleSummary } from "@/lib/cosmic-journal";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
-import type { ReadingRecord } from "@/types/reading";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
 import type { CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 import { cardMarkerPose, cardMarkerNumerals } from "@/lib/cosmic-card-marker";
@@ -23,7 +24,6 @@ import "./cosmic-experience.css";
 type Stage = "home" | "reversing" | "prepare" | "returning" | "travel" | "draw" | "reading" | "summarizing" | "summary";
 type Panel = "encyclopedia" | "history" | "login" | null;
 interface DeckCard { card: TarotCardData; orientation: CardOrientation }
-interface DemoJournal { id: number; question: string; spread: string; cards: OrbitalSelection[] }
 interface ReadingPoseState {
   yaw: number; pitch: number; ready: boolean; idleOrigin: number;
   resume: { at: number; timelineMs: number; fromYaw: number; fromPitch: number } | null;
@@ -415,9 +415,9 @@ function CosmicScene({ stage, deck, selected, current, onSelect, paused, onReady
   </div>;
 }
 
-function SummaryView({ spread, selected, question, saved, scrollPositionRef, onReview, onSave, onRestart, reducedMotion }: {
+function SummaryView({ spread, selected, question, saved, saving, saveError, scrollPositionRef, onReview, onSave, onHistory, onRestart, reducedMotion }: {
   spread: CosmicSpread; selected: OrbitalSelection[]; question: string; saved: boolean;
-  scrollPositionRef: { current: number }; onReview: (index: number) => void; onSave: () => void; onRestart: () => void;
+  saving: boolean; saveError: string; scrollPositionRef: { current: number }; onReview: (index: number) => void; onSave: () => void; onHistory: () => void; onRestart: () => void;
   reducedMotion: boolean | null;
 }) {
   const body = useRef<HTMLDivElement>(null);
@@ -426,11 +426,7 @@ function SummaryView({ spread, selected, question, saved, scrollPositionRef, onR
     if (body.current) body.current.scrollTop = scrollPositionRef.current;
     heading.current?.focus({ preventScroll: true });
   }, [scrollPositionRef]);
-  const first = selected[0], last = selected[selected.length - 1];
-  const keyword = (item: OrbitalSelection) => {
-    const data = cardData(item.cardId);
-    return (item.orientation === "upright" ? data.uprightKeywords : data.reversedKeywords)[0];
-  };
+  const content = sampleSummary(spread, selected);
   return <motion.section className="cosmic-summary" aria-label="整体总结" initial={reducedMotion ? false : { opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.7, ease: motionEase }}>
     <section className="cosmic-summary-overview" aria-label="本次牌组">
       <div className="cosmic-summary-overview-title"><p className="cosmic-eyebrow">{spread.name} · {selected.length} 张牌</p><h3>回望本次星轨</h3></div>
@@ -448,12 +444,15 @@ function SummaryView({ spread, selected, question, saved, scrollPositionRef, onR
       <header className="cosmic-summary-title"><p className="cosmic-eyebrow">此刻的回响</p><div><h2 ref={heading} tabIndex={-1}>命运手记</h2><span className="cosmic-sample-label">示例总结 · 仅供体验</span></div></header>
       <div ref={body} className="cosmic-summary-body" role="region" aria-label="整体分析正文" tabIndex={0} onScroll={(event) => { scrollPositionRef.current = event.currentTarget.scrollTop; }}>
         <div className="cosmic-summary-question"><span>你此刻的问题</span><p>“{question}”</p></div>
-        <section className="cosmic-summary-prose"><h3>整体脉络</h3><p>{selected.length === 1 ? `这张「${cardData(first.cardId).nameCn}」对应${spread.slots[0]}。` : `从「${spread.slots[0]}」到「${spread.slots[selected.length - 1]}」，这 ${selected.length} 张牌组成了本次回顾的线索。`}先留意牌面引起的感受，再回到已经发生的事实，看看哪些部分与你的处境有关。</p></section>
-        <section className="cosmic-summary-prose"><h3>{selected.length === 1 ? "值得留意的线索" : "牌与牌的联系"}</h3><p>{selected.length === 1 ? `以「${keyword(first)}」作为一个观察角度：` : `把「${keyword(first)}」与「${keyword(last)}」放在一起观察：`}哪些感受彼此呼应，哪些判断还需要确认？牌面可以帮助整理想法，具体答案仍需要结合你掌握的信息。</p><div className="cosmic-summary-themes">{selected.map((item, index) => <span key={item.cardId}>{spread.slots[index]}<strong>{keyword(item)}</strong></span>)}</div></section>
-        <section className="cosmic-summary-prose"><h3>把线索，带回生活</h3><ol><li>写下一件与问题有关、已经发生的事实。</li><li>找出一个尚未证实、值得进一步确认的判断。</li><li>选一件今天就能开始的小事，作为下一步行动。</li></ol></section>
-        <p className="cosmic-summary-reflection">如果只带走一个提醒，你希望它是什么？</p>
+        <section className="cosmic-summary-prose"><h3>整体脉络</h3><p>{content.overview}</p></section>
+        <section className="cosmic-summary-prose"><h3>{content.connectionTitle}</h3><p>{content.connection}</p><div className="cosmic-summary-themes">{content.themes.map((theme) => <span key={theme.position}>{theme.position}<strong>{theme.keyword}</strong></span>)}</div></section>
+        <section className="cosmic-summary-prose"><h3>把线索，带回生活</h3><ol>{content.actions.map((action) => <li key={action}>{action}</li>)}</ol></section>
+        <p className="cosmic-summary-reflection">{content.reflection}</p>
       </div>
-      <footer className="cosmic-summary-footer"><div className="cosmic-summary-actions"><button className="cosmic-secondary" onClick={onSave} disabled={saved}>{saved ? <Check size={16} /> : <BookOpen size={16} />}{saved ? "已保存本次示例" : "保存示例手记"}</button><button className="cosmic-primary" onClick={onRestart}>再次占卜<ArrowRight size={17} /></button></div><p className="cosmic-small-note" aria-live="polite">示例手记仅保留在本次浏览中。</p></footer>
+      <footer className="cosmic-summary-footer"><div className="cosmic-summary-actions"><button className="cosmic-secondary" onClick={onSave} disabled={saved || saving}>{saved ? <Check size={16} /> : <BookOpen size={16} />}{saving ? "保存中…" : saved ? "已保存本次示例" : "保存示例手记"}</button><button className="cosmic-primary" onClick={onRestart}>再次占卜<ArrowRight size={17} /></button></div>
+        <p className="cosmic-small-note" role="status">{saved ? "已保存到本机，刷新后仍可查看。" : "保存这次的问题、牌面与示例解读。"}<button className="cosmic-journal-link" disabled={saving} onClick={onHistory}>查看历史记录</button></p>
+        {saveError && <p className="cosmic-journal-error" role="alert">{saveError}</p>}
+      </footer>
     </div>
   </motion.section>;
 }
@@ -471,9 +470,12 @@ export function CosmicExperience() {
   const [search, setSearch] = useState("");
   const [arcana, setArcana] = useState("all");
   const [encyclopediaCard, setEncyclopediaCard] = useState(tarotCards[0]);
-  const [records, setRecords] = useState<ReadingRecord[]>([]);
-  const [journals, setJournals] = useState<DemoJournal[]>([]);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [historyRevision, setHistoryRevision] = useState(0);
+  const journalId = useRef<string | null>(null);
+  const savingId = useRef<string | null>(null);
   const [reviewingSummary, setReviewingSummary] = useState(false);
   const summaryScroll = useRef(0);
   const [visitor, setVisitor] = useState("");
@@ -483,6 +485,7 @@ export function CosmicExperience() {
   const active = selected[current];
   const card = active ? cardData(active.cardId) : undefined;
   const keywords = card && active ? (active.orientation === "upright" ? card.uprightKeywords : card.reversedKeywords) : [];
+  const activeReading = active ? sampleCardReading(active, spread.slots[current]) : undefined;
 
   useEffect(() => {
     // Randomize once after hydration, before the scene's resources enable Start. Submitting never reshuffles.
@@ -520,18 +523,17 @@ export function CosmicExperience() {
   }, [stage, current, turning, reducedMotion]);
 
   function openPanel(next: Panel) {
-    if (next === "history") setRecords(readReadingRecords());
     setPanel(next);
   }
   function home() {
     if (stage === "reversing" || stage === "returning") return;
     if (stage === "prepare") { setStage("returning"); return; }
     if (stage !== "home") setDeck(newDeck());
-    setPanel(null); setStage("home"); setSelected([]); setCurrent(0); setSaved(false); setReviewingSummary(false); summaryScroll.current = 0;
+    setPanel(null); setStage("home"); setSelected([]); setCurrent(0); setSaved(false); setSaving(false); setSaveError(""); journalId.current = null; savingId.current = null; setReviewingSummary(false); summaryScroll.current = 0;
   }
   function begin() {
     if (!question.trim() || stage !== "prepare") return;
-    setSelected([]); setCurrent(0); setSaved(false); setReviewingSummary(false); summaryScroll.current = 0; setPanel(null); setStage("travel");
+    setSelected([]); setCurrent(0); setSaved(false); setSaving(false); setSaveError(""); journalId.current = null; savingId.current = null; setReviewingSummary(false); summaryScroll.current = 0; setPanel(null); setStage("travel");
   }
   function select(anchor: number) {
     if (stage !== "draw" || panel) return;
@@ -541,10 +543,19 @@ export function CosmicExperience() {
     if (next.length === spread.slots.length) { setTurning(true); setStage("reading"); }
   }
   function changeCard(index: number) { setCurrent(index); setTurning(true); }
-  function saveDemo() {
-    if (saved) return;
-    setJournals((items) => [{ id: Date.now(), question: question.trim(), spread: spread.name, cards: [...selected] }, ...items]);
-    setSaved(true);
+  async function saveJournal() {
+    if (saved || savingId.current) return;
+    const id = journalId.current ?? crypto.randomUUID();
+    journalId.current = id; savingId.current = id; setSaving(true);
+    try {
+      await saveJournalRecord(createSampleJournal(spread, selected, question, id, new Date().toISOString()));
+      setHistoryRevision((value) => value + 1);
+      if (journalId.current === id) { setSaved(true); setSaveError(""); }
+    } catch {
+      if (journalId.current === id) setSaveError("保存失败，请稍后重试。本次解读仍保留在页面中。");
+    } finally {
+      if (savingId.current === id) { savingId.current = null; setSaving(false); }
+    }
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
 
@@ -580,23 +591,23 @@ export function CosmicExperience() {
           <p className="cosmic-card-english">{card.nameEn}</p>
           <span className="cosmic-sample-label">示例解读</span>
           <div className="cosmic-reading-section"><h3><Sparkles size={19} strokeWidth={1} />牌面含义</h3><p>{card.meaning}</p><div className="cosmic-keywords">{keywords.map((word) => <span key={word}>{word}</span>)}</div></div>
-          <div className="cosmic-reading-section"><h3><Sparkles size={19} strokeWidth={1} />与你的问题</h3><p className="cosmic-question">“{question}”</p><p>把「{keywords[0]}」作为观察{spread.slots[current]}的一个角度：你现在最在意的是什么？试着写下一件可以主动确认或改变的小事。</p></div>
+          <div className="cosmic-reading-section"><h3><Sparkles size={19} strokeWidth={1} />与你的问题</h3><p className="cosmic-question">“{question}”</p><p>{activeReading?.interpretation}</p></div>
         </motion.div></AnimatePresence>
         <div className="cosmic-reading-controls"><button className="cosmic-secondary" disabled={current === 0 || turning} onClick={() => changeCard(current - 1)}><ArrowLeft size={16} />上一张</button>
           {reviewingSummary && current < selected.length - 1 && <button className="cosmic-secondary" aria-label="返回整体解读" disabled={turning} onClick={() => setStage("summarizing")}>返回总览</button>}
           {current < selected.length - 1 ? <button className="cosmic-primary" disabled={turning} onClick={() => changeCard(current + 1)}>下一张<ArrowRight size={17} /></button> : <button className="cosmic-primary" disabled={turning} onClick={() => setStage("summarizing")}>查看整体解读<ArrowRight size={17} /></button>}</div>
       </motion.section>}
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
-      {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveDemo} onRestart={() => { home(); setStage("reversing"); }} />}
+      {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} saving={saving} saveError={saveError} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveJournal} onHistory={() => { if (!savingId.current) openPanel("history"); }} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
     {stage !== "home" && stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{spread.name}</span></footer>}
 
-    <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
+    <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : panel === "history" ? "is-history" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>
 
         {panel === "encyclopedia" && <section><p className="cosmic-eyebrow">沿着图像，读懂象征</p><h2>塔罗百科</h2><div className="cosmic-encyclopedia-tools"><label><Search size={17} /><input aria-label="搜索塔罗牌" placeholder="搜索中文或英文牌名" value={search} onChange={(event) => setSearch(event.target.value)} /></label><select aria-label="筛选阿尔卡那" value={arcana} onChange={(event) => setArcana(event.target.value)}><option value="all">全部 78 张</option><option value="major">大阿尔卡那</option><option value="minor">小阿尔卡那</option></select></div>
           <div className="cosmic-encyclopedia-layout"><div className="cosmic-encyclopedia-list" aria-label="牌名目录">{shownCards.length ? shownCards.map((item) => <button key={item.id} onClick={() => setEncyclopediaCard(item)} className={encyclopediaCard.id === item.id ? "is-active" : ""}><span>{item.nameCn}<small>{item.nameEn}</small></span><ChevronRight size={15} /></button>) : <p>没有找到这张牌，换个名字试试。</p>}</div><article className="cosmic-encyclopedia-detail"><Image src={encyclopediaCard.image} alt={encyclopediaCard.nameCn} width={160} height={275} unoptimized /><div><p className="cosmic-eyebrow">{encyclopediaCard.arcana === "major" ? "大阿尔卡那" : "小阿尔卡那"}</p><h3>{encyclopediaCard.nameCn}</h3><p className="cosmic-card-english">{encyclopediaCard.nameEn}</p><p>{encyclopediaCard.meaning}</p><h4>正位关键词</h4><p>{encyclopediaCard.uprightKeywords.join(" · ")}</p><h4>逆位关键词</h4><p>{encyclopediaCard.reversedKeywords.join(" · ")}</p></div></article></div></section>}
-        {panel === "history" && <section><p className="cosmic-eyebrow">曾经停留的星光</p><h2>历史记录</h2><p className="cosmic-dialog-intro">旧版保存的手记与本次浏览中的示例。</p>{!records.length && !journals.length ? <div className="cosmic-empty"><History size={34} strokeWidth={1} /><h3>还没有留下手记</h3><p>完成一次占卜后，可以在这里回望。</p></div> : <div className="cosmic-history-list">{journals.map((item) => <article key={item.id}><span className="cosmic-sample-label">本次浏览 · 示例</span><h3>{item.question}</h3><p>{item.spread} · {item.cards.map((entry) => cardData(entry.cardId).nameCn).join("、")}</p></article>)}{records.map((item) => <article key={item.id}><p className="cosmic-eyebrow">{new Date(item.createdAt).toLocaleDateString("zh-CN")} · 旧版手记</p><h3>{item.question}</h3><p>{item.summary}</p><details><summary>展开 {item.spread.length} 张牌的解读</summary>{item.spread.map((entry) => <div key={entry.position}><h4>{cardData(entry.cardId).nameCn} · {entry.orientation === "upright" ? "正位" : "逆位"}</h4><p>{entry.interpretation}</p></div>)}</details></article>)}</div>}</section>}
+        {panel === "history" && <CosmicHistory revision={historyRevision} onDelete={(record) => { setHistoryRevision((value) => value + 1); if (record.kind === "sample" && record.id === journalId.current) setSaved(false); }} />}
         {panel === "login" && <section><p className="cosmic-eyebrow">为这段旅程，留下名字</p><h2>{visitor ? `你好，${visitor}` : "遇见星空中的自己"}</h2><p className="cosmic-dialog-intro">演示身份仅在本次浏览中生效。</p>{visitor ? <div className="cosmic-login"><UserRound size={38} strokeWidth={1} /><p>你正在以「{visitor}」的身份探索命运回廊。</p><button className="cosmic-secondary" onClick={() => { setVisitor(""); setVisitorInput(""); }}>退出演示身份</button></div> : <form className="cosmic-login" onSubmit={(event) => { event.preventDefault(); if (visitorInput.trim()) { setVisitor(visitorInput.trim()); setPanel(null); } }}><label htmlFor="cosmic-visitor">怎么称呼你？</label><input id="cosmic-visitor" autoComplete="nickname" value={visitorInput} maxLength={20} required placeholder="你的昵称" onChange={(event) => setVisitorInput(event.target.value)} /><button className="cosmic-primary" disabled={!visitorInput.trim()}>以此身份进入<ArrowRight size={17} /></button></form>}</section>}
       </div>
     </dialog>

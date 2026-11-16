@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { join } from "node:path";
 
 const baseURL = "http://127.0.0.1:3000";
 
@@ -30,6 +31,9 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { DEEPSEEK_READING_ENABLED: "false", DEEPSEEK_API_KEY: "" },
+    env: {
+      DEEPSEEK_READING_ENABLED: "false", DEEPSEEK_API_KEY: "",
+      TAROT_DATABASE_PATH: join(process.cwd(), "output", "playwright", `e2e-journals-${process.pid}.sqlite`),
+    },
   },
 });
