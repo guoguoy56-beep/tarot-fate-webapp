@@ -101,6 +101,7 @@ export class CosmicStreamMeshes {
   }
 
   get ready() { return this.cards.length === 78 && this.pending === 0; }
+  get loadProgress() { return this.ready ? 1 : this.textures.length ? (this.textures.length - this.pending) / this.textures.length : 0; }
   get available() { return this.ready && !this.failed; }
   get cardBackSource(): string { return (this.back.map?.image as HTMLImageElement | undefined)?.currentSrc ?? ""; }
 

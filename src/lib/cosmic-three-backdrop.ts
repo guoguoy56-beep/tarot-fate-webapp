@@ -9,6 +9,7 @@ import type { CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 
 export interface CosmicBackdrop {
   ring: CosmicRingSpace;
+  readonly loadProgress: number;
   setDeck(deck: readonly CosmicDeckEntry[]): void;
   drawBacks(poses: readonly CardSurfaceProjection[], width: number, height: number): boolean;
   render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number, entry?: { queue: CosmicRingEntry; elapsed: number }): void;
@@ -32,7 +33,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   if (!context) {
     host.dataset.renderer = "fallback";
     host.dataset.streamReady = "true";
-    return { ring, setDeck: () => {}, drawBacks: () => false, render: (blend, width, height) => updateCamera({ ...blend, reverse: 0, dive: undefined }, width, height), dispose: () => ring.dispose() };
+    return { ring, loadProgress: 1, setDeck: () => {}, drawBacks: () => false, render: (blend, width, height) => updateCamera({ ...blend, reverse: 0, dive: undefined }, width, height), dispose: () => ring.dispose() };
   }
   const renderer = new WebGLRenderer({ canvas, context, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -91,6 +92,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   canvas.addEventListener("webglcontextrestored", onRestored);
   return {
     ring,
+    get loadProgress() { return stream.loadProgress; },
     setDeck: (deck) => stream.setDeck(deck),
     drawBacks(poses, width, height) {
       if (disposed || lost || !stream.available || host.dataset.renderer !== "webgl") return false;
