@@ -11,6 +11,7 @@ import { tarotCards, tarotCardMap } from "@/data/tarotCards";
 import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, reverseStreamExtraTime, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
 import { shuffleDeck, randomOrientation } from "@/lib/tarot-random";
 import { saveJournalRecord } from "@/lib/journal-storage";
+import { createJournalId } from "@/lib/journal-id";
 import { createSampleJournal, sampleCardReading, sampleSummary } from "@/lib/cosmic-journal";
 import type { TarotCardData, CardOrientation } from "@/types/tarot";
 import type { CosmicBackdrop } from "@/lib/cosmic-three-backdrop";
@@ -545,7 +546,7 @@ export function CosmicExperience() {
   function changeCard(index: number) { setCurrent(index); setTurning(true); }
   async function saveJournal() {
     if (saved || savingId.current) return;
-    const id = journalId.current ?? crypto.randomUUID();
+    const id = journalId.current ?? createJournalId();
     journalId.current = id; savingId.current = id; setSaving(true);
     try {
       await saveJournalRecord(createSampleJournal(spread, selected, question, id, new Date().toISOString()));
