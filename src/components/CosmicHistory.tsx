@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { History, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { tarotCardMap } from "@/data/tarotCards";
 import { deleteJournalRecord, readJournalRecords, type JournalRecord } from "@/lib/journal-storage";
 
@@ -14,6 +14,12 @@ export function CosmicHistory({ onDelete, revision }: { onDelete: (record: Journ
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -30,19 +36,20 @@ export function CosmicHistory({ onDelete, revision }: { onDelete: (record: Journ
     setDeleting(true);
     try {
       await deleteJournalRecord(record);
+      if (!mounted.current) return;
       setRecords((items) => items.filter((item) => item.kind !== record.kind || item.id !== record.id));
       setPending(null); setError(""); setNotice("已删除这条手记。");
       onDelete(record);
     } catch {
-      setError("删除失败，请重试。手记仍保留在列表中。");
+      if (mounted.current) setError("删除失败，请重试。手记仍保留在列表中。");
     } finally {
-      setDeleting(false);
+      if (mounted.current) setDeleting(false);
     }
   }
 
   return <section>
     <p className="cosmic-eyebrow">曾经停留的星光</p><h2>历史记录</h2>
-    <p className="cosmic-dialog-intro">回看保存的问题、牌面与解读。手记保存在本机，刷新页面或重启项目后仍可查看。</p>
+    <p className="cosmic-dialog-intro">回看保存在当前账号中的问题、牌面与解读。再次登录后，仍可继续查看。</p>
     {error && <div className="cosmic-journal-error" role="alert">{error}{!records.length && <button className="cosmic-secondary" onClick={() => { setError(""); setLoading(true); setReload((value) => value + 1); }}>重新加载</button>}</div>}
     <p className="sr-only" role="status">{notice}</p>
     {loading ? <p className="cosmic-dialog-intro" role="status">正在读取手记…</p> : !records.length && !error ? <div className="cosmic-empty"><History size={34} strokeWidth={1} /><h3>还没有留下手记</h3><p>完成一次占卜后，可以在这里回望。</p></div> :

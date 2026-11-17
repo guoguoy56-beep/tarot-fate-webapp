@@ -6,7 +6,9 @@ import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, History, Orbit, S
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CosmicQuestion } from "@/components/CosmicQuestion";
 import { CosmicHistory } from "@/components/CosmicHistory";
+import { CosmicLogin } from "@/components/CosmicLogin";
 import { CosmicOpening } from "@/components/CosmicOpening";
+import { authClient } from "@/lib/auth-client";
 import { cosmicCardBackSrc } from "@/lib/cosmic-assets";
 import { tarotCards, tarotCardMap } from "@/data/tarotCards";
 import { advanceOrbitMotion, applyReadingDragResistance, cosmicSpreads, homeCardStream, homeStreamPose, isRingDrag, nearestRotation, orbitMotion, readingArrivalPose, readingDragInputForPose, readingDragSensitivity, readingIdleMotion, readingIdlePose, readingPresentationMotion, resumeReadingPose, reverseStreamExtraTime, ringDragDelta, selectOrbitalCard, type CosmicSpread, type OrbitalSelection, type RingProjection } from "@/lib/cosmic-experience";
@@ -26,6 +28,7 @@ import "./cosmic-experience.css";
 type Stage = "home" | "reversing" | "prepare" | "returning" | "travel" | "draw" | "reading" | "summarizing" | "summary";
 type Panel = "encyclopedia" | "history" | "login" | null;
 interface DeckCard { card: TarotCardData; orientation: CardOrientation }
+interface JournalSaveState { owner: string; id: string; status: "saving" | "saved" | "error"; error: string }
 interface ReadingPoseState {
   yaw: number; pitch: number; ready: boolean; idleOrigin: number;
   resume: { at: number; timelineMs: number; fromYaw: number; fromPitch: number } | null;
@@ -463,7 +466,7 @@ function SummaryView({ spread, selected, question, saved, saving, saveError, scr
         <p className="cosmic-summary-reflection">{content.reflection}</p>
       </div>
       <footer className="cosmic-summary-footer"><div className="cosmic-summary-actions"><button className="cosmic-secondary" onClick={onSave} disabled={saved || saving}>{saved ? <Check size={16} /> : <BookOpen size={16} />}{saving ? "保存中…" : saved ? "已保存本次示例" : "保存示例手记"}</button><button className="cosmic-primary" onClick={onRestart}>再次占卜<ArrowRight size={17} /></button></div>
-        <p className="cosmic-small-note" role="status">{saved ? "已保存到本机，刷新后仍可查看。" : "保存这次的问题、牌面与示例解读。"}<button className="cosmic-journal-link" disabled={saving} onClick={onHistory}>查看历史记录</button></p>
+        <p className="cosmic-small-note" role="status">{saved ? "已保存到你的账号，刷新后仍可查看。" : "保存这次的问题、牌面与示例解读。"}<button className="cosmic-journal-link" disabled={saving} onClick={onHistory}>查看历史记录</button></p>
         {saveError && <p className="cosmic-journal-error" role="alert">{saveError}</p>}
       </footer>
     </div>
@@ -486,16 +489,19 @@ export function CosmicExperience() {
   const [search, setSearch] = useState("");
   const [arcana, setArcana] = useState("all");
   const [encyclopediaCard, setEncyclopediaCard] = useState(tarotCards[0]);
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [journalSave, setJournalSave] = useState<JournalSaveState | null>(null);
   const [historyRevision, setHistoryRevision] = useState(0);
-  const journalId = useRef<string | null>(null);
-  const savingId = useRef<string | null>(null);
+  const activeSave = useRef<{ owner: string; id: string } | null>(null);
   const [reviewingSummary, setReviewingSummary] = useState(false);
   const summaryScroll = useRef(0);
-  const [visitor, setVisitor] = useState("");
-  const [visitorInput, setVisitorInput] = useState("");
+  const { data: session, isPending: sessionPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
+  const user = !sessionPending && !sessionError ? session?.user ?? null : null;
+  const owner = user && session ? `${user.id}:${session.session.id}` : null;
+  const currentSave = owner && journalSave?.owner === owner ? journalSave : null;
+  const saved = currentSave?.status === "saved";
+  const saving = currentSave?.status === "saving";
+  const saveError = currentSave?.error ?? "";
+  const [loginReason, setLoginReason] = useState<"save" | "history" | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const reducedMotion = useReducedMotion();
   const active = selected[current];
@@ -508,6 +514,16 @@ export function CosmicExperience() {
     const frame = requestAnimationFrame(() => setDeck(newDeck()));
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    // A result started by an earlier session cannot update the next account's save state.
+    const interrupted = activeSave.current;
+    activeSave.current = null;
+    if (interrupted) queueMicrotask(() => {
+      setJournalSave((state) => state?.owner === interrupted.owner && state.id === interrupted.id && state.status === "saving"
+        ? { ...state, status: "error", error: "本次保存尚未确认。请确认登录状态后重试，问题与牌面仍为你保留。" } : state);
+    });
+  }, [owner]);
 
   useEffect(() => {
     if (stage !== "prepare") return;
@@ -539,17 +555,31 @@ export function CosmicExperience() {
   }, [stage, current, turning, reducedMotion]);
 
   function openPanel(next: Panel) {
+    if (next === "history" && !user) { setLoginReason("history"); setPanel("login"); return; }
+    if (next === "login") setLoginReason(null);
     setPanel(next);
+  }
+  async function signedIn() {
+    activeSave.current = null;
+    await refetchSession();
+    setPanel(loginReason === "history" ? "history" : null);
+    setLoginReason(null);
+  }
+  async function signedOut() {
+    activeSave.current = null;
+    setJournalSave(null); setHistoryRevision((value) => value + 1);
+    await refetchSession();
+    setPanel(null); setLoginReason(null);
   }
   function home() {
     if (stage === "reversing" || stage === "returning") return;
     if (stage === "prepare") { setStage("returning"); return; }
     if (stage !== "home") setDeck(newDeck());
-    setPanel(null); setStage("home"); setSelected([]); setCurrent(0); setSaved(false); setSaving(false); setSaveError(""); journalId.current = null; savingId.current = null; setReviewingSummary(false); summaryScroll.current = 0;
+    setPanel(null); setStage("home"); setSelected([]); setCurrent(0); setJournalSave(null); activeSave.current = null; setReviewingSummary(false); summaryScroll.current = 0;
   }
   function begin() {
     if (!question.trim() || stage !== "prepare") return;
-    setSelected([]); setCurrent(0); setSaved(false); setSaving(false); setSaveError(""); journalId.current = null; savingId.current = null; setReviewingSummary(false); summaryScroll.current = 0; setPanel(null); setStage("travel");
+    setSelected([]); setCurrent(0); setJournalSave(null); activeSave.current = null; setReviewingSummary(false); summaryScroll.current = 0; setPanel(null); setStage("travel");
   }
   function select(anchor: number) {
     if (stage !== "draw" || panel) return;
@@ -560,17 +590,21 @@ export function CosmicExperience() {
   }
   function changeCard(index: number) { setCurrent(index); setTurning(true); }
   async function saveJournal() {
-    if (saved || savingId.current) return;
-    const id = journalId.current ?? createJournalId();
-    journalId.current = id; savingId.current = id; setSaving(true);
+    if (!user || !owner) { setLoginReason("save"); setPanel("login"); return; }
+    if (saved || activeSave.current?.owner === owner) return;
+    const id = currentSave?.id ?? createJournalId();
+    const operation = { owner, id };
+    activeSave.current = operation; setJournalSave({ owner, id, status: "saving", error: "" });
     try {
       await saveJournalRecord(createSampleJournal(spread, selected, question, id, new Date().toISOString()));
-      setHistoryRevision((value) => value + 1);
-      if (journalId.current === id) { setSaved(true); setSaveError(""); }
+      if (activeSave.current === operation) {
+        setHistoryRevision((value) => value + 1);
+        setJournalSave({ owner, id, status: "saved", error: "" });
+      }
     } catch {
-      if (journalId.current === id) setSaveError("保存失败，请稍后重试。本次解读仍保留在页面中。");
+      if (activeSave.current === operation) setJournalSave({ owner, id, status: "error", error: "保存失败，请稍后重试。本次解读仍保留在页面中。" });
     } finally {
-      if (savingId.current === id) { savingId.current = null; setSaving(false); }
+      if (activeSave.current === operation) activeSave.current = null;
     }
   }
   const shownCards = tarotCards.filter((item) => (arcana === "all" || item.arcana === arcana) && `${item.nameCn} ${item.nameEn}`.toLowerCase().includes(search.toLowerCase()));
@@ -584,7 +618,7 @@ export function CosmicExperience() {
       {stage === "home" && <nav aria-label="主导航">
         <button onClick={() => openPanel("encyclopedia")}><BookOpen size={16} strokeWidth={1.3} />塔罗百科</button>
         <button onClick={() => openPanel("history")}><History size={16} strokeWidth={1.3} />历史记录</button>
-        <button onClick={() => openPanel("login")}><UserRound size={16} strokeWidth={1.3} />{visitor || "登录"}</button>
+        <button onClick={() => openPanel("login")}><UserRound size={16} strokeWidth={1.3} />{sessionPending ? "确认登录中…" : sessionError ? "登录状态异常" : user?.name || "登录"}</button>
       </nav>}
     </header>}
     <AnimatePresence mode="wait">
@@ -615,17 +649,17 @@ export function CosmicExperience() {
           {current < selected.length - 1 ? <button className="cosmic-primary" disabled={turning} onClick={() => changeCard(current + 1)}>下一张<ArrowRight size={17} /></button> : <button className="cosmic-primary" disabled={turning} onClick={() => setStage("summarizing")}>查看整体解读<ArrowRight size={17} /></button>}</div>
       </motion.section>}
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
-      {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} saving={saving} saveError={saveError} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveJournal} onHistory={() => { if (!savingId.current) openPanel("history"); }} onRestart={() => { home(); setStage("reversing"); }} />}
+      {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} saved={saved} saving={saving} saveError={saveError} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveJournal} onHistory={() => { if (!saving) openPanel("history"); }} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
     {stage !== "home" && stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">体验版 · 解读为示例内容</span>}<span>{spread.name}</span></footer>}
 
-    <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" ? "历史记录" : "演示登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : panel === "history" ? "is-history" : ""}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
+    <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" && user ? "历史记录" : "演示账号登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : panel === "history" && user ? "is-history" : "is-account"}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>
 
         {panel === "encyclopedia" && <section><p className="cosmic-eyebrow">沿着图像，读懂象征</p><h2>塔罗百科</h2><div className="cosmic-encyclopedia-tools"><label><Search size={17} /><input aria-label="搜索塔罗牌" placeholder="搜索中文或英文牌名" value={search} onChange={(event) => setSearch(event.target.value)} /></label><select aria-label="筛选阿尔卡那" value={arcana} onChange={(event) => setArcana(event.target.value)}><option value="all">全部 78 张</option><option value="major">大阿尔卡那</option><option value="minor">小阿尔卡那</option></select></div>
           <div className="cosmic-encyclopedia-layout"><div className="cosmic-encyclopedia-list" aria-label="牌名目录">{shownCards.length ? shownCards.map((item) => <button key={item.id} onClick={() => setEncyclopediaCard(item)} className={encyclopediaCard.id === item.id ? "is-active" : ""}><span>{item.nameCn}<small>{item.nameEn}</small></span><ChevronRight size={15} /></button>) : <p>没有找到这张牌，换个名字试试。</p>}</div><article className="cosmic-encyclopedia-detail"><Image src={encyclopediaCard.image} alt={encyclopediaCard.nameCn} width={160} height={275} unoptimized /><div><p className="cosmic-eyebrow">{encyclopediaCard.arcana === "major" ? "大阿尔卡那" : "小阿尔卡那"}</p><h3>{encyclopediaCard.nameCn}</h3><p className="cosmic-card-english">{encyclopediaCard.nameEn}</p><p>{encyclopediaCard.meaning}</p><h4>正位关键词</h4><p>{encyclopediaCard.uprightKeywords.join(" · ")}</p><h4>逆位关键词</h4><p>{encyclopediaCard.reversedKeywords.join(" · ")}</p></div></article></div></section>}
-        {panel === "history" && <CosmicHistory revision={historyRevision} onDelete={(record) => { setHistoryRevision((value) => value + 1); if (record.kind === "sample" && record.id === journalId.current) setSaved(false); }} />}
-        {panel === "login" && <section><p className="cosmic-eyebrow">为这段旅程，留下名字</p><h2>{visitor ? `你好，${visitor}` : "遇见星空中的自己"}</h2><p className="cosmic-dialog-intro">演示身份仅在本次浏览中生效。</p>{visitor ? <div className="cosmic-login"><UserRound size={38} strokeWidth={1} /><p>你正在以「{visitor}」的身份探索命运回廊。</p><button className="cosmic-secondary" onClick={() => { setVisitor(""); setVisitorInput(""); }}>退出演示身份</button></div> : <form className="cosmic-login" onSubmit={(event) => { event.preventDefault(); if (visitorInput.trim()) { setVisitor(visitorInput.trim()); setPanel(null); } }}><label htmlFor="cosmic-visitor">怎么称呼你？</label><input id="cosmic-visitor" autoComplete="nickname" value={visitorInput} maxLength={20} required placeholder="你的昵称" onChange={(event) => setVisitorInput(event.target.value)} /><button className="cosmic-primary" disabled={!visitorInput.trim()}>以此身份进入<ArrowRight size={17} /></button></form>}</section>}
+        {panel === "history" && user && owner && <CosmicHistory key={owner} revision={historyRevision} onDelete={(record) => { setHistoryRevision((value) => value + 1); if (record.kind === "sample" && record.id === currentSave?.id) setJournalSave(null); }} />}
+        {(panel === "login" || panel === "history" && !user) && <CosmicLogin user={user} pending={sessionPending} sessionError={Boolean(sessionError)} reason={panel === "history" ? "history" : loginReason} onAuthenticated={signedIn} onSignedOut={signedOut} onRetry={async () => { await refetchSession(); }} />}
       </div>
     </dialog>
   </main>;

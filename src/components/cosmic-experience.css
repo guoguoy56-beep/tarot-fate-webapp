@@ -246,6 +246,26 @@
 .cosmic-login { display: flex; flex-direction: column; align-items: flex-start; padding: 12px 0 20px; }
 .cosmic-login > input { width: 100%; margin-bottom: 25px; }
 .cosmic-login > p { font-size: 14px; color: #c1b1cd; line-height: 2; margin: 20px 0 30px; }
+.cosmic-dialog.is-account { width: min(560px, 90vw); }
+.cosmic-account > .cosmic-sample-label { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 18px; }
+.cosmic-account > .cosmic-dialog-intro { margin-bottom: 8px; }
+.cosmic-account-form { align-items: stretch; padding-bottom: 8px; }
+.cosmic-account-form > input { margin-bottom: 22px; }
+.cosmic-password-field { position: relative; width: 100%; margin-bottom: 28px; }
+.cosmic-password-field input { width: 100%; padding-right: 50px; }
+.cosmic-password-field button { position: absolute; top: 0; right: 0; width: 46px; height: 100%; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #bda67f; }
+.cosmic-account-form .cosmic-primary { width: 100%; }
+.cosmic-account-note { margin: 8px 0 4px; }
+.cosmic-auth-status { padding: 16px 0 24px; }
+.cosmic-account-identity { display: flex; align-items: center; gap: 18px; width: 100%; min-width: 0; margin-top: 5px; }
+.cosmic-account-avatar { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 62px; height: 62px; border: 1px solid #b999635c; border-radius: 50%; background: #c3a1640a; color: #e0bd83; }
+.cosmic-account-identity strong, .cosmic-account-identity span:not(.cosmic-account-avatar) { display: block; overflow-wrap: anywhere; }
+.cosmic-account-identity strong { font-size: 20px; font-weight: 400; color: #ecd3aa; }
+.cosmic-account-identity div > span { color: #b5a9bf; margin-top: 7px; font-size: 13px; }
+@media (max-width: 600px) {
+  .cosmic-dialog.is-account .cosmic-dialog-content { padding: 35px 24px 24px; }
+  .cosmic-account h2 { font-size: 25px; }
+}
 @media (max-height: 850px) {
   .cosmic-header { top: 25px; }
   .cosmic-prepare { --cosmic-question-height: 60px; }

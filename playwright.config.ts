@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 import { join } from "node:path";
 
 const baseURL = "http://127.0.0.1:3000";
+const demoDirectory = join(process.cwd(), "output", "playwright", "demo-data");
+process.env.TAROT_E2E_DEMO_DIR = demoDirectory;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -27,13 +29,13 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   webServer: {
-    command: "npm run build && npm run start -- --hostname 127.0.0.1",
+    command: "node scripts/demo.mjs",
     url: baseURL,
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 180_000,
     env: {
       DEEPSEEK_READING_ENABLED: "false", DEEPSEEK_API_KEY: "",
-      TAROT_DATABASE_PATH: join(process.cwd(), "output", "playwright", `e2e-journals-${process.pid}.sqlite`),
+      TAROT_DEMO_DATA_DIR: demoDirectory,
     },
   },
 });

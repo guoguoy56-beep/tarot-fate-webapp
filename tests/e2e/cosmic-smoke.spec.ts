@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { readingIdleMotion, readingIdlePose } from "../../src/lib/cosmic-experience";
 import { ringEntryMotion } from "../../src/lib/cosmic-ring-entry";
 
@@ -163,6 +165,9 @@ test("returning cards keep one surface while the next card arrives", async ({ pa
 
 test("cosmic ring preserves shuffled anchors through drag, reading and summary", async ({ page }) => {
   test.setTimeout(90_000);
+  const [account] = JSON.parse(readFileSync(join(process.env.TAROT_E2E_DEMO_DIR || "output/playwright/demo-data", "accounts.json"), "utf8"));
+  const login = await page.request.post("/api/auth/sign-in/email", { headers: { Origin: "http://127.0.0.1:3000" }, data: { email: account.email, password: account.password } });
+  expect(login.status()).toBe(200);
   const errors: string[] = [];
   const apiCalls: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

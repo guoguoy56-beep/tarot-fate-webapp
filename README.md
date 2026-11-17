@@ -1,30 +1,44 @@
-# 命运之牌 Tarot Fate WebApp
+# 命运回廊 Tarot Fate WebApp
 
 [![CI](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/workflows/ci.yml/badge.svg)](https://github.com/guoguoy56-beep/tarot-fate-webapp/actions/workflows/ci.yml)
 
-一个基于React等技术栈开发的沉浸式 AI 塔罗牌占卜 Web 应用。
+一个基于 Next.js、React 和 Three.js 的沉浸式塔罗探索 Web 应用。
 
-项目通过古典女巫木桌视觉、卡牌物理交互动效和大语言模型解读能力，为用户提供完整的占卜仪式体验。用户可以输入问题、扰动洗牌、抽取代表过去、现在与未来的三张牌，并获得对应的 AI 解读与命运总结。
+当前录屏版本包含星空开场、提问、八种牌阵、78 张真实牌面、逐牌与整体示例解读，以及真实账号登录和个人手记。示例内容在页面中明确标注。DeepSeek 服务端适配保留，真实 AI 仍待接入新版流程。
 
 ## 主要功能
 
-- 沉浸式旧女巫木桌视觉风格
-- 基于鼠标移动轨迹的洗牌交互
-- 78 张塔罗牌底部弧形牌带
-- 过去、现在、未来三牌拖拽牌阵
-- 逐张 3D 翻牌与打字机文本动画
+- 星空载入开场、3D 牌圈与逐牌翻转、归位
+- 八种牌阵，支持单次 1–5 张牌
 - 完整 78 张 Rider-Waite-Smith 真实牌面
-- 通过 DeepSeek API 生成个性化塔罗解读
-- 使用 `localStorage` 保存本地占卜历史
-- DeepSeek 异常时显示明确错误并支持手动重试
+- 牌义百科、逐牌及整体示例解读
+- 预置账号的真实邮箱密码登录、数据库会话和退出
+- 按账号隔离的 SQLite 个人手记、历史详情与删除
+- 保留 DeepSeek API 适配与离线自动测试
+
+## 毕设录屏模式
+
+使用 Node.js 24 和 npm 11.19.1 安装依赖后启动：
+
+```bash
+npm ci
+npm run demo
+```
+
+打开 `http://127.0.0.1:3000`。首次启动创建两个专用演示账号，账号与随机密码仅保存于本机 `data/demo/accounts.json`，不会输出到启动日志。认证库保存密码哈希；该账号文件供录制时查阅，不应提交或打包。重复启动保留账号、会话和手记。
+
+`npm run demo:setup` 仅初始化账号；`npm run demo:dev` 用于本机开发。演示启动器固定监听回环、使用独立数据库并关闭真实 AI。录制应说明本轮为预置账号登录，注册、邮件验证和找回密码待后续实现。详情见 `ProjectDocument/AUTH-002-预置账号登录与毕设录屏-2026-11-17.md`。
+
+原共享 SQLite 和旧浏览器记录保留，不会自动分配给演示账号。录屏数据、账号文件、会话密钥及构建产物都不属于源码交付内容。
 
 ## 技术栈
 
-- Next.js 16.4.2（App Router）
+- Next.js 16.4.6（App Router，含本轮安全补丁）
 - React / React DOM 19.2.8
 - TypeScript 5.9.3
 - Tailwind CSS 3.4.19
 - Framer Motion 12.43.0
+- Better Auth 1.7.25、Node 内建 SQLite
 - Vitest 5.0.5（领域单元、DeepSeek 适配器和 API 集成测试）
 - Playwright Test 1.64.1（Chromium 桌面浏览器冒烟）
 - DeepSeek API

@@ -1,11 +1,15 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { DELETE, GET, POST } from "@/app/api/journals/route";
 import { getJournalDatabase } from "@/lib/journal-db";
+import { getAuthBaseURL, getSessionForRequest } from "@/lib/auth";
 import type { JournalRecord } from "@/lib/journal-record";
 
 const database = vi.hoisted(() => ({ list: vi.fn(), save: vi.fn(), delete: vi.fn() }));
 vi.mock("@/lib/journal-db", () => ({ getJournalDatabase: vi.fn(() => database) }));
 
+vi.mock("@/lib/auth", () => ({ getAuthBaseURL: vi.fn(() => "http://localhost"), getSessionForRequest: vi.fn() }));
+
+const userId = "demo-user-a";
 const maxBytes = 128 * 1024;
 const privatePath = "D:/private-data/private-journals.sqlite";
 
@@ -39,6 +43,8 @@ function expectUntouched() {
 }
 
 beforeEach(() => {
+  vi.mocked(getAuthBaseURL).mockReset().mockReturnValue("http://localhost");
+  vi.mocked(getSessionForRequest).mockReset().mockResolvedValue({ user: { id: userId, name: "演示甲", email: "a@example.test" } } as Awaited<ReturnType<typeof getSessionForRequest>>);
   vi.mocked(getJournalDatabase).mockReset().mockReturnValue(database as unknown as ReturnType<typeof getJournalDatabase>);
   database.list.mockReset().mockReturnValue([record()]);
   database.save.mockReset(); database.delete.mockReset();
@@ -47,10 +53,11 @@ beforeEach(() => {
 test("lists complete stored snapshots without caching", async () => {
   const rows = [record(), record("legacy-1", "legacy")];
   database.list.mockReturnValue(rows);
-  const response = await GET();
+  const response = await GET(new Request("http://localhost/api/journals"));
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({ records: rows });
+  expect(database.list).toHaveBeenCalledExactlyOnceWith(userId);
   expect(database.save).not.toHaveBeenCalled();
   expect(database.delete).not.toHaveBeenCalled();
 });
@@ -61,7 +68,7 @@ test("saves a sample and permits same-origin browser requests", async () => {
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({ ok: true });
-  expect(database.save).toHaveBeenCalledExactlyOnceWith(sample);
+  expect(database.save).toHaveBeenCalledExactlyOnceWith(userId, sample);
 });
 
 test("accepts 20 validated old and sample snapshots for import without an Origin header", async () => {
@@ -69,7 +76,7 @@ test("accepts 20 validated old and sample snapshots for import without an Origin
   const response = await POST(request("POST", { records: rows }));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ ok: true });
-  expect(database.save.mock.calls.map(([item]) => item)).toEqual(rows);
+  expect(database.save.mock.calls.map(([, item]) => item)).toEqual(rows);
 });
 
 test.each(["sample", "legacy"] as const)("deletes the selected %s source only", async (kind) => {
@@ -77,7 +84,7 @@ test.each(["sample", "legacy"] as const)("deletes the selected %s source only", 
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({ ok: true });
-  expect(database.delete).toHaveBeenCalledExactlyOnceWith(kind, "same-id");
+  expect(database.delete).toHaveBeenCalledExactlyOnceWith(userId, kind, "same-id");
   expect(database.save).not.toHaveBeenCalled();
 });
 
@@ -87,9 +94,10 @@ test.each(["POST", "DELETE"] as const)("rejects cross-origin %s before reading s
   expectUntouched();
 });
 
-test.each(["POST", "DELETE"] as const)("accepts the actual Host for %s when Next canonicalizes the internal URL", async (method) => {
+test.each(["POST", "DELETE"] as const)("accepts the configured origin for %s when Next canonicalizes the internal URL", async (method) => {
   const action = method === "POST" ? POST : DELETE;
   const payload = method === "POST" ? { records: [record()] } : { kind: "sample", id: "journal-1" };
+  vi.mocked(getAuthBaseURL).mockReturnValue("http://127.0.0.1:3000");
   const response = await action(request(method, payload, { Host: "127.0.0.1:3000", Origin: "http://127.0.0.1:3000" }));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ ok: true });
@@ -176,7 +184,7 @@ test.each(["GET", "POST", "DELETE"] as const)("redacts database operation failur
   if (method === "GET") database.list.mockImplementationOnce(() => { throw failure; });
   if (method === "POST") database.save.mockImplementationOnce(() => { throw failure; });
   if (method === "DELETE") database.delete.mockImplementationOnce(() => { throw failure; });
-  const response = method === "GET" ? await GET() : method === "POST"
+  const response = method === "GET" ? await GET(new Request("http://localhost/api/journals")) : method === "POST"
     ? await POST(request("POST", { records: [record()] }))
     : await DELETE(request("DELETE", { kind: "sample", id: "journal-1" }));
   await expectError(response, 500);
@@ -184,5 +192,40 @@ test.each(["GET", "POST", "DELETE"] as const)("redacts database operation failur
 
 test("redacts database initialization errors", async () => {
   vi.mocked(getJournalDatabase).mockImplementationOnce(() => { throw new Error(privatePath); });
-  await expectError(await GET(), 500);
+  await expectError(await GET(new Request("http://localhost/api/journals")), 500);
+});
+
+test.each(["GET", "POST", "DELETE"] as const)("rejects anonymous %s before accessing journal storage", async (method) => {
+  vi.mocked(getSessionForRequest).mockResolvedValueOnce(null);
+  const response = method === "GET" ? await GET(new Request("http://localhost/api/journals"))
+    : method === "POST" ? await POST(request("POST", { records: [record()] }))
+    : await DELETE(request("DELETE", { kind: "sample", id: "journal-1" }));
+  await expectError(response, 401);
+  expectUntouched(); expect(database.list).not.toHaveBeenCalled();
+});
+
+test("uses only the session owner despite forged body, query and user headers", async () => {
+  const query = new Request("http://localhost/api/journals?userId=victim", { headers: { "X-User-Id": "victim" } });
+  await GET(query);
+  expect(getSessionForRequest).toHaveBeenCalledWith(query);
+  expect(database.list).toHaveBeenCalledExactlyOnceWith(userId);
+  await POST(request("POST", { userId: "victim", records: [{ ...record(), userId: "victim" }] }, { "X-User-Id": "victim" }));
+  expect(database.save).toHaveBeenCalledWith(userId, expect.objectContaining({ id: "journal-1" }));
+  await DELETE(request("DELETE", { userId: "victim", kind: "sample", id: "journal-1" }));
+  expect(database.delete).toHaveBeenCalledExactlyOnceWith(userId, "sample", "journal-1");
+});
+
+test("rejects an attacker origin even when Host and forwarded headers repeat it", async () => {
+  await expectError(await POST(request("POST", { records: [record()] }, {
+    Host: "attacker.example", Origin: "https://attacker.example", "X-Forwarded-Host": "attacker.example",
+    "X-Forwarded-Proto": "https",
+  })), 403);
+  expectUntouched();
+});
+
+test.each(["lookup", "configuration"] as const)("redacts authentication %s failures", async (kind) => {
+  if (kind === "lookup") vi.mocked(getSessionForRequest).mockRejectedValueOnce(new Error(privatePath));
+  else vi.mocked(getAuthBaseURL).mockImplementationOnce(() => { throw new Error(privatePath); });
+  await expectError(await GET(new Request("http://localhost/api/journals")), 500);
+  expectUntouched();
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getJournalDatabase } from "@/lib/journal-db";
 import { isJournalRecord } from "@/lib/journal-record";
+import { getAuthBaseURL, getSessionForRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,11 +17,19 @@ function error(status: number, message: string) {
   return json({ error: { message } }, status);
 }
 
-function allowedOrigin(request: Request) {
+function allowedOrigin(request: Request, configuredOrigin: string) {
   const origin = request.headers.get("origin");
-  const url = new URL(request.url);
-  const host = request.headers.get("host") || url.host;
-  return origin === null || origin === `${url.protocol}//${host}`;
+  return origin === null || origin === configuredOrigin;
+}
+
+async function owner(request: Request): Promise<{ userId: string; origin: string } | { response: Response }> {
+  try {
+    const session = await getSessionForRequest(request);
+    if (!session?.user.id) return { response: error(401, "请先登录后查看和保存个人手记。") };
+    return { userId: session.user.id, origin: new URL(getAuthBaseURL()).origin };
+  } catch {
+    return { response: error(500, storageMessage) };
+  }
 }
 
 async function readBody(request: Request): Promise<{ data: unknown } | { error: Response }> {
@@ -57,16 +66,20 @@ async function readBody(request: Request): Promise<{ data: unknown } | { error: 
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
-export async function GET() {
+export async function GET(request: Request) {
+  const account = await owner(request);
+  if ("response" in account) return account.response;
   try {
-    return json({ records: getJournalDatabase().list() });
+    return json({ records: getJournalDatabase().list(account.userId) });
   } catch {
     return error(500, storageMessage);
   }
 }
 
 export async function POST(request: Request) {
-  if (!allowedOrigin(request)) return error(403, "请从本站页面保存手记。");
+  const account = await owner(request);
+  if ("response" in account) return account.response;
+  if (!allowedOrigin(request, account.origin)) return error(403, "请从本站页面保存手记。");
   const body = await readBody(request);
   if ("error" in body) return body.error;
   const payload = body.data;
@@ -76,7 +89,7 @@ export async function POST(request: Request) {
   }
   try {
     const database = getJournalDatabase();
-    for (const record of payload.records) database.save(record);
+    for (const record of payload.records) database.save(account.userId, record);
     return json({ ok: true });
   } catch {
     return error(500, storageMessage);
@@ -84,7 +97,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!allowedOrigin(request)) return error(403, "请从本站页面删除手记。");
+  const account = await owner(request);
+  if ("response" in account) return account.response;
+  if (!allowedOrigin(request, account.origin)) return error(403, "请从本站页面删除手记。");
   const body = await readBody(request);
   if ("error" in body) return body.error;
   const payload = body.data;
@@ -93,7 +108,7 @@ export async function DELETE(request: Request) {
     return error(400, "无法识别要删除的手记。");
   }
   try {
-    getJournalDatabase().delete(payload.kind, payload.id);
+    getJournalDatabase().delete(account.userId, payload.kind, payload.id);
     return json({ ok: true });
   } catch {
     return error(500, storageMessage);
