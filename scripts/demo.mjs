@@ -38,10 +38,10 @@ try {
   try {
     if (existsSync(accountsPath)) {
       accounts = JSON.parse(readFileSync(accountsPath, "utf8"));
-      if (!Array.isArray(accounts) || accounts.length !== 2 || accounts.some((a) => !a || typeof a.name !== "string" || !a.name.trim()
+      if (!Array.isArray(accounts) || accounts.length === 0 || accounts.some((a) => !a || typeof a.name !== "string" || !a.name.trim()
         || typeof a.email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a.email)
-        || typeof a.password !== "string" || a.password.length < 15 || a.password.length > 128)
-        || new Set(accounts.map((a) => a.email.trim().toLowerCase())).size !== 2) {
+        || typeof a.password !== "string" || a.password.length < 12 || a.password.length > 128)
+        || new Set(accounts.map((a) => a.email.trim().toLowerCase())).size !== accounts.length) {
         throw new Error("演示账号文件格式无效，请保留数据库与原账号文件后检查。");
       }
     } else {

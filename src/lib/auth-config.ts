@@ -28,7 +28,7 @@ export async function createAuthRuntime(config: DemoAuthConfig, provisioning = f
     baseURL: config.baseURL,
     secret: config.secret,
     database,
-    emailAndPassword: { enabled: true, disableSignUp: !provisioning, minPasswordLength: 15, maxPasswordLength: 128 },
+    emailAndPassword: { enabled: true, disableSignUp: !provisioning, minPasswordLength: 12, maxPasswordLength: 128 },
     session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24, cookieCache: { enabled: false } },
     rateLimit: { enabled: true, storage: "database", window: 60, max: 120,
       customRules: { "/sign-in/email": { window: 60, max: 10 } } },

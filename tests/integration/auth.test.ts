@@ -106,3 +106,17 @@ test("rejects a forged session token", async () => {
   const forged = "tarot-demo.session_token=" + randomBytes(48).toString("base64url");
   expect(await (await http(app, "/get-session", "GET", undefined, forged)).json()).toBeNull();
 });
+
+test("provisions and signs in a local demonstration account with a 12-character password", async () => {
+  const config = configuration(), initializer = await runtime(config, true);
+  const password = randomBytes(9).toString("base64url"), email = "password-boundary@example.test";
+  expect(password).toHaveLength(12);
+  await expect(initializer.auth.api.signUpEmail({ body: { name: "密码长度边界测试", email, password: password.slice(0, 11) } })).rejects.toThrow();
+  const created = await initializer.auth.api.signUpEmail({ body: { name: "密码长度边界测试", email, password } });
+  close(initializer);
+
+  const app = await runtime(config);
+  const login = await http(app, "/sign-in/email", "POST", { email, password });
+  expect(login.status).toBe(200);
+  expect(await (await http(app, "/get-session", "GET", undefined, cookie(login))).json()).toMatchObject({ user: { id: created.user.id, email } });
+});
