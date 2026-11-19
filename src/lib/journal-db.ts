@@ -28,7 +28,7 @@ export class JournalDatabase {
         PRAGMA journal_mode = WAL;
         CREATE TABLE IF NOT EXISTS user_journals (
           user_id TEXT NOT NULL CHECK (length(trim(user_id)) > 0),
-          kind TEXT NOT NULL CHECK (kind IN ('sample', 'legacy')),
+          kind TEXT NOT NULL CHECK (kind IN ('ai', 'sample', 'legacy')),
           id TEXT NOT NULL CHECK (length(trim(id)) > 0),
           version INTEGER NOT NULL CHECK (version = 1),
           created_at TEXT NOT NULL,
@@ -61,9 +61,44 @@ export class JournalDatabase {
         ) STRICT;
         CREATE INDEX IF NOT EXISTS user_journals_created_at ON user_journals(user_id, created_at_ms DESC, id, kind);
       `);
+      this.migrateKindConstraintIfNeeded();
     } catch (error) {
       this.database.close();
       throw error;
+    }
+  }
+
+  private migrateKindConstraintIfNeeded(): void {
+    const row = this.database.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'user_journals'").get() as { sql?: unknown } | undefined;
+    const ddl = typeof row?.sql === "string" ? row.sql : "";
+    if (!ddl || ddl.includes("'ai'")) return;
+    this.database.exec("PRAGMA foreign_keys = OFF;");
+    try {
+      this.transaction(() => {
+        this.database.exec(`
+          CREATE TABLE user_journals_v2 (
+            user_id TEXT NOT NULL CHECK (length(trim(user_id)) > 0),
+            kind TEXT NOT NULL CHECK (kind IN ('ai', 'sample', 'legacy')),
+            id TEXT NOT NULL CHECK (length(trim(id)) > 0),
+            version INTEGER NOT NULL CHECK (version = 1),
+            created_at TEXT NOT NULL,
+            created_at_ms INTEGER NOT NULL,
+            question TEXT NOT NULL CHECK (length(trim(question)) > 0),
+            spread_name TEXT NOT NULL CHECK (length(trim(spread_name)) > 0),
+            summary TEXT NOT NULL CHECK (length(trim(summary)) > 0),
+            PRIMARY KEY (user_id, kind, id)
+          ) STRICT;
+          INSERT INTO user_journals_v2 (user_id, kind, id, version, created_at, created_at_ms, question, spread_name, summary)
+          SELECT user_id, kind, id, version, created_at, created_at_ms, question, spread_name, summary FROM user_journals;
+          DROP TABLE user_journals;
+          ALTER TABLE user_journals_v2 RENAME TO user_journals;
+          CREATE INDEX IF NOT EXISTS user_journals_created_at ON user_journals(user_id, created_at_ms DESC, id, kind);
+        `);
+        const violations = this.database.prepare("PRAGMA foreign_key_check").all();
+        if (violations.length > 0) throw new Error("手记表迁移后外键完整性校验失败。");
+      });
+    } finally {
+      this.database.exec("PRAGMA foreign_keys = ON;");
     }
   }
 
@@ -119,7 +154,7 @@ export class JournalDatabase {
 
   delete(userId: string, kind: JournalKind, id: string): void {
     this.assertUserId(userId);
-    if ((kind !== "sample" && kind !== "legacy") || typeof id !== "string" || !id.trim()) throw new Error("无法识别要删除的手记。");
+    if ((kind !== "ai" && kind !== "sample" && kind !== "legacy") || typeof id !== "string" || !id.trim()) throw new Error("无法识别要删除的手记。");
     this.transaction(() => {
       // Keep the ID even after deleting the body, so an old browser cannot re-import it.
       if (kind === "legacy") this.database.prepare("INSERT INTO user_legacy_imports (user_id, id) VALUES (?, ?) ON CONFLICT(user_id, id) DO NOTHING").run(userId, id);

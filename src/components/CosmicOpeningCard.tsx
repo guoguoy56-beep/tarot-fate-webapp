@@ -1,18 +1,47 @@
-// An original stargate motif, inline so the first HTML frame needs no image request.
-export function CosmicOpeningCard({ progress }: { progress: number }) {
-  return <svg className="cosmic-opening-card" viewBox="0 0 68 116" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth=".28" strokeLinecap="round" strokeLinejoin="round">
-    <defs><g id="cosmic-opening-lines">
-      <path pathLength="1" d="M13 3H55L64 12V104L55 113H13L4 104V12Z" />
-      <path pathLength="1" d="M10 23V14L16 8H25M43 8H52L58 14V23M10 93V102L16 108H25M43 108H52L58 102V93" />
-      <path pathLength="1" d="M15 83V45C15 32 23 23 34 16C45 23 53 32 53 45V83M21 81V46C21 37 26 30 34 24C42 30 47 37 47 46V81" />
-      <path pathLength="1" d="M15 45L21 46M34 16V24M53 45L47 46M15 83L21 81H47L53 83M21 81L16 87H52L47 81M16 87L11 94H57L52 87M11 94L7 102H61L57 94" />
-      <path pathLength="1" d="M34 38L36.8 49.2L44 52L36.8 54.8L34 66L31.2 54.8L24 52L31.2 49.2ZM34 38V66M24 52H44" />
-      <path pathLength="1" d="M34 30V33M24 35L26 38M44 35L42 38M19 53H21M47 53H49M24 70L26 67M44 70L42 67M34 72V76" />
-      <path pathLength="1" d="M34 7L36 10L34 13L32 10ZM34 104L36 107L34 110L32 107ZM8 49L10 52L8 55L6 52ZM60 49L62 52L60 55L58 52Z" />
-      <path pathLength="1" d="M11 33H13M55 33H57M11 71H13M55 71H57M28 91H40M25 98H43" />
-    </g></defs>
-    <use href="#cosmic-opening-lines" className="cosmic-opening-track" />
-    <use href="#cosmic-opening-lines" className="cosmic-opening-ink" strokeDasharray="1" strokeDashoffset={1 - progress} />
-    <path className="cosmic-opening-star" d="M34 44L35.6 50.4L40 52L35.6 53.6L34 60L32.4 53.6L28 52L32.4 50.4Z" />
-  </svg>;
+"use client";
+
+import Image from "next/image";
+import { useState } from "react";
+import { cosmicOpeningArtSrc, cosmicOpeningSkySrc } from "@/lib/cosmic-assets";
+
+// Coordinates follow the selected artwork, including its black margins.
+const stars = [[472, 222], [413, 353], [485, 435], [434, 498], [356, 530], [623, 471], [603, 651], [512, 703], [387, 767], [282, 742], [221, 843], [259, 967], [365, 1040], [475, 1184], [531, 1277], [545, 1341]] as const;
+const connections = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14], [14, 15]] as const;
+export const cosmicOpeningFormationMs = 900;
+const clamp = (value: number) => Math.max(0, Math.min(1, value));
+
+export function CosmicOpeningCard({ progress, elapsedMs, reducedMotion }: { progress: number; elapsedMs: number; reducedMotion: boolean }) {
+  const [artLoaded, setArtLoaded] = useState(false);
+  const horizontal = reducedMotion ? 1 : clamp((elapsedMs - 160) / 320);
+  const vertical = reducedMotion ? 1 : clamp((elapsedMs - 480) / 420);
+  const finished = progress >= 1 && artLoaded;
+  const left = 481 - 320 * horizontal;
+  const right = 481 + 320 * horizontal;
+  const top = 807 - 641 * vertical;
+  const bottom = 807 + 641 * vertical;
+
+  return <div className="cosmic-opening-art" aria-hidden="true">
+    <Image className="cosmic-opening-sky" src={cosmicOpeningSkySrc} alt="" fill sizes="300px" unoptimized style={{ opacity: vertical }} />
+    <svg className="cosmic-opening-drawing" viewBox="0 0 962 1635" fill="none" aria-hidden="true" style={{ opacity: finished ? 0 : 1 }}>
+      <g stroke="#d7e3ff" strokeWidth="2" className="cosmic-opening-frame">
+        <line x1={left} y1={top} x2={right} y2={top} />
+        <line x1={left} y1={bottom} x2={right} y2={bottom} />
+        <line x1={left} y1={top} x2={left} y2={bottom} />
+        <line x1={right} y1={top} x2={right} y2={bottom} />
+      </g>
+      {[[left, top], [right, top], [left, bottom], [right, bottom]].map(([x, y], index) => <g key={index} className="cosmic-opening-point" opacity={horizontal}>
+        <circle cx={x} cy={y} r="4" fill="#fff" />
+        <path d={`M${x - 13} ${y}H${x + 13}M${x} ${y - 13}V${y + 13}`} stroke="#dce5ff" strokeWidth="1.2" />
+      </g>)}
+      {horizontal === 0 && <circle cx="481" cy="807" r="5" fill="#e6edff" />}
+      <g stroke="#d8d9ff" strokeWidth="1.2">
+        {connections.map(([from, to], index) => {
+          const amount = clamp(progress * connections.length - index);
+          return <line key={`${from}-${to}`} x1={stars[from][0]} y1={stars[from][1]} x2={stars[from][0] + (stars[to][0] - stars[from][0]) * amount} y2={stars[from][1] + (stars[to][1] - stars[from][1]) * amount} />;
+        })}
+      </g>
+      {stars.map(([x, y], index) => <circle key={`${x}-${y}`} cx={x} cy={y} r={index === 0 || index === 6 || index === 12 ? 6 : 4} fill="#e8edff" opacity={index === 0 ? clamp(progress * connections.length) : clamp(progress * connections.length - (connections.findIndex(([, to]) => to === index)))} className="cosmic-opening-point" />)}
+    </svg>
+    <Image className="cosmic-opening-final" src={cosmicOpeningArtSrc} alt="" fill sizes="300px" unoptimized onLoad={() => setArtLoaded(true)} onError={() => setArtLoaded(false)} style={{ opacity: finished ? 1 : 0 }} />
+  </div>;
 }

@@ -1,28 +1,15 @@
-.cosmic-opening { position: absolute; inset: 0; z-index: 500; display: grid; place-items: center; overflow: hidden; background: #000; color: #f4d99d; opacity: 1; transition: opacity .6s ease; }
-.cosmic-opening-seal { position: relative; width: min(204px, 40vw, 39vh); aspect-ratio: 17 / 29; isolation: isolate; transition: transform .6s cubic-bezier(.22, 1, .36, 1), opacity .6s ease, filter .6s ease; }
-.cosmic-opening-card { display: block; width: 100%; height: 100%; overflow: visible; }
-.cosmic-opening-track { opacity: .22; }
-.cosmic-opening-ink { color: #fff0cc; filter: drop-shadow(0 0 .3px #ffe1a04d); }
-.cosmic-opening-star { color: #fff6df; fill: #fff0cc; fill-opacity: .28; animation: cosmic-opening-breathe 2.6s ease-in-out infinite; transform-origin: 34px 52px; }
-.cosmic-opening-halo { position: absolute; top: 44.83%; left: 50%; width: 80%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff0cc36, #f4d99d14 30%, transparent 68%); opacity: 0; transform: translate(-50%, -50%) scale(.4); pointer-events: none; }
-.cosmic-opening-sweep { position: absolute; inset: 0; border-radius: 4%; overflow: hidden; pointer-events: none; }
-.cosmic-opening-sweep::after { content: ""; position: absolute; inset: -6%; background: linear-gradient(120deg, transparent 36%, #f2dfbd03 44%, #f2dfbd24 49.5%, #f2dfbd06 52%, transparent 60%); opacity: 0; transform: translateX(-85%); }
-.cosmic-opening-dust { position: absolute; inset: -8%; opacity: 0; background: radial-gradient(circle at 12% 8%, #f2dfbd 0 .7px, transparent 1.3px), radial-gradient(circle at 89% 16%, #d9b77c 0 1px, transparent 1.6px), radial-gradient(circle at 5% 55%, #d9b77c 0 .8px, transparent 1.4px), radial-gradient(circle at 96% 67%, #f2dfbd 0 .7px, transparent 1.3px), radial-gradient(circle at 23% 95%, #f2dfbd 0 .8px, transparent 1.4px), radial-gradient(circle at 78% 90%, #d9b77c 0 .8px, transparent 1.4px); pointer-events: none; }
-.cosmic-opening[data-phase="sealed"] .cosmic-opening-halo { animation: cosmic-opening-unseal .42s ease-out both; }
-.cosmic-opening[data-phase="sealed"] .cosmic-opening-sweep::after { animation: cosmic-opening-sweep .34s .08s ease-in-out both; }
+.cosmic-opening { position: absolute; inset: 0; z-index: 500; display: grid; place-items: center; overflow: hidden; background: #000; opacity: 1; transition: opacity .6s ease; }
+.cosmic-opening-seal { position: relative; width: min(306px, 60vw, 58.5vh); aspect-ratio: 962 / 1635; transition: opacity .6s ease; }
+.cosmic-opening-art { position: relative; width: 100%; height: 100%; }
+.cosmic-opening-art .cosmic-opening-sky, .cosmic-opening-art .cosmic-opening-final { object-fit: contain; }
+.cosmic-opening-sky { transition: opacity .2s ease; }
+.cosmic-opening-final, .cosmic-opening-drawing { transition: opacity .18s ease; }
+.cosmic-opening-drawing { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cosmic-opening-frame, .cosmic-opening-point { filter: drop-shadow(0 0 5px #a9bdff); }
 .cosmic-opening[data-phase="revealing"] { opacity: 0; pointer-events: none; }
-.cosmic-opening[data-phase="revealing"] .cosmic-opening-seal { transform: scale(1.12); opacity: 0; filter: blur(2px); }
-.cosmic-opening[data-phase="revealing"] .cosmic-opening-dust { animation: cosmic-opening-scatter .55s ease-out both; }
 .cosmic-scene[data-entered="false"] { opacity: 0; }
 .cosmic-scene[data-entered="true"] { opacity: 1; transition: opacity 1.1s ease; }
-@keyframes cosmic-opening-breathe { 0%, 100% { opacity: .65; filter: drop-shadow(0 0 .5px #ffe6af66); } 50% { opacity: 1; filter: drop-shadow(0 0 1.5px #ffe6af99); } }
-@keyframes cosmic-opening-unseal { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } }
-@keyframes cosmic-opening-sweep { 0% { opacity: 0; transform: translateX(-85%); } 30%, 70% { opacity: 1; } 100% { opacity: 0; transform: translateX(85%); } }
-@keyframes cosmic-opening-scatter { 0% { opacity: 0; transform: scale(.94); } 25% { opacity: .65; } 100% { opacity: 0; transform: scale(1.3); } }
 @media (prefers-reduced-motion: reduce) {
   .cosmic-opening { transition-duration: .16s; }
-  .cosmic-opening-star { animation: none; opacity: .8; }
-  .cosmic-opening-halo, .cosmic-opening-sweep, .cosmic-opening-dust { display: none; }
-  .cosmic-opening[data-phase="revealing"] .cosmic-opening-seal { transform: none; filter: none; }
-  .cosmic-opening-seal, .cosmic-scene[data-entered="true"] { transition: none; }
+  .cosmic-opening-sky, .cosmic-opening-final, .cosmic-opening-drawing, .cosmic-scene[data-entered="true"] { transition: none; }
 }

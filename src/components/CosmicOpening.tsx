@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { useReducedMotion } from "framer-motion";
-import { CosmicOpeningCard } from "@/components/CosmicOpeningCard";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { CosmicOpeningCard, cosmicOpeningFormationMs } from "@/components/CosmicOpeningCard";
+import { cosmicOpeningArtSrc, cosmicOpeningSkySrc } from "@/lib/cosmic-assets";
 import "./cosmic-opening.css";
 
-const homeImages = ["title", "start", "pendant"].map((part) => `/assets/cosmic/home-astrolabe-${part}-v3.webp`);
+const homeImages = [...["title", "start", "pendant"].map((part) => `/assets/cosmic/home-astrolabe-${part}-v3.webp`), cosmicOpeningArtSrc, cosmicOpeningSkySrc];
 const resourceCount = 79 + homeImages.length + 2;
+const motionQuery = "(prefers-reduced-motion: reduce)";
+function subscribeMotion(onChange: () => void) {
+  const media = window.matchMedia(motionQuery);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+const getReducedMotion = () => window.matchMedia(motionQuery).matches;
+const getServerReducedMotion = () => false;
 
 export function CosmicOpening({ sceneReady, sceneProgress, onReveal, onComplete }: {
   sceneReady: boolean; sceneProgress: number;
@@ -14,10 +22,11 @@ export function CosmicOpening({ sceneReady, sceneProgress, onReveal, onComplete 
 }) {
   const [settled, setSettled] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const [phase, setPhase] = useState<"loading" | "sealed" | "revealing">("loading");
   const started = useRef(0);
   const drawn = useRef(0);
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useSyncExternalStore(subscribeMotion, getReducedMotion, getServerReducedMotion);
   const ready = sceneReady && settled === homeImages.length + 2;
   const target = ready ? 1 : Math.min(.99, (sceneProgress * 79 + settled) / resourceCount);
 
@@ -46,7 +55,9 @@ export function CosmicOpening({ sceneReady, sceneProgress, onReveal, onComplete 
     const draw = (now: number) => {
       const delta = Math.max(0, Math.min(64, now - previous));
       previous = now;
-      const ceiling = reducedMotion ? target : Math.min(target, Math.max(0, now - started.current) / 650);
+      const elapsed = Math.max(0, now - started.current);
+      setElapsedMs(elapsed);
+      const ceiling = reducedMotion ? target : Math.min(target, Math.max(0, elapsed - cosmicOpeningFormationMs) / 650);
       drawn.current = Math.max(drawn.current, reducedMotion ? ceiling : Math.min(ceiling, drawn.current + delta / 280));
       setProgress(drawn.current);
       if (ready && drawn.current >= 1) { setPhase("sealed"); return; }
@@ -58,7 +69,7 @@ export function CosmicOpening({ sceneReady, sceneProgress, onReveal, onComplete 
 
   useEffect(() => {
     if (phase !== "sealed") return;
-    const timer = setTimeout(() => { setPhase("revealing"); onReveal(true); }, reducedMotion ? 0 : 420);
+    const timer = setTimeout(() => { setPhase("revealing"); onReveal(true); }, reducedMotion ? 0 : 280);
     return () => clearTimeout(timer);
   }, [phase, reducedMotion, onReveal]);
 
@@ -70,10 +81,7 @@ export function CosmicOpening({ sceneReady, sceneProgress, onReveal, onComplete 
 
   return <div className="cosmic-opening" data-phase={phase} data-testid="cosmic-opening" role="status" aria-label={ready ? "加载完成" : "正在加载塔罗牌"} style={{ "--opening-progress": progress } as CSSProperties}>
     <div className="cosmic-opening-seal">
-      <CosmicOpeningCard progress={progress} />
-      <span className="cosmic-opening-halo" aria-hidden="true" />
-      <span className="cosmic-opening-sweep" aria-hidden="true" />
-      <span className="cosmic-opening-dust" aria-hidden="true" />
+      <CosmicOpeningCard progress={progress} elapsedMs={elapsedMs} reducedMotion={Boolean(reducedMotion)} />
     </div>
   </div>;
 }

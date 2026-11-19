@@ -239,3 +239,50 @@ test("preserves every old shared table and record without assigning them to the 
   } finally { inspect.close(); }
   expect(database(path).list("second-user")).toEqual([]);
 });
+
+test("persists and deletes kind=ai journals and migrates pre-existing user_journals tables safely", () => {
+  const path = join(directory(), "migrate-ai.sqlite");
+  const legacyDb = new DatabaseSync(path);
+  legacyDb.exec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE user_journals (
+      user_id TEXT NOT NULL CHECK (length(trim(user_id)) > 0),
+      kind TEXT NOT NULL CHECK (kind IN ('sample', 'legacy')),
+      id TEXT NOT NULL CHECK (length(trim(id)) > 0),
+      version INTEGER NOT NULL CHECK (version = 1),
+      created_at TEXT NOT NULL,
+      created_at_ms INTEGER NOT NULL,
+      question TEXT NOT NULL CHECK (length(trim(question)) > 0),
+      spread_name TEXT NOT NULL CHECK (length(trim(spread_name)) > 0),
+      summary TEXT NOT NULL CHECK (length(trim(summary)) > 0),
+      PRIMARY KEY (user_id, kind, id)
+    ) STRICT;
+    CREATE TABLE user_journal_cards (
+      user_id TEXT NOT NULL CHECK (length(trim(user_id)) > 0),
+      journal_kind TEXT NOT NULL,
+      journal_id TEXT NOT NULL,
+      card_order INTEGER NOT NULL CHECK (card_order BETWEEN 0 AND 4),
+      position TEXT NOT NULL CHECK (length(trim(position)) > 0),
+      card_id TEXT NOT NULL CHECK (length(trim(card_id)) > 0),
+      orientation TEXT NOT NULL CHECK (orientation IN ('upright', 'reversed')),
+      meaning TEXT NOT NULL,
+      keywords TEXT NOT NULL CHECK (json_valid(keywords) AND json_type(keywords) = 'array'),
+      interpretation TEXT NOT NULL CHECK (length(trim(interpretation)) > 0),
+      PRIMARY KEY (user_id, journal_kind, journal_id, card_order),
+      UNIQUE (user_id, journal_kind, journal_id, position),
+      UNIQUE (user_id, journal_kind, journal_id, card_id),
+      FOREIGN KEY (user_id, journal_kind, journal_id) REFERENCES user_journals(user_id, kind, id) ON DELETE CASCADE
+    ) STRICT;
+    INSERT INTO user_journals VALUES ('demo-user-a', 'sample', 'before-ai', 1, '2026-11-17T08:00:00.000Z', 1794902400000, '迁移前问题', '单牌', '迁移前总结');
+    INSERT INTO user_journal_cards VALUES ('demo-user-a', 'sample', 'before-ai', 0, '核心提示', 'fool', 'upright', '牌义', '["探索"]', '迁移前解读');
+  `);
+  legacyDb.close();
+
+  const db = database(path);
+  const ai = record("ai-1", 5, "ai");
+  db.save(userId, ai);
+  const items = db.list(userId);
+  expect(items.map((item) => [item.id, item.kind])).toEqual([["before-ai", "sample"], ["ai-1", "ai"]]);
+  db.delete(userId, "ai", "ai-1");
+  expect(db.list(userId).map((item) => item.id)).toEqual(["before-ai"]);
+});

@@ -20,6 +20,7 @@ const directory = resolve(process.env.TAROT_DEMO_DATA_DIR || "data/demo");
 mkdirSync(directory, { recursive: true, mode: 0o700 });
 const secretPath = join(directory, ".auth-secret"), accountsPath = join(directory, "accounts.json");
 if (!existsSync(secretPath)) writeFileSync(secretPath, randomBytes(48).toString("base64url"), { flag: "wx", mode: 0o600 });
+const disableAi = process.env.DEEPSEEK_READING_ENABLED?.trim().toLowerCase() === "false";
 const env = {
   ...process.env,
   TAROT_AUTH_MODE: "local-demo",
@@ -27,8 +28,7 @@ const env = {
   BETTER_AUTH_SECRET: readFileSync(secretPath, "utf8").trim(),
   TAROT_AUTH_DATABASE_PATH: join(directory, "auth.sqlite"),
   TAROT_DATABASE_PATH: join(directory, "journals.sqlite"),
-  DEEPSEEK_READING_ENABLED: "false",
-  DEEPSEEK_API_KEY: "",
+  ...(disableAi ? { DEEPSEEK_READING_ENABLED: "false", DEEPSEEK_API_KEY: "" } : {}),
 };
 const config = getDemoAuthConfig(env);
 const initialized = await createAuthRuntime(config, true);

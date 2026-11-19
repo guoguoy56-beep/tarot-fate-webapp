@@ -24,13 +24,18 @@ test.each(cosmicSpreads)("captures the displayed cards and summary for $name", (
 });
 
 test.each([
-  { version: 2 }, { kind: "ai" }, { id: "" }, { createdAt: "bad-date" }, { question: "" }, { spreadName: "" }, { summary: "" },
+  { version: 2 }, { kind: "unknown" }, { id: "" }, { createdAt: "bad-date" }, { question: "" }, { spreadName: "" }, { summary: "" },
   { cards: [] }, { cards: Array.from({ length: 6 }, () => create().cards[0]) },
   { cards: [create().cards[0], create().cards[0]] },
   { cards: [{ ...create().cards[0], cardId: "unknown" }] },
   { cards: [{ ...create().cards[0], orientation: "invalid" }] },
   { cards: [{ ...create().cards[0], interpretation: "" }] },
 ])("rejects malformed snapshots", (changes) => expect(isJournalRecord({ ...create(), ...changes })).toBe(false));
+
+test("accepts valid ai journal snapshots and rejects invalid ai dates", () => {
+  expect(isJournalRecord({ ...create(), kind: "ai" })).toBe(true);
+  expect(isJournalRecord({ ...create(), kind: "ai", createdAt: "bad-date" })).toBe(false);
+});
 
 test("preserves old three-card content and tolerates its historical date format", () => {
   const record = journalFromLegacy({ id: "old-1", createdAt: "unrecorded", question: "旧问题", summary: "旧总结",

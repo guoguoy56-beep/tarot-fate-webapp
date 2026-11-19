@@ -124,7 +124,7 @@ test("the full reading flow works when WebGL2 is unavailable", async ({ page }) 
   await expect(space(page).locator("canvas")).toHaveCount(0);
   await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-ring-space", "world");
   await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-stream-space", "world");
-  await expect(page.locator(".cosmic-panorama")).toBeVisible();
+  await expect(page.getByTestId("cosmic-experience")).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await prepare(page);
   await page.getByLabel("你想问星空什么？").press("Enter");
   await choose(page);
@@ -148,7 +148,7 @@ test("context loss falls back and restoration reuses the same scene canvas", asy
   await extension.dispose();
 });
 
-for (const missing of ["/assets/cosmic/cosmic-panorama-v1.png", "/cards/rws/major-00-fool.jpg"]) {
+for (const missing of ["/cards/rws/major-00-fool.jpg"]) {
   test(`a failed scene resource does not block the reading flow: ${missing}`, async ({ page }) => {
     await page.route(`**${missing}`, (route) => route.abort());
     await page.emulateMedia({ reducedMotion: "reduce" });

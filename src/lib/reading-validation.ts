@@ -1,4 +1,5 @@
 import { tarotCardMap } from "@/data/tarotCards";
+import { cosmicSpreads, type CosmicSpread } from "@/lib/cosmic-experience";
 import {
   countReadingQuestionCharacters,
   MAX_READING_QUESTION_CHARACTERS,
@@ -6,6 +7,8 @@ import {
 } from "@/lib/reading-limits";
 import type {
   ReadingRequestErrorCode,
+  TrustedCosmicReadingCard,
+  TrustedCosmicReadingRequest,
   TrustedReadingCard,
   TrustedReadingRequest,
 } from "@/types/reading";
@@ -13,6 +16,9 @@ import type { CardOrientation, SpreadPosition } from "@/types/tarot";
 
 const spreadPositions: ReadonlySet<string> = new Set(["past", "present", "future"]);
 const cardOrientations: ReadonlySet<string> = new Set(["upright", "reversed"]);
+const cosmicSpreadMap: ReadonlyMap<string, CosmicSpread> = new Map(
+  cosmicSpreads.map((spread) => [spread.id, spread]),
+);
 
 interface ReadingRequestValidationError {
   code: ReadingRequestErrorCode;
@@ -23,7 +29,11 @@ export type ReadingRequestValidationResult =
   | { success: true; data: TrustedReadingRequest }
   | { success: false; error: ReadingRequestValidationError };
 
-function failure(code: ReadingRequestErrorCode, message: string): ReadingRequestValidationResult {
+export type CosmicReadingRequestValidationResult =
+  | { success: true; data: TrustedCosmicReadingRequest }
+  | { success: false; error: ReadingRequestValidationError };
+
+function failure(code: ReadingRequestErrorCode, message: string): { success: false; error: ReadingRequestValidationError } {
   return { success: false, error: { code, message } };
 }
 
@@ -126,6 +136,114 @@ export function validateReadingRequest(value: unknown): ReadingRequestValidation
   return {
     success: true,
     data: {
+      question,
+      cards,
+    },
+  };
+}
+
+export function validateCosmicReadingRequest(value: unknown): CosmicReadingRequestValidationResult {
+  if (!isRecord(value)) {
+    return failure("INVALID_REQUEST", "解读请求格式无效。");
+  }
+
+  if (typeof value.spreadId !== "string") {
+    return failure("INVALID_SPREAD", "请选择有效的牌阵。");
+  }
+
+  const spread = cosmicSpreadMap.get(value.spreadId);
+  if (!spread) {
+    return failure("INVALID_SPREAD", "未识别所选牌阵，请重新选择。");
+  }
+
+  if (typeof value.question !== "string") {
+    return failure("INVALID_REQUEST", "请提供非空问题。");
+  }
+
+  const question = normalizeReadingQuestion(value.question);
+
+  if (!question) {
+    return failure("INVALID_REQUEST", "请提供非空问题。");
+  }
+
+  if (countReadingQuestionCharacters(question) > MAX_READING_QUESTION_CHARACTERS) {
+    return failure("QUESTION_TOO_LONG", `问题不能超过 ${MAX_READING_QUESTION_CHARACTERS} 个字符。`);
+  }
+
+  if (!Array.isArray(value.cards)) {
+    return failure("INVALID_REQUEST", "解读请求格式无效。");
+  }
+
+  if (value.cards.length !== spread.slots.length) {
+    return failure("INVALID_CARD_COUNT", `${spread.name}需要恰好 ${spread.slots.length} 张牌。`);
+  }
+
+  const positions = new Set<string>();
+  const cardIds = new Set<string>();
+  const cards: TrustedCosmicReadingCard[] = [];
+
+  for (let index = 0; index < value.cards.length; index++) {
+    const card = value.cards[index];
+    const expectedPosition = spread.slots[index];
+
+    if (!isRecord(card)) {
+      return failure("INVALID_REQUEST", "卡牌信息格式无效。");
+    }
+
+    if (typeof card.cardId !== "string" || !card.cardId) {
+      return failure("INVALID_CARD_ID", "卡牌 ID 格式无效。");
+    }
+
+    if (!isTarotCardId(card.cardId)) {
+      return failure("UNKNOWN_CARD", "解读请求包含未知卡牌。");
+    }
+
+    const trustedCard = tarotCardMap.get(card.cardId);
+    if (!trustedCard) {
+      return failure("UNKNOWN_CARD", "解读请求包含未知卡牌。");
+    }
+
+    if (typeof card.position !== "string" || !card.position.trim()) {
+      return failure("INVALID_CARD_POSITION", `第 ${index + 1} 张牌的牌位无效。`);
+    }
+
+    const normalizedPosition = card.position.trim();
+    if (positions.has(normalizedPosition)) {
+      return failure("DUPLICATE_CARD_POSITION", "牌阵中的牌位不能重复。");
+    }
+
+    if (normalizedPosition !== expectedPosition) {
+      return failure("INVALID_CARD_POSITION", `牌位顺序与${spread.name}不匹配。`);
+    }
+
+    if (!isCardOrientation(card.orientation)) {
+      return failure("INVALID_CARD_ORIENTATION", "卡牌方向必须为 upright 或 reversed。");
+    }
+
+    if (cardIds.has(card.cardId)) {
+      return failure("DUPLICATE_CARD", "抽出的卡牌不能重复。");
+    }
+
+    positions.add(normalizedPosition);
+    cardIds.add(card.cardId);
+    cards.push({
+      cardId: card.cardId,
+      position: expectedPosition,
+      nameCn: trustedCard.nameCn,
+      nameEn: trustedCard.nameEn,
+      orientation: card.orientation,
+      uprightKeywords: trustedCard.uprightKeywords,
+      reversedKeywords: trustedCard.reversedKeywords,
+      meaning: trustedCard.meaning,
+    });
+  }
+
+  return {
+    success: true,
+    data: {
+      spreadId: spread.id,
+      spreadName: spread.name,
+      spreadSubtitle: spread.subtitle,
       question,
       cards,
     },

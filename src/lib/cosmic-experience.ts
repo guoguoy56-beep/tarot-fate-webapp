@@ -180,10 +180,10 @@ export function homeStreamPose(index: number, elapsedMs: number, aspectRatio = 1
   const points = homeStreamPath[segment];
   const coordinate = (axis: 0 | 1) => u ** 3 * points[0][axis] + 3 * u ** 2 * t * points[1][axis]
     + 3 * u * t ** 2 * points[2][axis] + t ** 3 * points[3][axis];
-  // Keep the source on the existing cover-cropped panorama when desktop aspect ratios differ.
-  const panoramaAspect = 1672 / 941;
-  const sourceX = 0.308 * 1.2544 * (Math.max(1, panoramaAspect / aspectRatio) - 1);
-  const sourceY = 0.224 * 1.2544 * (Math.max(1, (1920 / 910) / panoramaAspect) - Math.max(1, aspectRatio / panoramaAspect));
+  // Retain the approved stream framing across desktop viewports after removing its background image.
+  const referenceAspect = 2912 / 1440;
+  const sourceX = 0.308 * 1.2544 * (Math.max(1, referenceAspect / aspectRatio) - 1);
+  const sourceY = 0.224 * 1.2544 * (Math.max(1, (1920 / 910) / referenceAspect) - Math.max(1, aspectRatio / referenceAspect));
   const sourceWeight = (1 - progress) ** 3;
   const turn = Math.max(0, (progress - 0.55) / 0.45);
   const clockwise = 64 * turn ** 2 * (3 - 2 * turn);

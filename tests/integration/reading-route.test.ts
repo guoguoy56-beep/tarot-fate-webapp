@@ -2,18 +2,20 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { POST } from "@/app/api/reading/route";
 import { tarotCardMap } from "@/data/tarotCards";
-import { DeepSeekReadingError, requestDeepSeekReading } from "@/lib/deepseek";
+import { DeepSeekReadingError, requestDeepSeekCosmicReading, requestDeepSeekReading } from "@/lib/deepseek";
 import { MAX_READING_REQUEST_BYTES } from "@/lib/reading-limits";
-import type { ReadingApiErrorCode, ReadingRequest, ReadingRequestErrorCode } from "@/types/reading";
+import type { CosmicReadingResponse, ReadingApiErrorCode, ReadingRequest, ReadingRequestErrorCode } from "@/types/reading";
 
 import { createReadingApiError, createReadingRequest, createReadingResponse } from "../fixtures/reading";
 
 vi.mock("@/lib/deepseek", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/deepseek")>()),
   requestDeepSeekReading: vi.fn(),
+  requestDeepSeekCosmicReading: vi.fn(),
 }));
 
 const requestReadingMock = vi.mocked(requestDeepSeekReading);
+const requestCosmicReadingMock = vi.mocked(requestDeepSeekCosmicReading);
 const logInfo = vi.fn();
 const logWarn = vi.fn();
 const fakeApiKey = "test004-only-api-key";
@@ -75,6 +77,7 @@ async function expectApiError(response: Response, status: number, code: ReadingA
 beforeEach(() => {
   requestReadingMock.mockReset();
   requestReadingMock.mockResolvedValue({ reading, usage, model: "test004-provider-model" });
+  requestCosmicReadingMock.mockReset();
   fetchMock = vi.fn<typeof fetch>(async () => {
     throw new Error("unexpected external fetch in API integration test");
   });
@@ -282,4 +285,82 @@ test("turns unexpected exceptions into a generic 500 without leaking private fie
   expect(logInfo).not.toHaveBeenCalled();
   expect(logWarn).toHaveBeenCalledTimes(1);
   expect(String(logWarn.mock.calls[0][0])).toContain('"errorCode":"INTERNAL_ERROR"');
+});
+
+test("supports multi-spread cosmic reading requests on POST /api/reading with trusted card rebuild and privacy isolation", async () => {
+  const cosmicReading: CosmicReadingResponse = {
+    cards: [
+      { position: "现状", interpretation: "现状位的愚者正位指向新的尝试与好奇心，眼下更适合先迈出可控的一小步，再通过真实反馈校正节奏与方向。".repeat(2) },
+      { position: "阻力", interpretation: "阻力位的魔术师逆位提醒注意力被分散在多个念头之间，先暂缓次要目标才能看到清晰进展。".repeat(2) },
+      { position: "根源", interpretation: "根源位的女祭司正位说明你心里其实早有直觉判断，只是还缺少一次把想法说出口的契机。".repeat(2) },
+      { position: "建议", interpretation: "建议位的皇后正位鼓励你用耐心与具体投入滋养已经萌芽的方案，而不是频繁推翻重来。".repeat(2) },
+      { position: "走向", interpretation: "走向位的皇帝正位表示只要定下清晰分工与时间节点，局势会逐步进入稳健可控的推进期。".repeat(2) },
+    ],
+    summary: {
+      overview: "这组十字牌阵指出你已经具备推进条件，关键是收拢分散精力并立下具体执行边界。",
+      connectionTitle: "牌与牌的联系",
+      connection: "从愚者正位的启程到皇帝正位的落地，五张牌串联起由灵感走向稳定结构的完整过程。",
+      actions: [
+        "今天先选定最重要的一件事并列出最小交付清单。",
+        "与关键合作方对齐本周的节点与边界，避免反复返工。",
+        "三天后复盘实际反馈，再决定是否追加新想法。",
+      ],
+      reflection: "如果现在只守住一个核心方向，你最想先落实哪一步？",
+    },
+  };
+  requestCosmicReadingMock.mockResolvedValueOnce({
+    reading: cosmicReading,
+    usage,
+    model: "test004-cosmic-model",
+  });
+
+  const positions = ["现状", "阻力", "根源", "建议", "走向"] as const;
+  const cardIds = ["fool", "magician", "high-priestess", "empress", "emperor"] as const;
+  const response = await POST(jsonRequest({
+    spreadId: "cross",
+    question: ` ${privateQuestion} `,
+    cards: cardIds.map((cardId, index) => ({
+      cardId,
+      position: positions[index],
+      orientation: index === 1 ? "reversed" : "upright",
+      nameCn: forgedMetadata,
+      meaning: forgedMetadata,
+    })),
+  }));
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(await response.json()).toEqual(cosmicReading);
+  expect(requestReadingMock).not.toHaveBeenCalled();
+  expect(requestCosmicReadingMock).toHaveBeenCalledTimes(1);
+  expect(requestCosmicReadingMock.mock.calls[0][0].cards[0].nameCn).toBe("愚者");
+  expect(requestCosmicReadingMock.mock.calls[0][0].cards[0].meaning).not.toBe(forgedMetadata);
+});
+
+test("validates spreadId and card count for cosmic requests and maps upstream errors safely", async () => {
+  await expectApiError(
+    await POST(jsonRequest({ spreadId: "nonexistent", question: "问题", cards: [] })),
+    400,
+    "INVALID_SPREAD",
+  );
+  await expectApiError(
+    await POST(jsonRequest({ spreadId: "single", question: "问题", cards: [] })),
+    400,
+    "INVALID_CARD_COUNT",
+  );
+  expect(requestCosmicReadingMock).not.toHaveBeenCalled();
+
+  requestCosmicReadingMock.mockRejectedValueOnce(new DeepSeekReadingError(
+    "DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, "test004-cosmic-model",
+  ));
+  await expectApiError(
+    await POST(jsonRequest({
+      spreadId: "single",
+      question: "今天适合推进哪件事？",
+      cards: [{ cardId: "fool", position: "核心提示", orientation: "upright" }],
+    })),
+    504,
+    "DEEPSEEK_TIMEOUT",
+    true,
+  );
 });

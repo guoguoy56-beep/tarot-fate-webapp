@@ -1,10 +1,13 @@
-import { AdditiveBlending, BackSide, BufferGeometry, CanvasTexture, Float32BufferAttribute, Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, Scene, SphereGeometry, SRGBColorSpace, TextureLoader, WebGLRenderer } from "three";
-import { cosmicPanoramaFrame, cosmicSpaceCamera, type SpaceCameraBlend } from "@/lib/cosmic-space-camera";
+import { PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer } from "three";
+import { cosmicSpaceCamera, type SpaceCameraBlend } from "@/lib/cosmic-space-camera";
+import { createCosmicStarfield } from "@/lib/cosmic-starfield";
+import { createCosmicNebulae } from "@/lib/cosmic-nebula";
+import { createCosmicGalacticBand } from "@/lib/cosmic-galactic-band";
+import { createCosmicMeteors } from "@/lib/cosmic-meteors";
 import { CosmicRingSpace } from "@/lib/cosmic-ring-space";
 import { CosmicStreamMeshes } from "@/lib/cosmic-stream-meshes";
 import type { CosmicDeckEntry } from "@/lib/cosmic-stream-space";
 import { ringEntryMotion, type CosmicRingEntry } from "@/lib/cosmic-ring-entry";
-
 import type { CardSurfaceProjection } from "@/lib/cosmic-card-back-projection";
 
 export interface CosmicBackdrop {
@@ -12,7 +15,7 @@ export interface CosmicBackdrop {
   readonly loadProgress: number;
   setDeck(deck: readonly CosmicDeckEntry[]): void;
   drawBacks(poses: readonly CardSurfaceProjection[], width: number, height: number): boolean;
-  render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number, entry?: { queue: CosmicRingEntry; elapsed: number }): void;
+  render(blend: SpaceCameraBlend, width: number, height: number, streamTime?: number, entry?: { queue: CosmicRingEntry; elapsed: number }, starTime?: number): void;
   dispose(): void;
 }
 
@@ -37,55 +40,22 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
   }
   const renderer = new WebGLRenderer({ canvas, context, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setClearColor(0x060916);
+  renderer.setClearColor(0x000000);
   renderer.outputColorSpace = SRGBColorSpace;
   host.appendChild(canvas);
-  const planeGeometry = new PlaneGeometry(1, 1);
-  const planeMaterial = new MeshBasicMaterial({ toneMapped: false });
-  const panorama = new Mesh(planeGeometry, planeMaterial);
-  panorama.position.z = -36;
-  scene.add(panorama);
-  let disposed = false, ready = false, backgroundFailed = false, lost = false, dirty = true, lastKey = "", frames = 0;
+  let disposed = false, lost = false, dirty = true, lastKey = "", frames = 0;
   let baseDrawn = false;
   const stream = new CosmicStreamMeshes(scene, Math.min(8, renderer.capabilities.getMaxAnisotropy()), () => { dirty = true; });
   let width = 0, height = 0;
-  const texture = new TextureLoader().load("/assets/cosmic/cosmic-panorama-v1.png", (loaded) => {
-    if (disposed) { loaded.dispose(); return; }
-    ready = true;
-    dirty = true;
-  }, undefined, () => { if (!disposed) { backgroundFailed = true; host.dataset.renderer = "fallback"; } });
-  texture.colorSpace = SRGBColorSpace;
-  texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-  planeMaterial.map = texture;
-
-  // A quiet surrounding shell makes the reverse side readable during the camera graybox.
-  // Formal flowing nebula volumes replace this placeholder in step 4.
-  const shellGeometry = new SphereGeometry(450, 32, 16);
-  const shellMaterial = new MeshBasicMaterial({ map: texture, color: 0x544864, side: BackSide, toneMapped: false });
-  const shell = new Mesh(shellGeometry, shellMaterial);
-  scene.add(shell);
-
-  // Soft, low-contrast stars at three actual depths; no extra asset or ambient movement.
-  const dot = document.createElement("canvas");
-  dot.width = dot.height = 32;
-  const paint = dot.getContext("2d")!;
-  const glow = paint.createRadialGradient(16, 16, 0, 16, 16, 16);
-  glow.addColorStop(0, "#ffffff"); glow.addColorStop(0.22, "#ffffffcc"); glow.addColorStop(1, "#ffffff00");
-  paint.fillStyle = glow; paint.fillRect(0, 0, 32, 32);
-  const dotTexture = new CanvasTexture(dot);
-  dotTexture.colorSpace = SRGBColorSpace;
-  let seed = 271828;
-  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-  const layers = [[380, -34, -20, 1.4, 0.28], [180, -20, 3, 1.8, 0.34], [90, 3, 22, 2.4, 0.4], [250, 35, 140, 1.8, 0.36]] as const;
-  const stars = layers.map(([count, near, far, size, opacity]) => {
-    const vertices = Array.from({ length: count }, () => [(random() - 0.35) * 130, (random() - 0.5) * 85, near + random() * (far - near)]).flat();
-    const geometry = new BufferGeometry();
-    geometry.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-    const material = new PointsMaterial({ map: dotTexture, color: 0xe4d5eb, size, sizeAttenuation: false, transparent: true, opacity, depthWrite: false, blending: AdditiveBlending, toneMapped: false });
-    const points = new Points(geometry, material);
-    scene.add(points);
-    return points;
-  });
+  const stars = createCosmicStarfield(renderer.getPixelRatio());
+  stars.renderOrder = -20;
+  scene.add(stars);
+  const nebulae = createCosmicNebulae(scene);
+  const galacticBand = createCosmicGalacticBand(scene);
+  const meteors = createCosmicMeteors(scene);
+  host.dataset.background = "procedural-stars-nebula";
+  host.dataset.starCount = String(stars.geometry.getAttribute("position").count);
+  host.dataset.nebulaCount = String(nebulae.clouds.length);
   const onLost = (event: Event) => { event.preventDefault(); lost = true; host.dataset.renderer = "fallback"; };
   const onRestored = () => { lost = false; dirty = true; lastKey = ""; };
   canvas.addEventListener("webglcontextlost", onLost);
@@ -104,23 +74,23 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       host.dataset.returningCards = poses.filter((pose) => pose.transform).map((pose) => `${pose.anchor}:${pose.order}`).join(",");
       return true;
     },
-    render(blend, nextWidth, nextHeight, streamTime = 0, entry) {
+    render(blend, nextWidth, nextHeight, streamTime = 0, entry, starTime = 0) {
       baseDrawn = false;
-      if (disposed || !nextWidth || !nextHeight) return;
-      const fallback = lost || backgroundFailed || (stream.ready && !stream.available);
+      if (disposed || document.hidden || !nextWidth || !nextHeight) return;
+      const fallback = lost || (stream.ready && !stream.available);
       const pose = updateCamera(fallback ? { ...blend, reverse: 0, dive: undefined } : blend, nextWidth, nextHeight);
-      host.dataset.streamReady = String(stream.ready && (ready || backgroundFailed));
-      if (!ready || !stream.ready || lost) return;
-      const key = [...pose.position, ...pose.target, pose.fov, nextWidth, nextHeight, blend.ring < 0.999 ? streamTime : 0, entry?.elapsed ?? -1].map((value) => value.toFixed(4)).join(":");
+      host.dataset.streamReady = String(stream.ready);
+      if (!stream.ready || lost) return;
+      const key = [...pose.position, ...pose.target, pose.fov, nextWidth, nextHeight, blend.ring < 0.999 ? streamTime : 0, entry?.elapsed ?? -1, starTime].map((value) => value.toFixed(4)).join(":");
       if (key === lastKey && !dirty) return;
       if (width !== nextWidth || height !== nextHeight) {
         width = nextWidth; height = nextHeight;
         renderer.setSize(width, height, false);
-        // Match the existing home cover-crop so the stream still starts inside the vortex.
-        const image = cosmicPanoramaFrame(camera.aspect);
-        panorama.scale.set(image.width, image.height, 1);
-        panorama.position.set(image.x, image.y, image.z);
       }
+      stars.material.uniforms.time.value = starTime / 1000;
+      nebulae.update(starTime / 1000, camera);
+      galacticBand.update(starTime / 1000);
+      meteors.update(starTime / 1000);
       const visible = stream.update(streamTime, nextWidth, nextHeight, entry ? 1 : Math.max(0, 1 - blend.ring), camera, entry);
       renderer.render(scene, camera);
       baseDrawn = true;
@@ -137,6 +107,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       host.dataset.ringHandoff = String(entry ? Math.max(0, Math.min(1, (entry.elapsed - ringEntryMotion.arrivalMs) / (ringEntryMotion.durationMs - ringEntryMotion.arrivalMs))) : 1);
       host.dataset.cameraTarget = pose.target.map((value) => value.toFixed(5)).join(",");
       host.dataset.frames = String(++frames);
+      host.dataset.starTime = (starTime / 1000).toFixed(3);
       lastKey = key;
       dirty = false;
     },
@@ -144,9 +115,7 @@ export function createCosmicBackdrop(host: HTMLDivElement): CosmicBackdrop {
       disposed = true;
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      stars.forEach((points) => { points.geometry.dispose(); points.material.dispose(); });
-      dotTexture.dispose(); texture.dispose(); planeGeometry.dispose(); planeMaterial.dispose();
-      shellGeometry.dispose(); shellMaterial.dispose(); stream.dispose();
+      stars.geometry.dispose(); stars.material.dispose(); nebulae.dispose(); galacticBand.dispose(); meteors.dispose(); stream.dispose();
       renderer.dispose();
       ring.dispose();
       canvas.remove();

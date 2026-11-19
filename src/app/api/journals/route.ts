@@ -103,7 +103,7 @@ export async function DELETE(request: Request) {
   const body = await readBody(request);
   if ("error" in body) return body.error;
   const payload = body.data;
-  if (!isObject(payload) || (payload.kind !== "sample" && payload.kind !== "legacy")
+  if (!isObject(payload) || (payload.kind !== "ai" && payload.kind !== "sample" && payload.kind !== "legacy")
     || typeof payload.id !== "string" || !payload.id.trim() || payload.id.length > 128) {
     return error(400, "无法识别要删除的手记。");
   }

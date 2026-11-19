@@ -57,7 +57,7 @@ export function CosmicHistory({ onDelete, revision }: { onDelete: (record: Journ
         const key = `${record.kind}:${record.id}`;
         const date = new Date(record.createdAt);
         return <article key={key} aria-label={record.question}>
-          <div className="cosmic-history-meta"><span className="cosmic-sample-label">{record.kind === "sample" ? "示例手记" : "旧版手记"}</span>
+          <div className="cosmic-history-meta"><span className="cosmic-sample-label">{record.kind === "ai" ? "AI 手记" : record.kind === "sample" ? "示例手记" : "旧版手记"}</span>
             <time dateTime={Number.isNaN(date.getTime()) ? undefined : record.createdAt}>{Number.isNaN(date.getTime()) ? "日期未记录" : date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</time></div>
           <h3>{record.question}</h3><p>{record.spreadName} · {record.cards.length} 张牌</p>
           <ol className="cosmic-history-cards">{record.cards.map((entry) => {
@@ -67,6 +67,7 @@ export function CosmicHistory({ onDelete, revision }: { onDelete: (record: Journ
           })}</ol>
           <details><summary>查看完整手记</summary><div className="cosmic-history-reading">
             {record.kind === "sample" && <p className="cosmic-small-note">以下为保存当时的示例内容，仅供体验。</p>}
+            {record.kind === "ai" && <p className="cosmic-small-note">以下为 DeepSeek 结合当次牌面生成的 AI 解读。</p>}
             {record.cards.map((entry) => <section key={entry.position}><h4>{entry.position} · {tarotCardMap.get(entry.cardId)!.nameCn} · {entry.orientation === "upright" ? "正位" : "逆位"}</h4>
               {entry.meaning && <><h5>牌面含义</h5><p>{entry.meaning}</p></>}
               {!!entry.keywords.length && <p className="cosmic-history-keywords">{entry.keywords.join(" · ")}</p>}

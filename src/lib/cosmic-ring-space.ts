@@ -60,7 +60,7 @@ export class CosmicRingSpace {
       this.frames = [
         this.frame({ ring: 1, reading: 0, summary: 0 }, 0.5, 0.6, 0.405, 0.18, 0.64),
         this.frame({ ring: 1, reading: 1, summary: 0 }, 0.34, 0.38, 0.34, 0.25, 0.83),
-        this.frame({ ring: 1, reading: 1, summary: 1 }, 0.5, 0.45, 0.26, 0.18, 0.64),
+        this.frame({ ring: 1, reading: 1, summary: 1 }, 0.5, 0.58, 0.26, 0.18, 0.64),
       ];
     }
     const [draw, reading, summary] = this.frames;

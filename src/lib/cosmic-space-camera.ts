@@ -78,11 +78,3 @@ export function cosmicSpaceCamera(blend: SpaceCameraBlend): { position: readonly
     fov: 50 - 8 * reading + 5 * summary,
   };
 }
-
-/** Original 6% overscan and 1.12 home scale, expressed as a stationary world-space image. */
-export function cosmicPanoramaFrame(aspect: number) {
-  const viewHeight = 2 * 60 * Math.tan(25 * Math.PI / 180);
-  const viewWidth = viewHeight * aspect;
-  const height = Math.max(viewHeight, viewWidth / (1672 / 941)) * 1.2544;
-  return { width: height * 1672 / 941, height, x: -viewWidth * 0.0336, y: viewHeight * 0.0336, z: -36 };
-}

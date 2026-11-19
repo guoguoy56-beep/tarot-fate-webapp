@@ -15,7 +15,7 @@ export interface JournalRecord {
   version: 1;
   id: string;
   createdAt: string;
-  kind: "sample" | "legacy";
+  kind: "ai" | "sample" | "legacy";
   question: string;
   spreadName: string;
   cards: JournalCard[];
@@ -24,11 +24,12 @@ export interface JournalRecord {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const text = (value: unknown, max: number): value is string => typeof value === "string" && Boolean(value.trim()) && value.length <= max;
+const isJournalKind = (value: unknown): value is JournalRecord["kind"] => value === "ai" || value === "sample" || value === "legacy";
 
 export function isJournalRecord(value: unknown): value is JournalRecord {
-  if (!isRecord(value) || value.version !== 1 || (value.kind !== "sample" && value.kind !== "legacy")
+  if (!isRecord(value) || value.version !== 1 || !isJournalKind(value.kind)
     || !text(value.id, 128) || !text(value.question, 4000) || !text(value.spreadName, 100) || !text(value.summary, 32000)
-    || !text(value.createdAt, 80) || (value.kind === "sample" && !Number.isFinite(Date.parse(value.createdAt)))
+    || !text(value.createdAt, 80) || (value.kind !== "legacy" && !Number.isFinite(Date.parse(value.createdAt)))
     || !Array.isArray(value.cards) || value.cards.length < 1 || value.cards.length > 5) return false;
   const positions = new Set<string>(), cards = new Set<string>();
   for (const card of value.cards) {

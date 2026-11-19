@@ -130,13 +130,21 @@ test.each([null, "", "{", new Uint8Array([0xff])])("rejects absent, malformed or
 test.each([
   null, [], {}, { records: null }, { records: {} }, { records: [] }, { records: Array(21).fill(record()) },
   { records: [record(), {}] }, { records: [{ ...record(), version: 2 }] },
-  { records: [{ ...record(), kind: "ai" }] }, { records: [{ ...record(), question: " " }] },
+  { records: [{ ...record(), kind: "unknown" }] }, { records: [{ ...record(), question: " " }] },
   { records: [{ ...record(), createdAt: "invalid-date" }] }, { records: [{ ...record(), cards: [] }] },
   { records: [{ ...record(), cards: [{ ...record().cards[0], cardId: "unknown" }] }] },
   { records: [{ ...record(), cards: [{ ...record().cards[0], orientation: "sideways" }] }] },
 ])("rejects an invalid save payload before any record is written", async (payload) => {
   await expectError(await POST(request("POST", payload)), 400);
   expectUntouched();
+});
+
+test("accepts saving and deleting kind=ai journals for the authenticated user", async () => {
+  const aiRecord = { ...record("ai-journal-1"), kind: "ai" as const };
+  expect((await POST(request("POST", { records: [aiRecord] }))).status).toBe(200);
+  expect(database.save).toHaveBeenCalledWith(userId, aiRecord);
+  expect((await DELETE(request("DELETE", { kind: "ai", id: "ai-journal-1" }))).status).toBe(200);
+  expect(database.delete).toHaveBeenCalledWith(userId, "ai", "ai-journal-1");
 });
 
 test.each([null, [], {}, { kind: "sample" }, { kind: "sample", id: 10 }, { kind: "sample", id: " " },

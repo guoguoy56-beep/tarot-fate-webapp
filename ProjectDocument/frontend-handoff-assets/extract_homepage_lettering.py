@@ -63,6 +63,14 @@ def lettering(source):
 def button(source):
     rim = Image.new("L", source.size)
     rim.putdata([255 if gold(pixel, 90) else 0 for pixel in source.get_flattened_data()])
+    # Pale specular highlights lose their gold hue. Keep those next to the rim
+    # before flood filling, or the outer edge develops transparent notches.
+    nearby_gold = rim.filter(ImageFilter.MaxFilter(5))
+    rim.putdata([
+        255 if edge or (adjacent and red > 185 and green > 155) else 0
+        for (red, green, blue), edge, adjacent in zip(
+            source.get_flattened_data(), rim.get_flattened_data(), nearby_gold.get_flattened_data())
+    ])
     closed = rim.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3))
     width, height = source.size
     exterior = Image.new("L", source.size)

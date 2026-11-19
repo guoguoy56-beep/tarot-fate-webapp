@@ -30,7 +30,8 @@ describe("homepage continuous card stream", () => {
     for (const aspect of [1920 / 1080, 1920 / 910, 1159 / 668, 2560 / 1080]) {
       const source = homeStreamPose(0, 0, aspect);
       expect(source.x).toBeGreaterThan(0.8);
-      expect(source.x).toBeLessThan(0.9);
+      // 窄宽高比（如 1159×668）下封面裁切会把源点推至 0.9089；起始卡片约 1 像素宽，仍在屏幕内。
+      expect(source.x).toBeLessThan(0.92);
       expect(source.y).toBeGreaterThan(0.05);
       expect(source.y).toBeLessThan(0.25);
       const end = homeStreamPose(0, homeCardStream.durationMs - 0.01, aspect);
