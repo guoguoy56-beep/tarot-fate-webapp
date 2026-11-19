@@ -458,7 +458,7 @@ function SummaryView({ spread, selected, question, aiEnabled, aiReading, saved, 
       <p className="cosmic-summary-review-hint">选择任意一张牌，回看逐牌解读</p>
     </section>
     <div className="cosmic-summary-reading">
-      <header className="cosmic-summary-title"><p className="cosmic-eyebrow">此刻的回响</p><div><h2 ref={heading} tabIndex={-1}>命运手记</h2><span className="cosmic-sample-label">{isAiSummary ? "DeepSeek AI 解读" : "示例总结 · 仅供体验"}</span></div></header>
+      <header className="cosmic-summary-title"><p className="cosmic-eyebrow">此刻的回响</p><div><h2 ref={heading} tabIndex={-1}>命运手记</h2><span className="cosmic-sample-label">{isAiSummary ? "星语灵枢解读" : "示例总结 · 仅供体验"}</span></div></header>
       <div ref={body} className="cosmic-summary-body" role="region" aria-label="整体分析正文" tabIndex={0} onScroll={(event) => { scrollPositionRef.current = event.currentTarget.scrollTop; }}>
         <div className="cosmic-summary-question"><span>你此刻的问题</span><p>“{question}”</p></div>
         <section className="cosmic-summary-prose"><h3>整体脉络</h3><p>{content.overview}</p></section>
@@ -467,11 +467,40 @@ function SummaryView({ spread, selected, question, aiEnabled, aiReading, saved, 
         <p className="cosmic-summary-reflection">{content.reflection}</p>
       </div>
       <footer className="cosmic-summary-footer"><div className="cosmic-summary-actions"><button className="cosmic-secondary" onClick={onSave} disabled={saved || saving}>{saved ? <Check size={16} /> : <BookOpen size={16} />}{saving ? "保存中…" : saved ? (isAiSummary ? "已保存本次手记" : "已保存本次示例") : (isAiSummary ? "保存命运手记" : "保存示例手记")}</button><button className="cosmic-primary" onClick={onRestart}>再次占卜<ArrowRight size={17} /></button></div>
-        <p className="cosmic-small-note" role="status">{saved ? "已保存到你的账号，刷新后仍可查看。" : isAiSummary ? "保存这次的问题、牌面与 DeepSeek AI 解读。" : "保存这次的问题、牌面与示例解读。"}<button className="cosmic-journal-link" disabled={saving} onClick={onHistory}>查看历史记录</button></p>
+        <p className="cosmic-small-note" role="status">{saved ? "已保存到你的账号，刷新后仍可查看。" : isAiSummary ? "保存这次的问题、牌面与星语灵枢解读。" : "保存这次的问题、牌面与示例解读。"}<button className="cosmic-journal-link" disabled={saving} onClick={onHistory}>查看历史记录</button></p>
         {saveError && <p className="cosmic-journal-error" role="alert">{saveError}</p>}
       </footer>
     </div>
   </motion.section>;
+}
+
+function StreamingReadingText({ text, alreadyRevealed, reducedMotion, onComplete }: {
+  text: string; alreadyRevealed: boolean; reducedMotion: boolean; onComplete: () => void;
+}) {
+  const chars = Array.from(text);
+  const immediate = reducedMotion || alreadyRevealed;
+  const [count, setCount] = useState(() => (immediate ? chars.length : 0));
+
+  useEffect(() => {
+    if (immediate) return;
+    if (count >= chars.length) {
+      onComplete();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCount((value) => Math.min(chars.length, value + 1));
+    }, 28);
+    return () => clearTimeout(timer);
+  }, [count, chars.length, immediate, onComplete]);
+
+  const displayedCount = immediate ? chars.length : count;
+  const streaming = displayedCount < chars.length;
+
+  return <p className={`cosmic-streaming-text ${streaming ? "is-streaming" : ""}`}
+    onClick={() => { if (streaming) { setCount(chars.length); onComplete(); } }}>
+    <span>{chars.slice(0, displayedCount).join("")}</span>
+    {streaming && <span className="cosmic-stream-cursor" aria-hidden="true">✦</span>}
+  </p>;
 }
 
 const initialAiReading: AiReadingState = { status: "idle", data: null, error: "", retryable: true };
@@ -497,6 +526,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
   const activeSave = useRef<{ owner: string; id: string } | null>(null);
   const [aiReading, setAiReading] = useState<AiReadingState>(initialAiReading);
   const aiRequest = useRef<{ id: number; controller: AbortController } | null>(null);
+  const [revealedCards, setRevealedCards] = useState<Record<number, boolean>>({});
   const [reviewingSummary, setReviewingSummary] = useState(false);
   const summaryScroll = useRef(0);
   const { data: session, isPending: sessionPending, error: sessionError, refetch: refetchSession } = authClient.useSession();
@@ -529,6 +559,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
     aiRequest.current?.controller.abort();
     aiRequest.current = null;
     setAiReading(initialAiReading);
+    setRevealedCards({});
   }
 
   async function requestAiReading(targetSpread: CosmicSpread, targetSelected: readonly OrbitalSelection[], targetQuestion: string) {
@@ -537,6 +568,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
     const requestId = (aiRequest.current?.id ?? 0) + 1;
     const controller = new AbortController();
     aiRequest.current = { id: requestId, controller };
+    setRevealedCards({});
     setAiReading({ status: "loading", data: null, error: "", retryable: true });
     try {
       const response = await fetch("/api/reading", {
@@ -560,7 +592,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
         setAiReading({
           status: "error",
           data: null,
-          error: apiError?.message ?? "DeepSeek 解读服务暂时不可用，请保留牌面并手动重试。",
+          error: apiError?.message ?? "星语灵枢解读服务暂时不可用，请保留牌面并手动重试。",
           retryable: apiError?.retryable ?? true,
         });
         return;
@@ -569,7 +601,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
         setAiReading({
           status: "error",
           data: null,
-          error: "DeepSeek 返回的解读格式不完整，牌面已保留，请手动重试。",
+          error: "星语灵枢返回的解读格式不完整，牌面已保留，请手动重试。",
           retryable: true,
         });
         return;
@@ -580,7 +612,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
       setAiReading({
         status: "error",
         data: null,
-        error: "暂时无法连接解读服务，你的问题与牌面已保留，请稍后重试。",
+        error: "暂时无法连接星语灵枢服务，你的问题与牌面已保留，请稍后重试。",
         retryable: true,
       });
     }
@@ -721,16 +753,18 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
           <p className="cosmic-eyebrow">{spread.slots[current]} · 第 {current + 1} / {selected.length} 张</p>
           <h2>{card.nameCn}<span>· {active.orientation === "upright" ? "正位" : "逆位"}</span></h2>
           <p className="cosmic-card-english">{card.nameEn}</p>
-          <span className="cosmic-sample-label">{aiEnabled ? "DeepSeek AI 解读" : "示例解读"}</span>
+          <span className="cosmic-sample-label">{aiEnabled ? "星语灵枢解读" : "示例解读"}</span>
           <div className="cosmic-reading-section"><h3><Sparkles size={19} strokeWidth={1} />牌面含义</h3><p>{card.meaning}</p><div className="cosmic-keywords">{keywords.map((word) => <span key={word}>{word}</span>)}</div></div>
           <div className="cosmic-reading-section"><h3><Sparkles size={19} strokeWidth={1} />与你的问题</h3><p className="cosmic-question">“{question}”</p>
-            {!aiEnabled ? <p>{activeReading?.interpretation}</p> : aiReading.status === "ready" && aiReading.data ? <p>{aiReading.data.cards[current]?.interpretation}</p> : aiReading.status === "error" ? <div className="cosmic-ai-error" role="alert">
-              <p>{aiReading.error}</p>
-              <button type="button" className="cosmic-secondary" onClick={() => void requestAiReading(spread, selected, question)}><RefreshCw size={15} aria-hidden="true" />重新解读</button>
-            </div> : <div className="cosmic-ai-loading" role="status" aria-live="polite">
-              <div className="cosmic-ai-loading-head"><Loader2 size={16} className="cosmic-ai-spinner" aria-hidden="true" /><span>星语凝聚中，正在结合牌面与你的问题生成解读…</span></div>
-              <span className="cosmic-ai-shimmer" aria-hidden="true" /><span className="cosmic-ai-shimmer is-medium" aria-hidden="true" /><span className="cosmic-ai-shimmer is-short" aria-hidden="true" />
-            </div>}
+            {!aiEnabled ? <StreamingReadingText key={`sample-${current}-${activeReading?.interpretation ?? ""}`} text={activeReading?.interpretation ?? ""} alreadyRevealed={Boolean(revealedCards[current])} reducedMotion={Boolean(reducedMotion)} onComplete={() => setRevealedCards((prev) => prev[current] ? prev : { ...prev, [current]: true })} />
+              : aiReading.status === "ready" && aiReading.data ? <StreamingReadingText key={`ai-${current}-${aiReading.data.cards[current]?.interpretation ?? ""}`} text={aiReading.data.cards[current]?.interpretation ?? ""} alreadyRevealed={Boolean(revealedCards[current])} reducedMotion={Boolean(reducedMotion)} onComplete={() => setRevealedCards((prev) => prev[current] ? prev : { ...prev, [current]: true })} />
+              : aiReading.status === "error" ? <div className="cosmic-ai-error" role="alert">
+                <p>{aiReading.error}</p>
+                <button type="button" className="cosmic-secondary" onClick={() => void requestAiReading(spread, selected, question)}><RefreshCw size={15} aria-hidden="true" />重新解读</button>
+              </div> : <div className="cosmic-ai-loading" role="status" aria-live="polite">
+                <div className="cosmic-ai-loading-head"><Loader2 size={16} className="cosmic-ai-spinner" aria-hidden="true" /><span>星语灵枢凝聚中，正在结合牌面与你的问题推演解读…</span></div>
+                <span className="cosmic-ai-shimmer" aria-hidden="true" /><span className="cosmic-ai-shimmer is-medium" aria-hidden="true" /><span className="cosmic-ai-shimmer is-short" aria-hidden="true" />
+              </div>}
           </div>
         </motion.div></AnimatePresence>
         <div className="cosmic-reading-controls"><button className="cosmic-secondary" disabled={current === 0 || turning} onClick={() => changeCard(current - 1)}><ArrowLeft size={16} />上一张</button>
@@ -740,7 +774,7 @@ export function CosmicExperience({ aiEnabled = false }: { aiEnabled?: boolean })
       {stage === "summarizing" && <motion.section className="cosmic-status" key="summarizing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><p className="cosmic-eyebrow">让散落的星光，连成答案</p><h2>回望这一路的线索</h2></motion.section>}
       {stage === "summary" && <SummaryView key="summary" spread={spread} selected={selected} question={question} aiEnabled={aiEnabled} aiReading={aiReading.data} saved={saved} saving={saving} saveError={saveError} scrollPositionRef={summaryScroll} reducedMotion={reducedMotion} onReview={(index) => { setReviewingSummary(true); changeCard(index); setStage("reading"); }} onSave={saveJournal} onHistory={() => { if (!saving) openPanel("history"); }} onRestart={() => { home(); setStage("reversing"); }} />}
     </AnimatePresence>
-    {stage !== "home" && stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">{aiEnabled ? "DeepSeek AI 实时解牌" : "体验版 · 解读为示例内容"}</span>}<span>{spread.name}</span></footer>}
+    {stage !== "home" && stage !== "travel" && <footer className="cosmic-footer"><span>THE STARS GUIDE. YOU DECIDE.</span>{stage === "prepare" && <span className="cosmic-prepare-note">{aiEnabled ? "星语灵枢 · 实时解牌" : "体验版 · 解读为示例内容"}</span>}<span>{spread.name}</span></footer>}
 
     <dialog ref={dialog} aria-label={panel === "encyclopedia" ? "塔罗百科" : panel === "history" && user ? "历史记录" : "演示账号登录"} className={`cosmic-dialog ${panel === "encyclopedia" ? "is-wide" : panel === "history" && user ? "is-history" : "is-account"}`} onCancel={() => setPanel(null)} onClick={(event) => { if (event.target === event.currentTarget) setPanel(null); }}>
       <div className="cosmic-dialog-content"><button className="cosmic-close" aria-label="关闭面板" onClick={() => setPanel(null)}><X size={21} strokeWidth={1.2} /></button>
