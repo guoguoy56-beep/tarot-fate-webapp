@@ -64,7 +64,7 @@ export class DeepSeekReadingError extends Error {
 function invalidResponseError(usage: DeepSeekUsage | null = null, model: string | null = null) {
   return new DeepSeekReadingError(
     "DEEPSEEK_INVALID_RESPONSE",
-    "DeepSeek 返回的解读未完成，或格式、长度不符合要求，请手动重试。",
+    "星语灵枢返回的解读未完成，或格式、长度不符合要求，请手动重试。",
     502,
     true,
     null,
@@ -77,7 +77,7 @@ function upstreamError(status: number, model: string) {
   if (status === 401) {
     return new DeepSeekReadingError(
       "DEEPSEEK_AUTH_FAILED",
-      "DeepSeek API Key 无效，请检查密钥配置。",
+      "星语灵枢密钥无效，请检查服务端密钥配置。",
       502,
       false,
       status,
@@ -89,7 +89,7 @@ function upstreamError(status: number, model: string) {
   if (status === 402) {
     return new DeepSeekReadingError(
       "DEEPSEEK_INSUFFICIENT_BALANCE",
-      "DeepSeek 账户余额不足，请充值后重试。",
+      "星语灵枢账户余额不足，请充值后重试。",
       503,
       false,
       status,
@@ -113,7 +113,7 @@ function upstreamError(status: number, model: string) {
   if (status === 400 || status === 422) {
     return new DeepSeekReadingError(
       "DEEPSEEK_UPSTREAM_ERROR",
-      "DeepSeek 拒绝了解读请求，请检查模型和请求参数。",
+      "星语灵枢拒绝了解读请求，请检查模型和请求参数。",
       502,
       false,
       status,
@@ -124,7 +124,7 @@ function upstreamError(status: number, model: string) {
 
   return new DeepSeekReadingError(
     "DEEPSEEK_UPSTREAM_ERROR",
-    "DeepSeek 服务暂时不可用，请稍后重试。",
+    "星语灵枢服务暂时不可用，请稍后重试。",
     502,
     status >= 500,
     status,
@@ -210,7 +210,7 @@ export async function requestDeepSeekReading(payload: TrustedReadingRequest): Pr
   if (!apiKey) {
     throw new DeepSeekReadingError(
       "DEEPSEEK_NOT_CONFIGURED",
-      "在线解读尚未配置，请在服务端设置 DeepSeek API Key。",
+      "在线解读尚未配置，请在服务端设置星语灵枢密钥。",
       503,
       false,
       null,
@@ -290,7 +290,7 @@ ${JSON.stringify(formatExample)}`,
       data = await response.json();
     } catch {
       if (controller.signal.aborted) {
-        throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model);
+        throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model);
       }
 
       throw invalidResponseError(null, model);
@@ -328,7 +328,7 @@ ${JSON.stringify(formatExample)}`,
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
       controller.abort();
-      reject(new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model));
+      reject(new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model));
     }, REQUEST_TIMEOUT_MS);
   });
 
@@ -340,12 +340,12 @@ ${JSON.stringify(formatExample)}`,
     }
 
     if (controller.signal.aborted) {
-      throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model);
+      throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model);
     }
 
     throw new DeepSeekReadingError(
       "DEEPSEEK_UPSTREAM_ERROR",
-      "无法连接 DeepSeek 服务，请检查网络后重试。",
+      "无法连接星语灵枢服务，请检查网络后重试。",
       502,
       true,
       null,
@@ -413,7 +413,7 @@ export async function requestDeepSeekCosmicReading(
   if (!apiKey) {
     throw new DeepSeekReadingError(
       "DEEPSEEK_NOT_CONFIGURED",
-      "在线解读尚未配置，请在服务端设置 DeepSeek API Key。",
+      "在线解读尚未配置，请在服务端设置星语灵枢密钥。",
       503,
       false,
       null,
@@ -527,7 +527,7 @@ ${JSON.stringify(formatExample)}`,
       data = await response.json();
     } catch {
       if (controller.signal.aborted) {
-        throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model);
+        throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model);
       }
 
       throw invalidResponseError(null, model);
@@ -565,7 +565,7 @@ ${JSON.stringify(formatExample)}`,
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
       controller.abort();
-      reject(new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model));
+      reject(new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model));
     }, COSMIC_REQUEST_TIMEOUT_MS);
   });
 
@@ -577,12 +577,12 @@ ${JSON.stringify(formatExample)}`,
     }
 
     if (controller.signal.aborted) {
-      throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "DeepSeek 响应超时，请稍后重试。", 504, true, null, null, model);
+      throw new DeepSeekReadingError("DEEPSEEK_TIMEOUT", "星语灵枢响应超时，请稍后重试。", 504, true, null, null, model);
     }
 
     throw new DeepSeekReadingError(
       "DEEPSEEK_UPSTREAM_ERROR",
-      "无法连接 DeepSeek 服务，请检查网络后重试。",
+      "无法连接星语灵枢服务，请检查网络后重试。",
       502,
       true,
       null,
