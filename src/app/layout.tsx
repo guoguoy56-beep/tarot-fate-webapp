@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "命运之牌",
-  description: "基于 React 的沉浸式塔罗占卜 WebApp",
+  title: "命运回廊 · 循星而来，向心而行",
+  description: "在星空中探索塔罗，让心中的问题找到回响。",
 };
 
 export default function RootLayout({

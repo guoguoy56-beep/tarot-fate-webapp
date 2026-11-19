@@ -1,5 +1,15 @@
 import type { CardOrientation, SpreadPosition } from "./tarot";
 
+export type CosmicSpreadId =
+  | "single"
+  | "yes-no"
+  | "timeline"
+  | "three"
+  | "cross"
+  | "lovers"
+  | "crush"
+  | "heart";
+
 export interface ReadingCardSelection {
   cardId: string;
   position: SpreadPosition;
@@ -9,6 +19,18 @@ export interface ReadingCardSelection {
 export interface ReadingRequest {
   question: string;
   cards: ReadingCardSelection[];
+}
+
+export interface CosmicReadingCardSelection {
+  cardId: string;
+  position: string;
+  orientation: CardOrientation;
+}
+
+export interface CosmicReadingRequest {
+  spreadId: CosmicSpreadId;
+  question: string;
+  cards: CosmicReadingCardSelection[];
 }
 
 export interface TrustedReadingCard extends ReadingCardSelection {
@@ -24,6 +46,22 @@ export interface TrustedReadingRequest {
   cards: TrustedReadingCard[];
 }
 
+export interface TrustedCosmicReadingCard extends CosmicReadingCardSelection {
+  nameCn: string;
+  nameEn: string;
+  uprightKeywords: string[];
+  reversedKeywords: string[];
+  meaning: string;
+}
+
+export interface TrustedCosmicReadingRequest {
+  spreadId: CosmicSpreadId;
+  spreadName: string;
+  spreadSubtitle: string;
+  question: string;
+  cards: TrustedCosmicReadingCard[];
+}
+
 export interface ReadingResponse {
   past: string;
   present: string;
@@ -31,8 +69,25 @@ export interface ReadingResponse {
   summary: string;
 }
 
+export interface CosmicReadingSummary {
+  overview: string;
+  connectionTitle: string;
+  connection: string;
+  actions: string[];
+  reflection: string;
+}
+
+export interface CosmicReadingResponse {
+  cards: Array<{
+    position: string;
+    interpretation: string;
+  }>;
+  summary: CosmicReadingSummary;
+}
+
 export type ReadingRequestErrorCode =
   | "INVALID_REQUEST"
+  | "INVALID_SPREAD"
   | "QUESTION_TOO_LONG"
   | "REQUEST_TOO_LARGE"
   | "INVALID_CARD_COUNT"

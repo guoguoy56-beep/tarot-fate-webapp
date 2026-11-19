@@ -1,0 +1,122 @@
+import { expect, test, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { mkdir, readFile } from "node:fs/promises";
+import { cosmicCardBackSrc } from "../../src/lib/cosmic-assets";
+
+async function expectClearDrawText(page: Page) {
+  await expect(page.locator('.cosmic-draw-heading .cosmic-eyebrow')).toHaveCount(0);
+  await expect.poll(() => page.locator('.cosmic-draw-heading').evaluate((heading) => {
+    const bottom = heading.getBoundingClientRect().bottom;
+    const cardTop = Math.min(...Array.from(document.querySelectorAll('.cosmic-card, .cosmic-card-marker'),
+      (node) => node.getBoundingClientRect().top));
+    return cardTop - bottom;
+  })).toBeGreaterThanOrEqual(8);
+}
+
+async function exposedCards(page: Page) {
+  return page.locator('.cosmic-card:not([disabled])').evaluateAll((cards) => cards.flatMap((card) => {
+    const box = card.getBoundingClientRect();
+    const fractions = [0.04, 0.12, 0.22, 0.34, 0.5, 0.66, 0.78, 0.88, 0.96];
+    for (const fy of fractions) {
+      for (const fx of fractions) {
+        const x = box.left + box.width * fx;
+        const y = box.top + box.height * fy;
+        if (card.contains(document.elementFromPoint(x, y))) {
+          return [{ anchor: card.getAttribute("data-anchor")!, x, y, cx: box.left + box.width / 2, cy: box.top + box.height / 2 }];
+        }
+      }
+    }
+    return [];
+  }));
+}
+
+for (const scenario of [{ width: 1920, height: 1080, turn: 0 }, { width: 1480, height: 711, turn: 0 }, { width: 1280, height: 720, turn: 0 }, { width: 1280, height: 720, turn: 1.8 }]) {
+  const viewport = { width: scenario.width, height: scenario.height };
+  test(`every orbital card is physically clickable at ${viewport.width}x${viewport.height}${scenario.turn ? " after dragging and adjacent selections" : ""}`, async ({ page }) => {
+    const errors: string[] = [];
+    const backs: string[] = [];
+    page.on("request", (request) => { if (request.url().includes("/assets/cosmic/card-back-")) backs.push(request.url()); });
+    const loadedBack = page.waitForResponse((response) => new URL(response.url()).pathname === "/assets/cosmic/card-back-v2.webp");
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const response = await loadedBack, hash = (data: Buffer) => createHash("sha256").update(data).digest("hex");
+    expect(hash(await response.body())).toBe(hash(await readFile("public/assets/cosmic/card-back-v2.webp")));
+    await page.getByRole("button", { name: "开始占卜", exact: true }).click();
+    await page.getByRole("button", { name: "十字牌阵 5 张", exact: true }).click();
+    await page.getByLabel("你想问星空什么？").fill("接下来我应该关注什么？");
+    await page.getByLabel("你想问星空什么？").press("Enter");
+    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "draw");
+    await page.evaluate(() => document.fonts.ready);
+    await expectClearDrawText(page);
+    const backUrl = new URL(cosmicCardBackSrc, page.url()).href;
+    await expect(page.getByTestId("cosmic-scene")).toHaveAttribute("data-card-back-renderer", "mesh");
+    await expect(page.getByTestId("cosmic-space")).toHaveAttribute("data-card-back-source", backUrl);
+    const images = page.locator('.cosmic-card-back img');
+    await expect(images).toHaveCount(78);
+    await images.evaluateAll(async (nodes) => { await Promise.all(nodes.map((node) => (node as HTMLImageElement).decode())); });
+    const painted = await images.evaluateAll((nodes) => nodes.map((node) => {
+      const image = node as HTMLImageElement, back = node.parentElement!;
+      return { src: image.currentSrc, width: image.naturalWidth, height: image.naturalHeight,
+        fillsBack: Math.abs(image.clientWidth - back.clientWidth) <= 1 && Math.abs(image.clientHeight - back.clientHeight) <= 1,
+        background: getComputedStyle(back).backgroundImage };
+    }));
+    expect(painted.every((image) => image.src === backUrl && image.width === 962 && image.height === 1635 && image.fillsBack && image.background === "none")).toBe(true);
+    expect(new Set(backs)).toEqual(new Set([backUrl]));
+    await mkdir("output/draw-text-back-2026-11-09", { recursive: true });
+    await page.screenshot({ path: `output/draw-text-back-2026-11-09/${viewport.width}-draw.png` });
+    // Each card needs an actually exposed hit point, rather than just an enabled DOM button.
+    await expect.poll(async () => (await exposedCards(page)).length).toBe(78);
+    if (scenario.turn) {
+      const startingRotation = Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"));
+      const cx = viewport.width * 0.5;
+      const cy = viewport.height * 0.6;
+      // Follow actual projected anchors: a perspective orbit's screen angle is not its world angle.
+      const orbit = await page.locator('.cosmic-card').evaluateAll((cards) => cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }));
+      await page.mouse.move(orbit[0].x, orbit[0].y);
+      await page.mouse.down();
+      for (let step = 1; step <= 22; step++) {
+        await page.mouse.move(orbit[step].x, orbit[step].y);
+      }
+      // Finish with a slow final pixel so a frame between release and the center click cannot fling the ring.
+      await page.mouse.move(orbit[22].x + 1, orbit[22].y);
+      await page.mouse.up();
+      // In reduced-motion mode there is no release inertia; an empty-center click must not select a card.
+      await page.mouse.click(cx, cy);
+      await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(0);
+      expect(Number(await page.getByTestId("cosmic-scene").getAttribute("data-rotation"))).toBeCloseTo(startingRotation + 1.8, 1);
+      await expect.poll(async () => (await exposedCards(page)).length).toBe(78);
+    }
+    const facts = () => page.locator(".cosmic-card").evaluateAll((cards) => cards.map((card) => ({
+      anchor: card.getAttribute("data-anchor"), id: card.getAttribute("data-card-id"), orientation: card.getAttribute("data-orientation"),
+    })));
+    const before = await facts();
+    const chosen: string[] = [];
+    const regions = scenario.turn ? ["0", "1", "2", "77", "back"] : ["back", "left", "right", "front", "back"];
+    for (const region of regions) {
+      await expectClearDrawText(page);
+      const visible = await exposedCards(page);
+      expect(visible).toHaveLength(78 - chosen.length);
+      const target = /^\d+$/.test(region) ? visible.find((card) => card.anchor === region)! : visible.sort((a, b) => region === "back" ? a.cy - b.cy : region === "front" ? b.cy - a.cy : region === "left" ? a.cx - b.cx : b.cx - a.cx)[0];
+      expect(target, `card in region ${region} must have a real hit point`).toBeTruthy();
+      if (region === "back") expect(target.cy).toBeLessThan(viewport.height * 0.5);
+      if (region === "front") expect(target.cy).toBeGreaterThan(viewport.height * 0.7);
+      await page.mouse.click(target.x, target.y);
+      chosen.push(target.anchor);
+      await expect(page.getByTestId(`orbit-card-${target.anchor}`)).toHaveAttribute("data-selected", "true");
+      const marker = page.locator(`svg.cosmic-card-marker[data-marker-for="${target.anchor}"]`);
+      await expect(marker).toHaveAttribute("data-number", String(chosen.length));
+      await expect(marker.locator("path")).toHaveAttribute("d", /\S+/);
+      await expect(page.locator('.cosmic-card[data-selected="true"]')).toHaveCount(chosen.length);
+      expect(await facts()).toEqual(before);
+    }
+    expect(new Set(chosen).size).toBe(5);
+    await expect(page.getByTestId("cosmic-experience")).toHaveAttribute("data-stage", "reading");
+    expect(errors).toEqual([]);
+  });
+}

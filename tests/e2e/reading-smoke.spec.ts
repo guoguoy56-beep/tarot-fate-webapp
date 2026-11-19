@@ -50,7 +50,7 @@ test("question, shuffle, draw, reveal, journal, save and reload history", async 
     await route.fulfill({ status: 200, json: reading });
   });
 
-  await page.goto("/");
+  await page.goto("/?experience=legacy");
   await expect(page.getByRole("heading", { name: "命运之牌", exact: true })).toBeVisible();
   const questionStage = page.locator("section").filter({
     has: page.getByRole("heading", { name: "命运之牌", exact: true }),

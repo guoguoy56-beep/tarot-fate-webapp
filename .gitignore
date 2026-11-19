@@ -15,3 +15,10 @@ prod-server.*.log
 tsconfig.tsbuildinfo
 .playwright-cli/
 output/
+data/*.sqlite
+data/*.sqlite-*
+data/demo/
+ProjectDocument/*.docx
+.workbuddy-ai/
+handoff_inspect/
+kit/AI用全栈开发套件包/
